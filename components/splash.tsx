@@ -11,7 +11,7 @@ export function Splash() {
             {/* Mengganti ikon Lucide dengan logo PNG Anda */}
             <div className="w-32 h-32 relative animate-bounce">
               <Image 
-                src="/logo-mejatika.png" // Pastikan file ada di folder public
+                src="/logo.png" // Pastikan file ada di folder public
                 alt="Logo Mejatika"
                 fill
                 className="object-contain"
