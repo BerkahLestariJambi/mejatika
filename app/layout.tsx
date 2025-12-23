@@ -5,8 +5,8 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "Made with App Studio",
-  description: "MEJATIKA - Platform Pembelajaran Digital",
+  title: "MEJATIKA ",
+  description: "MEDIA BELAJAR INFORMATIKA - Platform Pembelajaran Digital",
     generator: 'v0.app'
 }
 
