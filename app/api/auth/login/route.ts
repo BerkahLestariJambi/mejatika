@@ -1,28 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const body = await request.json()
 
-    // Find user by email
-    const user = db.users.find((u) => u.email === email)
+    // Kirim request ke Laravel backend
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    })
 
-    if (!user || user.password !== password) {
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    if (!res.ok) {
+      const error = await res.json()
+      return NextResponse.json(error, { status: res.status })
     }
 
-    // In production, use proper JWT tokens and password hashing
-    return NextResponse.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        avatar: user.avatar,
-      },
-      token: `fake-jwt-token-${user.id}`,
-    })
+    const data = await res.json()
+
+    // Balikan data user + token dari backend
+    return NextResponse.json(data)
   } catch (error) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
