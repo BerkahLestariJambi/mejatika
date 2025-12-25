@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,7 +22,8 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/login", {
+      // Proxy ke Next.js API route → yang fetch ke Laravel backend
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -36,15 +36,17 @@ export default function LoginPage() {
         return
       }
 
-      // Store user data in localStorage (in production, use secure session management)
+      // Simpan user & token (untuk demo, pakai localStorage; produksi → pakai cookie/session)
       localStorage.setItem("user", JSON.stringify(data.user))
       localStorage.setItem("token", data.token)
 
-      // Redirect based on role
-      if (data.user.role === "admin" || data.user.role === "contributor") {
+      // Redirect sesuai role
+      if (data.user.role === "admin") {
         router.push("/admin")
+      } else if (data.user.role === "kontributor") {
+        router.push("/kontributor")
       } else {
-        router.push("/")
+        router.push("/dashboard") // peserta default
       }
     } catch (err) {
       setError("Terjadi kesalahan. Silakan coba lagi.")
@@ -95,13 +97,6 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Memproses..." : "Masuk"}
             </Button>
-
-            <div className="text-center text-sm text-muted-foreground">
-              <p>Demo Credentials:</p>
-              <p>Admin: admin@mejatika.com / admin123</p>
-              <p>Contributor: contributor@mejatika.com / contributor123</p>
-              <p>Participant: peserta@mejatika.com / peserta123</p>
-            </div>
           </form>
         </CardContent>
       </Card>
