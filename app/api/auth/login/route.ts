@@ -4,8 +4,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
 
-    // Kirim request ke Laravel backend
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/login`, {
+    const res = await fetch("https://backend.mejatika.com/api/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -14,14 +13,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     })
 
-    if (!res.ok) {
-      const error = await res.json()
-      return NextResponse.json(error, { status: res.status })
-    }
-
     const data = await res.json()
 
-    // Balikan data user + token dari backend
+    if (!res.ok) {
+      return NextResponse.json(data, { status: res.status })
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
