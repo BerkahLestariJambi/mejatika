@@ -1,37 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/db"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name } = await request.json()
+    const body = await request.json()
 
-    // Check if user already exists
-    const existingUser = db.users.find((u) => u.email === email)
-    if (existingUser) {
-      return NextResponse.json({ error: "Email already registered" }, { status: 400 })
-    }
-
-    // Create new user
-    const newUser = {
-      id: `user-${Date.now()}`,
-      email,
-      password, // In production, hash the password
-      name,
-      role: "participant" as const,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    db.users.push(newUser)
-
-    return NextResponse.json({
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
+    // Kirim data ke Laravel backend
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
       },
+      body: JSON.stringify(body),
     })
+
+    // Jika gagal, balikan error dari backend
+    if (!res.ok) {
+      const error = await res.json()
+      return NextResponse.json(error, { status: res.status })
+    }
+
+    // Jika sukses, balikan data user dari backend
+    const data = await res.json()
+    return NextResponse.json(data, { status: 201 })
   } catch (error) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
