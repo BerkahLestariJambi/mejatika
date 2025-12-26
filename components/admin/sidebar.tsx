@@ -24,7 +24,7 @@ const navigation = [
   { name: "Users", href: "/admin/users", icon: Users },
   { name: "Menus", href: "/admin/menus", icon: MenuIcon },
   
-  { name: "Slider", href: "/admin/slider", icon: Slider },
+  { name: "Sliders", href: "/admin/sliders", icon: Sliders },
   { name: "News", href: "/admin/news", icon: FileText },
   { name: "Categories", href: "/admin/categories", icon: Folder },
   { name: "Courses", href: "/admin/courses", icon: GraduationCap },
