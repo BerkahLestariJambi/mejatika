@@ -12,29 +12,29 @@ export const dynamic = "force-dynamic";
 async function getArticleDetail(slug: string) {
   try {
     const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
-      cache: 'no-store'
+      cache: 'no-store',
+      headers: { 'Accept': 'application/json' }
     });
     if (!res.ok) return null;
     return res.json();
   } catch (error) {
+    console.error("Fetch error:", error);
     return null;
   }
 }
 
 export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  const article = await getArticleDetail(slug);
+  const resolvedParams = await params;
+  const article = await getArticleDetail(resolvedParams.slug);
 
   if (!article) {
     notFound();
   }
 
-  const authorName = article.user?.name || article.author?.name || "Admin MEJATIKA";
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-grow container mx-auto px-4 py-8">
         <Link href="/berita">
           <Button variant="ghost" className="mb-6">
             <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Berita
@@ -42,56 +42,47 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         </Link>
 
         <article className="mx-auto max-w-4xl">
-          <Card className="border-none shadow-xl overflow-hidden bg-card">
+          <Card className="border-none shadow-xl overflow-hidden">
             <CardContent className="p-0">
-              {/* CONTAINER GAMBAR */}
-              <div className="relative w-full h-[300px] md:h-[500px] bg-muted">
+              {/* Logic Gambar yang Aman agar tidak Server Exception */}
+              <div className="relative w-full aspect-video bg-muted">
                 {article.image ? (
                   <img
                     src={article.image}
-                    alt={article.title}
+                    alt={article.title || "Berita"}
                     className="w-full h-full object-cover"
-                    // Fallback jika gambar gagal dimuat dari server
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "/placeholder.svg";
-                    }}
                   />
                 ) : (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
-                    Tidak ada gambar utama
+                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                    Tidak ada gambar
                   </div>
                 )}
               </div>
               
               <div className="p-6 md:p-10">
                 <div className="mb-4">
-                  {article.category && (
-                    <Badge variant="secondary" className="px-3 py-1">
-                      {article.category.name}
-                    </Badge>
+                  {article.category?.name && (
+                    <Badge variant="secondary">{article.category.name}</Badge>
                   )}
                 </div>
                 
-                <h1 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight tracking-tight">
+                <h1 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
                   {article.title}
                 </h1>
 
-                <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-8 pb-8 border-b">
+                <div className="flex flex-wrap gap-6 text-sm text-muted-foreground mb-8 pb-8 border-b">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-primary" />
-                    {new Date(article.created_at).toLocaleDateString("id-ID", {
-                      day: "numeric", month: "long", year: "numeric"
-                    })}
+                    <Calendar className="w-4 h-4" />
+                    {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID") : "-"}
                   </div>
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-primary" />
-                    <span>{authorName}</span>
+                    <User className="w-4 h-4" />
+                    <span>{article.author?.name || article.user?.name || "Admin"}</span>
                   </div>
                 </div>
 
-                {/* ISI BERITA */}
-                <div className="prose prose-blue prose-lg max-w-none">
-                  <div className="whitespace-pre-line leading-relaxed text-foreground/90 text-lg">
+                <div className="prose prose-lg max-w-none">
+                  <div className="whitespace-pre-line text-foreground/80 leading-relaxed">
                     {article.content}
                   </div>
                 </div>
