@@ -1,13 +1,54 @@
+"use client"
+import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Clock, User, DollarSign } from "lucide-react"
-import { db } from "@/lib/db"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 
-export default async function KursusPage() {
-  const courses = await db.getCourses()
+export default function KursusPage() {
+  const [courses, setCourses] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState("")
+
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const res = await fetch("https://backend.mejatika.com/api/courses")
+      const data = await res.json()
+      setCourses(data)
+    }
+    fetchCourses()
+  }, [])
+
+  const handleRegister = async (courseId: number) => {
+    setLoading(true)
+    setMessage("")
+    const token = localStorage.getItem("token")
+    const user = JSON.parse(localStorage.getItem("user") || "{}")
+
+    try {
+      const res = await fetch("https://backend.mejatika.com/api/registrations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ course_id: courseId, user_id: user.id }),
+      })
+
+      const data = await res.json()
+      if (res.ok) {
+        setMessage("Berhasil daftar kursus!")
+      } else {
+        setMessage(data.error || "Gagal daftar kursus")
+      }
+    } catch {
+      setMessage("Terjadi kesalahan. Silakan coba lagi.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -18,6 +59,8 @@ export default async function KursusPage() {
           <p className="text-muted-foreground">Pilih kursus yang sesuai dengan kebutuhan Anda</p>
         </div>
 
+        {message && <p className="text-center text-red-500 mb-4">{message}</p>}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => (
             <Card key={course.id} className="overflow-hidden">
@@ -25,8 +68,8 @@ export default async function KursusPage() {
                 <img src={course.image || "/placeholder.svg"} alt={course.title} className="h-48 w-full object-cover" />
                 <div className="p-6">
                   <Badge className="mb-3">Popular</Badge>
-                  <h3 className="mb-2 text-xl font-bold text-balance">{course.title}</h3>
-                  <p className="mb-4 text-sm text-muted-foreground text-pretty">{course.description}</p>
+                  <h3 className="mb-2 text-xl font-bold">{course.title}</h3>
+                  <p className="mb-4 text-sm text-muted-foreground">{course.description}</p>
                   <div className="mb-4 space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <Clock className="h-4 w-4" />
@@ -41,7 +84,13 @@ export default async function KursusPage() {
                       <span>Rp {course.price.toLocaleString("id-ID")}</span>
                     </div>
                   </div>
-                  <Button className="w-full">Daftar Sekarang</Button>
+                  <Button
+                    className="w-full"
+                    disabled={loading}
+                    onClick={() => handleRegister(course.id)}
+                  >
+                    {loading ? "Memproses..." : "Daftar Sekarang"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
