@@ -216,15 +216,11 @@ export default function NewsManagementPage() {
               const category = categories.find((c) => c.id === article.category_id)
               return (
                 <div key={article.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
-                <img
-  src={article.image ? `https://backend.mejatika.com/storage/${article.image}` : "/placeholder.svg"}
-  alt={article.title}
-  className="h-20 w-32 rounded object-cover flex-shrink-0 bg-muted"
-  onError={(e) => {
-    // Jika gambar tetap tidak ditemukan, gunakan placeholder
-    (e.target as HTMLImageElement).src = "/placeholder.svg";
-  }}
-/>
+                  <img
+                    src={article.image || "/placeholder.svg"}
+                    alt={article.title}
+                    className="h-20 w-32 rounded object-cover flex-shrink-0 bg-muted"
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
