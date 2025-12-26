@@ -34,11 +34,22 @@ export default function CategoriesPage() {
 
   // fetch categories dari backend
   const fetchCategories = async () => {
-    const res = await fetch("https://backend.mejatika.com/api/news-categories", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    const data = await res.json()
-    setCategories(data)
+    try {
+      const res = await fetch("https://backend.mejatika.com/api/news-categories", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setCategories(data)
+      } else {
+        toast({ title: "Gagal ambil kategori", description: "Respon tidak valid", variant: "destructive" })
+        setCategories([])
+      }
+    } catch (err) {
+      console.error("Fetch error:", err)
+      toast({ title: "Gagal ambil kategori", description: "Periksa koneksi atau token", variant: "destructive" })
+      setCategories([])
+    }
   }
 
   useEffect(() => {
@@ -130,45 +141,49 @@ export default function CategoriesPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {categories.map((category) => (
-              <div key={category.id} className="flex items-center justify-between border-b pb-3 last:border-0">
-                <div>
-                  <p className="font-medium">{category.name}</p>
-                  <p className="text-sm text-muted-foreground">Slug: {category.slug}</p>
+            {Array.isArray(categories) && categories.length > 0 ? (
+              categories.map((category) => (
+                <div key={category.id} className="flex items-center justify-between border-b pb-3 last:border-0">
+                  <div>
+                    <p className="font-medium">{category.name}</p>
+                    <p className="text-sm text-muted-foreground">Slug: {category.slug ?? "-"}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setEditing(category)
+                        setName(category.name)
+                        setSlug(category.slug)
+                        setOpenForm(true)
+                      }}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Yakin hapus kategori ini?</AlertDialogTitle>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(category.id)}>Hapus</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditing(category)
-                      setName(category.name)
-                      setSlug(category.slug)
-                      setOpenForm(true)
-                    }}
-                  >
-                    <Edit className="mr-2 h-4 w-4" />
-                    Edit
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Yakin hapus kategori ini?</AlertDialogTitle>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(category.id)}>Hapus</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-muted-foreground">Belum ada kategori tersedia.</p>
+            )}
           </div>
         </CardContent>
       </Card>
