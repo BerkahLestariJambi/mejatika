@@ -28,6 +28,7 @@ export default function NewsManagementPage() {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [image, setImage] = useState<File | null>(null)
+  const [categoryId, setCategoryId] = useState<number | null>(null)
   const { toast } = useToast()
 
   // fetch data dari backend
@@ -59,6 +60,7 @@ export default function NewsManagementPage() {
     formData.append("title", title)
     formData.append("content", content)
     if (image) formData.append("image", image)
+    if (categoryId) formData.append("category_id", String(categoryId))
 
     let url = "https://backend.mejatika.com/api/news"
     let method: "POST" | "PUT" = "POST"
@@ -80,6 +82,7 @@ export default function NewsManagementPage() {
       setTitle("")
       setContent("")
       setImage(null)
+      setCategoryId(null)
       setEditing(null)
       setOpenForm(false)
       fetchNews()
@@ -117,17 +120,32 @@ export default function NewsManagementPage() {
               Add Article
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
-              <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
-              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
-              <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
-            </form>
-          </DialogContent>
+          <form onSubmit={handleSubmit}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
+                <select
+                  className="w-full border rounded p-2"
+                  value={categoryId ?? ""}
+                  onChange={(e) => setCategoryId(Number(e.target.value))}
+                  required
+                >
+                  <option value="">Pilih Kategori</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+                <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
+              </div>
+            </DialogContent>
+          </form>
         </Dialog>
       </div>
 
@@ -170,6 +188,7 @@ export default function NewsManagementPage() {
                             setEditing(article)
                             setTitle(article.title)
                             setContent(article.content)
+                            setCategoryId(article.categoryId)
                             setOpenForm(true)
                           }}
                         >
