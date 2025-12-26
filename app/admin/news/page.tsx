@@ -225,6 +225,8 @@ export default function NewsManagementPage() {
                 )
               })}
           </div>
-        </CardContent>
+               </CardContent>
       </Card>
-    </div
+    </div>
+  )
+}
