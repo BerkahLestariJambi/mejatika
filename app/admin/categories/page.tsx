@@ -35,19 +35,19 @@ export default function CategoriesPage() {
   // fetch categories dari backend
   const fetchCategories = async () => {
     try {
-      const res = await fetch("https://backend.mejatika.com/api/news-categories", {
+      const res = await fetch("https://backend.mejatika.com/api/categories", {
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
+      if (!res.ok) throw new Error("API error: " + res.status)
       const data = await res.json()
       if (Array.isArray(data)) {
         setCategories(data)
       } else {
-        toast({ title: "Gagal ambil kategori", description: "Respon tidak valid", variant: "destructive" })
         setCategories([])
       }
     } catch (err) {
       console.error("Fetch error:", err)
-      toast({ title: "Gagal ambil kategori", description: "Periksa koneksi atau token", variant: "destructive" })
+      toast({ title: "Gagal ambil kategori", description: String(err), variant: "destructive" })
       setCategories([])
     }
   }
@@ -63,11 +63,11 @@ export default function CategoriesPage() {
     formData.append("name", name)
     formData.append("slug", slug)
 
-    let url = "https://backend.mejatika.com/api/news-categories"
+    let url = "https://backend.mejatika.com/api/categories"
     let method: "POST" | "PUT" = "POST"
 
     if (editing) {
-      url = `https://backend.mejatika.com/api/news-categories/${editing.id}`
+      url = `https://backend.mejatika.com/api/categories/${editing.id}`
       formData.append("_method", "PUT")
       method = "POST"
     }
@@ -93,7 +93,7 @@ export default function CategoriesPage() {
 
   // hapus kategori
   const handleDelete = async (id: number) => {
-    const res = await fetch(`https://backend.mejatika.com/api/news-categories/${id}`, {
+    const res = await fetch(`https://backend.mejatika.com/api/categories/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
@@ -119,18 +119,16 @@ export default function CategoriesPage() {
               Add Category
             </Button>
           </DialogTrigger>
-          <form onSubmit={handleSubmit}>
-            <DialogContent>
+          <DialogContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <DialogHeader>
                 <DialogTitle>{editing ? "Edit Kategori" : "Tambah Kategori"}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <Input placeholder="Nama kategori" value={name} onChange={(e) => setName(e.target.value)} required />
-                <Input placeholder="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} required />
-                <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
-              </div>
-            </DialogContent>
-          </form>
+              <Input placeholder="Nama kategori" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input placeholder="Slug" value={slug} onChange={(e) => setSlug(e.target.value)} required />
+              <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
+            </form>
+          </DialogContent>
         </Dialog>
       </div>
 
