@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { useToast } from "@/components/ui/use-toast"
 
 type Slider = {
   id: number
@@ -22,6 +23,8 @@ export default function SlidersPage() {
   const [image, setImage] = useState<File | null>(null)
   const [editing, setEditing] = useState<Slider | null>(null)
   const [open, setOpen] = useState(false)
+
+  const { toast } = useToast()
 
   const fetchSliders = async () => {
     const res = await fetch("https://backend.mejatika.com/api/sliders", {
@@ -60,7 +63,11 @@ export default function SlidersPage() {
 
     if (!res.ok) {
       const err = await res.json()
-      alert("Gagal simpan slider: " + JSON.stringify(err.errors))
+      toast({
+        title: "Gagal Simpan",
+        description: JSON.stringify(err.errors),
+        variant: "destructive",
+      })
       return
     }
 
@@ -73,7 +80,10 @@ export default function SlidersPage() {
     setOpen(false)
     fetchSliders()
 
-    alert(editing ? "Slider berhasil diupdate!" : "Slider berhasil disimpan!")
+    toast({
+      title: editing ? "Slider berhasil diupdate!" : "Slider berhasil disimpan!",
+      description: "Perubahan sudah tersimpan di database.",
+    })
   }
 
   const handleDelete = async (id: number) => {
@@ -83,9 +93,15 @@ export default function SlidersPage() {
     })
     if (res.ok) {
       fetchSliders()
-      alert("Slider berhasil dihapus!")
+      toast({
+        title: "Slider berhasil dihapus!",
+        description: `ID ${id} sudah dihapus dari database.`,
+      })
     } else {
-      alert("Gagal hapus slider")
+      toast({
+        title: "Gagal hapus slider",
+        variant: "destructive",
+      })
     }
   }
 
@@ -152,6 +168,11 @@ export default function SlidersPage() {
               <Label>Deskripsi</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
+            
+            <div>
+              <Label>Gambar</Label>
+              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+            </div>
             <div>
               <Label>Aktif</Label>
               <Input
@@ -159,10 +180,6 @@ export default function SlidersPage() {
                 checked={active}
                 onChange={(e) => setActive(e.target.checked)}
               />
-            </div>
-            <div>
-              <Label>Gambar</Label>
-              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
             </div>
             <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
           </form>
