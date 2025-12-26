@@ -1,161 +1,131 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Splash } from "@/components/splash"
-import { Header } from "@/components/header"
-import { Navigation } from "@/components/navigation"
-import { NewsSlider } from "@/components/news-slider"
-import { NewsList } from "@/components/news-list"
-import { ScheduleSidebar } from "@/components/schedule-sidebar"
-import { Footer } from "@/components/footer"
-import { RunningText } from "@/components/running-text"
-
-// Shadcn UI Components
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import { Calendar, User, Loader2 } from "lucide-react"
+// ... (import lainnya tetap sama)
+import { ChevronRight, ChevronLeft, BookOpen, Calendar, User, Loader2 } from "lucide-react"
 
 export default function HomePage() {
   const [showSplash, setShowSplash] = useState(true)
-  
-  // State untuk Kontrol Modal Popup
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [article, setArticle] = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
+  
+  // State untuk kontrol halaman buku
+  const [currentPage, setCurrentPage] = useState(1)
 
-  // Timer untuk Splash Screen
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false)
-    }, 3000)
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Mengambil data detail berita saat modal dipicu
+  // ... (useEffect fetch data tetap sama)
   useEffect(() => {
     if (selectedSlug && isModalOpen) {
       setLoadingDetail(true)
       setArticle(null)
+      setCurrentPage(1) // Reset ke halaman 1 setiap buka berita
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
         .then((res) => res.json())
         .then((data) => {
           setArticle(data)
           setLoadingDetail(false)
         })
-        .catch((err) => {
-          console.error("Gagal mengambil detail:", err)
-          setLoadingDetail(false)
-        })
     }
   }, [selectedSlug, isModalOpen])
 
-  // Fungsi untuk membuka modal (dikirim ke NewsList)
   const handleOpenDetail = (slug: string) => {
     setSelectedSlug(slug)
     setIsModalOpen(true)
   }
 
-  if (showSplash) {
-    return <Splash />
+  // Fungsi helper untuk membagi konten (Opsional, atau bisa manual)
+  const splitContent = (text: string) => {
+    if (!text) return ["", ""];
+    const mid = Math.floor(text.length / 2);
+    const before = text.lastIndexOf(' ', mid);
+    return [text.substring(0, before), text.substring(before)];
   }
+
+  if (showSplash) return <Splash />
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
       <Navigation />
       
-      <main className="flex-grow container mx-auto px-4 py-6 lg:py-8">
-        <RunningText />
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-          <div className="lg:col-span-2">
-            {/* Jika NewsSlider juga butuh popup, kirim handleOpenDetail sebagai prop */}
-            <NewsSlider onReadMore={handleOpenDetail} />
-            
-            {/* NewsList memicu modal popup melalui prop onReadMore */}
-            <NewsList onReadMore={handleOpenDetail} />
-          </div>
-          
-          <div className="lg:col-span-1">
-            <ScheduleSidebar />
-          </div>
-        </div>
+      <main className="flex-grow container mx-auto max-w-6xl px-4 py-6">
+        {/* ... (Konten Utama tetap sama) */}
+        <NewsSlider onReadMore={handleOpenDetail} />
+        <NewsList onReadMore={handleOpenDetail} />
       </main>
       
       <Footer />
 
-      {/* POPUP MODAL DETAIL BERITA */}
+      {/* POPUP MODAL MODEL BUKU */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl bg-card">
+        <DialogContent className="max-w-5xl w-[95vw] h-[80vh] p-0 overflow-hidden border-none bg-transparent shadow-none">
           <DialogHeader className="sr-only">
-            <DialogTitle>{article?.title || "Detail Berita"}</DialogTitle>
+            <DialogTitle>{article?.title}</DialogTitle>
           </DialogHeader>
 
-          <ScrollArea className="h-full max-h-[90vh]">
-            {loadingDetail ? (
-              <div className="flex flex-col items-center justify-center p-24 gap-4">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-muted-foreground animate-pulse font-medium">Menyiapkan berita...</p>
-              </div>
-            ) : article && (
-              <article className="py-8">
+          {loadingDetail ? (
+            <div className="bg-card w-full h-full flex items-center justify-center rounded-2xl">
+              <Loader2 className="animate-spin h-10 w-10 text-primary" />
+            </div>
+          ) : article && (
+            <div className="relative w-full h-full flex flex-col md:flex-row perspective-1000">
+              
+              {/* HALAMAN KIRI */}
+              <div className="flex-1 bg-white dark:bg-zinc-900 p-8 md:p-12 shadow-[inset_-10px_0_20px_rgba(0,0,0,0.05)] border-r border-black/10 rounded-l-2xl overflow-y-auto">
+                <Badge variant="secondary" className="mb-4">{article.category?.name}</Badge>
+                <h1 className="text-2xl md:text-3xl font-extrabold mb-6 leading-tight text-zinc-900 dark:text-white">
+                  {article.title}
+                </h1>
                 
-                {/* GAMBAR DENGAN BATAS (PADDING) KIRI-KANAN */}
-                <div className="px-6 md:px-12">
-                  <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-muted shadow-lg ring-1 ring-border">
-                    <img 
-                      src={article.image || "/placeholder.svg"} 
-                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                      alt={article.title}
-                      onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
-                    />
+                <div className="flex flex-col gap-3 text-xs text-muted-foreground mb-8">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(article.publishedAt || article.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <User className="w-3 h-3" />
+                    {article.user?.name || "Admin"}
                   </div>
                 </div>
 
-                {/* KONTEN TEKS */}
-                <div className="px-6 md:px-12 py-8">
-                  <div className="flex items-center gap-2 mb-6">
-                    <Badge variant="secondary" className="px-3 py-1 text-xs font-semibold uppercase tracking-wider">
-                      {article.category?.name || "Info Terkini"}
-                    </Badge>
-                  </div>
+                <div className="prose prose-sm dark:prose-invert italic text-zinc-700 dark:text-zinc-300">
+                  {currentPage === 1 ? splitContent(article.content)[0] : "Lanjutan dari halaman sebelumnya..."}
+                </div>
+              </div>
 
-                  <h1 className="text-3xl md:text-4xl font-extrabold mb-6 leading-tight tracking-tight text-foreground">
-                    {article.title}
-                  </h1>
-                  
-                  <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-8 pb-6 border-b border-border/50">
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-primary/10 rounded-full">
-                        <Calendar className="w-4 h-4 text-primary" />
-                      </div>
-                      <span className="font-medium">
-                        {new Date(article.created_at || article.publishedAt).toLocaleDateString("id-ID", { 
-                          day: 'numeric', month: 'long', year: 'numeric' 
-                        })}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 bg-primary/10 rounded-full">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                      <span className="font-medium">
-                        {article.user?.name || article.author?.name || "Admin MEJATIKA"}
-                      </span>
-                    </div>
-                  </div>
+              {/* HALAMAN KANAN */}
+              <div className="flex-1 bg-white dark:bg-zinc-900 p-8 md:p-12 shadow-[inset_10px_0_20px_rgba(0,0,0,0.05)] rounded-r-2xl overflow-y-auto flex flex-col">
+                <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-muted mb-8 shadow-md">
+                  <img src={article.image} className="w-full h-full object-cover" alt="cover" />
+                </div>
 
-                  <div className="prose prose-lg dark:prose-invert max-w-none">
-                    <div className="whitespace-pre-line leading-relaxed text-foreground/90 text-lg">
-                      {article.content}
-                    </div>
+                <div className="prose prose-sm dark:prose-invert text-zinc-700 dark:text-zinc-300 flex-grow">
+                   {currentPage === 1 ? "Lanjut ke halaman berikutnya..." : splitContent(article.content)[1]}
+                </div>
+
+                {/* Navigasi Halaman (Simbol Panah di bawah kanan) */}
+                <div className="mt-6 flex justify-between items-center">
+                  <span className="text-xs font-mono text-muted-foreground">Halaman {currentPage} dari 2</span>
+                  <div className="flex gap-2">
+                    {currentPage === 2 && (
+                      <Button size="icon" variant="outline" onClick={() => setCurrentPage(1)} className="rounded-full">
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {currentPage === 1 && (
+                      <Button size="icon" onClick={() => setCurrentPage(2)} className="rounded-xl h-12 w-12 shadow-lg">
+                        <ChevronRight className="h-6 w-6" />
+                      </Button>
+                    )}
                   </div>
                 </div>
-              </article>
-            )}
-          </ScrollArea>
+              </div>
+
+              {/* Garis Tengah Buku */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-black/10 hidden md:block" />
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
