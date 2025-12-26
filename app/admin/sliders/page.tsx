@@ -11,12 +11,16 @@ type Slider = {
   title: string
   description?: string
   image: string
+  link?: string
+  active?: boolean
 }
 
 export default function SlidersPage() {
   const [sliders, setSliders] = useState<Slider[]>([])
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
+  const [link, setLink] = useState("")
+  const [active, setActive] = useState(true)
   const [image, setImage] = useState<File | null>(null)
   const [editing, setEditing] = useState<Slider | null>(null)
 
@@ -35,8 +39,10 @@ export default function SlidersPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const formData = new FormData()
-    formData.append("title", title)
+    if (title) formData.append("title", title)
     if (description) formData.append("description", description)
+    if (link) formData.append("link", link)
+    formData.append("active", active ? "1" : "0")
     if (image) formData.append("image", image)
 
     let url = "https://backend.mejatika.com/api/sliders"
@@ -48,14 +54,23 @@ export default function SlidersPage() {
       method = "POST"
     }
 
-    await fetch(url, {
+    const res = await fetch(url, {
       method,
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       body: formData,
     })
 
+    if (!res.ok) {
+      const err = await res.json()
+      console.error("Failed:", err)
+      alert("Gagal simpan slider: " + JSON.stringify(err.errors))
+      return
+    }
+
     setTitle("")
     setDescription("")
+    setLink("")
+    setActive(true)
     setImage(null)
     setEditing(null)
     fetchSliders()
@@ -99,6 +114,8 @@ export default function SlidersPage() {
                     setEditing(s)
                     setTitle(s.title)
                     setDescription(s.description || "")
+                    setLink(s.link || "")
+                    setActive(s.active ?? true)
                   }}
                 >
                   Edit
@@ -129,6 +146,18 @@ export default function SlidersPage() {
             <div>
               <Label>Deskripsi</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
+            <div>
+              <Label>Link</Label>
+              <Input value={link} onChange={(e) => setLink(e.target.value)} />
+            </div>
+            <div>
+              <Label>Aktif</Label>
+              <Input
+                type="checkbox"
+                checked={active}
+                onChange={(e) => setActive(e.target.checked)}
+              />
             </div>
             <div>
               <Label>Gambar</Label>
