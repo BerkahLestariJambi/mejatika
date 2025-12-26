@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -37,14 +36,17 @@ export default function SlidersPage() {
     e.preventDefault()
     const formData = new FormData()
     formData.append("title", title)
-    formData.append("description", description)
+    if (description) formData.append("description", description)
     if (image) formData.append("image", image)
 
-    const url = editing
-      ? `https://backend.mejatika.com/api/sliders/${editing.id}`
-      : "https://backend.mejatika.com/api/sliders"
+    let url = "https://backend.mejatika.com/api/sliders"
+    let method: "POST" | "PUT" = "POST"
 
-    const method = editing ? "PUT" : "POST"
+    if (editing) {
+      url = `https://backend.mejatika.com/api/sliders/${editing.id}`
+      formData.append("_method", "PUT") // Laravel expects this
+      method = "POST"
+    }
 
     await fetch(url, {
       method,
