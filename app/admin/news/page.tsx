@@ -80,22 +80,29 @@ export default function NewsManagementPage() {
     const formData = new FormData()
     formData.append("title", title)
     formData.append("content", content)
-    if (image) formData.append("image", image)
     formData.append("category_id", String(categoryId))
+    
+    // Hanya append image jika ada file baru yang dipilih
+    if (image) {
+      formData.append("image", image)
+    }
 
     let url = "https://backend.mejatika.com/api/news"
-    let method: "POST" | "PUT" = "POST"
+    let method = "POST"
 
     if (editing) {
       url = `https://backend.mejatika.com/api/news/${editing.id}`
+      // Method Spoofing untuk Laravel agar bisa baca FormData di proses PUT
       formData.append("_method", "PUT")
-      method = "POST"
     }
 
     try {
       const res = await fetch(url, {
-        method,
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        method: "POST", // Selalu POST jika mengirim FormData/File ke Laravel
+        headers: { 
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Accept": "application/json" // Penting agar server kirim error JSON, bukan HTML
+        },
         body: formData,
       })
 
@@ -106,7 +113,11 @@ export default function NewsManagementPage() {
         fetchNews()
       } else {
         const err = await res.json()
-        toast({ title: "Gagal simpan berita", description: JSON.stringify(err.errors), variant: "destructive" })
+        toast({ 
+            title: "Gagal simpan berita", 
+            description: err.message || "Pastikan Anda memiliki izin akses.", 
+            variant: "destructive" 
+        })
       }
     } catch (error) {
       toast({ title: "Terjadi kesalahan sistem", variant: "destructive" })
@@ -117,7 +128,10 @@ export default function NewsManagementPage() {
     try {
       const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { 
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Accept": "application/json"
+        },
       })
       if (res.ok) {
         toast({ title: "Berita berhasil dihapus!" })
@@ -126,7 +140,7 @@ export default function NewsManagementPage() {
         toast({ title: "Gagal hapus berita", variant: "destructive" })
       }
     } catch (err) {
-      toast({ title: "Gagal hapus berita", description: String(err), variant: "destructive" })
+      toast({ title: "Gagal hapus", description: String(err), variant: "destructive" })
     }
   }
 
@@ -135,7 +149,7 @@ export default function NewsManagementPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold lg:text-3xl">News Management</h1>
-          <p className="text-muted-foreground">Create and manage news articles</p>
+          <p className="text-muted-foreground">Kelola artikel berita Anda di sini.</p>
         </div>
         <Dialog 
           open={openForm} 
@@ -153,58 +167,48 @@ export default function NewsManagementPage() {
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
-              <DialogDescription>
-                Lengkapi formulir di bawah ini untuk menyimpan artikel berita.
-              </DialogDescription>
+              <DialogDescription>Isi formulir berikut untuk menyimpan berita.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <Input 
-                placeholder="Judul" 
-                value={title} 
-                onChange={(e) => setTitle(e.target.value)} 
-                required 
-              />
+              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
               <Textarea 
                 placeholder="Isi berita" 
                 value={content} 
                 onChange={(e) => setContent(e.target.value)} 
                 required 
-                className="min-h-[150px]"
+                className="min-h-[120px]"
               />
               <select
-                className="w-full border rounded p-2 bg-background"
+                className="w-full border rounded p-2 bg-background text-sm"
                 value={categoryId ?? ""}
                 onChange={(e) => setCategoryId(Number(e.target.value))}
                 required
               >
                 <option value="">Pilih Kategori</option>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null
-                  setImage(file)
-                  if (file) setPreview(URL.createObjectURL(file))
-                }}
-              />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Gambar Berita</label>
+                <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                    const file = e.target.files?.[0] || null
+                    setImage(file)
+                    if (file) setPreview(URL.createObjectURL(file))
+                    }}
+                />
+              </div>
               {preview && (
                 <div className="relative h-40 w-full overflow-hidden rounded-md border">
                   <img src={preview} alt="Preview" className="h-full w-full object-cover" />
                 </div>
               )}
               <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => setOpenForm(false)}>
-                  Batal
-                </Button>
-                <Button type="submit">
-                  {editing ? "Update" : "Simpan"}
-                </Button>
+                <Button type="button" variant="outline" onClick={() => setOpenForm(false)}>Batal</Button>
+                <Button type="submit">{editing ? "Update Berita" : "Simpan Berita"}</Button>
               </div>
             </form>
           </DialogContent>
@@ -213,8 +217,8 @@ export default function NewsManagementPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>All Articles</CardTitle>
-          <CardDescription>Manage your news articles</CardDescription>
+          <CardTitle>Daftar Artikel</CardTitle>
+          <CardDescription>Semua berita yang telah diterbitkan.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -225,26 +229,21 @@ export default function NewsManagementPage() {
                   <img
                     src={article.image || "/placeholder.svg"}
                     alt={article.title}
-                    className="h-20 w-32 rounded object-cover flex-shrink-0"
+                    className="h-20 w-32 rounded object-cover flex-shrink-0 bg-muted"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1">
-                        <h3 className="font-semibold leading-none truncate">{article.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2">{article.content}</p>
-                        <div className="mt-2 flex items-center gap-2 flex-wrap">
-                          <Badge variant="outline">{category?.name ?? "Tanpa kategori"}</Badge>
-                          <Badge variant={article.status === "published" ? "default" : "secondary"}>
-                            {article.status || "draft"}
-                          </Badge>
-                          {article.publishedAt && (
-                             <span className="text-xs text-muted-foreground">
-                              {new Date(article.publishedAt).toLocaleDateString("id-ID")}
-                            </span>
-                          )}
+                      <div>
+                        <h3 className="font-semibold leading-tight text-base truncate">{article.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{article.content}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge variant="secondary">{category?.name ?? "Umum"}</Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID") : ""}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex gap-2 flex-shrink-0">
+                      <div className="flex gap-1 flex-shrink-0">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -257,7 +256,7 @@ export default function NewsManagementPage() {
                             setOpenForm(true)
                           }}
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4 text-blue-600" />
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -267,17 +266,12 @@ export default function NewsManagementPage() {
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tindakan ini tidak dapat dibatalkan dan akan menghapus data secara permanen.
-                              </AlertDialogDescription>
+                              <AlertDialogTitle>Hapus Berita?</AlertDialogTitle>
+                              <AlertDialogDescription>Data ini akan dihapus permanen dari server.</AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Batal</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDelete(article.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
+                              <AlertDialogAction onClick={() => handleDelete(article.id)} className="bg-destructive text-white hover:bg-destructive/90">
                                 Hapus
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -289,9 +283,7 @@ export default function NewsManagementPage() {
                 </div>
               )
             })}
-            {news.length === 0 && (
-              <p className="text-center text-muted-foreground py-10">Belum ada berita.</p>
-            )}
+            {news.length === 0 && <p className="text-center py-10 text-muted-foreground">Tidak ada data berita.</p>}
           </div>
         </CardContent>
       </Card>
