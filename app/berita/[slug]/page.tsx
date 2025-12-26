@@ -7,12 +7,17 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { notFound } from "next/navigation"
 
-// Fungsi Fetch Detail Berita dari Laravel
+// MEMAKSA Next.js untuk selalu mengambil data terbaru (bukan static cache)
+export const dynamic = "force-dynamic";
+
 async function getArticleDetail(slug: string) {
   try {
-    // Memanggil API Laravel secara langsung menggunakan slug
+    // Pastikan URL ini bisa dibuka di browser Anda
     const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
-      next: { revalidate: 60 }, // Cache detail selama 60 detik
+      cache: 'no-store', // Jangan simpan cache di sisi server Next.js
+      headers: {
+        'Accept': 'application/json'
+      }
     });
 
     if (!res.ok) return null;
@@ -23,23 +28,19 @@ async function getArticleDetail(slug: string) {
   }
 }
 
-// Tambahkan async pada props params karena di Next.js terbaru ini adalah Promise
+// Next.js 15+ mengharuskan params di-await
 export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  // 1. AWAIT params terlebih dahulu untuk mendapatkan slug
-  const { slug } = await params;
+  const resolvedParams = await params;
+  const slug = resolvedParams.slug;
 
-  // 2. Ambil data artikel dari API Laravel
   const article = await getArticleDetail(slug);
 
-  // 3. Jika artikel tidak ditemukan di backend, tampilkan halaman 404
+  // Jika data dari Laravel null, tampilkan halaman 404
   if (!article) {
     notFound();
   }
 
-  // Ambil data kategori (Laravel menggunakan snake_case: category_id)
   const category = article.category;
-  
-  // Author name dari relasi user/author di Laravel
   const authorName = article.author?.name || article.user?.name || "Admin MEJATIKA";
 
   return (
@@ -54,36 +55,37 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         </Link>
 
         <article className="mx-auto max-w-4xl">
-          <Card className="shadow-lg border-none">
+          <Card className="shadow-lg border-none overflow-hidden">
             <CardContent className="p-0">
-              <img
-                // Gunakan URL gambar lengkap dari Laravel asset()
-                src={article.image || "/placeholder.svg"}
-                alt={article.title}
-                className="w-full h-[300px] md:h-[500px] object-cover rounded-t-lg"
-              />
+              <div className="aspect-video relative w-full">
+                <img
+                  src={article.image || "/placeholder.svg"}
+                  alt={article.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              
               <div className="p-6 md:p-10">
                 <div className="mb-4">
                   {category && (
-                    <Badge variant="secondary" className="px-3 py-1">
+                    <Badge variant="secondary" className="px-3 py-1 text-sm">
                       {category.name}
                     </Badge>
                   )}
                 </div>
                 
-                <h1 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight text-balance">
+                <h1 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight tracking-tight text-balance">
                   {article.title}
                 </h1>
 
                 <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-8 pb-8 border-b">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
-                    {/* Gunakan created_at dari Laravel */}
-                    {new Date(article.created_at).toLocaleDateString("id-ID", {
+                    {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID", {
                       day: "numeric",
                       month: "long",
                       year: "numeric",
-                    })}
+                    }) : "-"}
                   </div>
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-primary" />
@@ -92,8 +94,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
                 </div>
 
                 <div className="prose prose-blue prose-lg max-w-none">
-                  {/* whitespace-pre-line penting agar baris baru di teks berita tetap terjaga */}
-                  <div className="whitespace-pre-line leading-relaxed text-foreground/90">
+                  <div className="whitespace-pre-line leading-relaxed text-foreground/80 text-lg">
                     {article.content}
                   </div>
                 </div>
