@@ -14,7 +14,7 @@ import { RunningText } from "@/components/running-text"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, User, Loader2, X } from "lucide-react"
+import { Calendar, User, Loader2 } from "lucide-react"
 
 export default function HomePage() {
   const [showSplash, setShowSplash] = useState(true)
@@ -37,7 +37,7 @@ export default function HomePage() {
   useEffect(() => {
     if (selectedSlug && isModalOpen) {
       setLoadingDetail(true)
-      setArticle(null) // Bersihkan data sebelumnya
+      setArticle(null)
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
         .then((res) => res.json())
         .then((data) => {
@@ -51,7 +51,7 @@ export default function HomePage() {
     }
   }, [selectedSlug, isModalOpen])
 
-  // Fungsi untuk membuka modal (akan dikirim ke NewsList/Slider)
+  // Fungsi untuk membuka modal (dikirim ke NewsList)
   const handleOpenDetail = (slug: string) => {
     setSelectedSlug(slug)
     setIsModalOpen(true)
@@ -62,19 +62,19 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Header />
       <Navigation />
       
-      <main className="container mx-auto px-4 py-6 lg:py-8">
+      <main className="flex-grow container mx-auto px-4 py-6 lg:py-8">
         <RunningText />
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
           <div className="lg:col-span-2">
-            {/* Slider juga bisa memicu modal jika Anda menambahkan prop onReadMore di dalamnya */}
-            <NewsSlider />
+            {/* Jika NewsSlider juga butuh popup, kirim handleOpenDetail sebagai prop */}
+            <NewsSlider onReadMore={handleOpenDetail} />
             
-            {/* NewsList memicu modal popup */}
+            {/* NewsList memicu modal popup melalui prop onReadMore */}
             <NewsList onReadMore={handleOpenDetail} />
           </div>
           
@@ -97,12 +97,12 @@ export default function HomePage() {
             {loadingDetail ? (
               <div className="flex flex-col items-center justify-center p-24 gap-4">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <p className="text-muted-foreground animate-pulse">Memuat konten berita...</p>
+                <p className="text-muted-foreground animate-pulse font-medium">Menyiapkan berita...</p>
               </div>
             ) : article && (
               <article className="py-8">
                 
-                {/* BAGIAN GAMBAR: Dengan batas kiri-kanan dan rounded corners */}
+                {/* GAMBAR DENGAN BATAS (PADDING) KIRI-KANAN */}
                 <div className="px-6 md:px-12">
                   <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-muted shadow-lg ring-1 ring-border">
                     <img 
@@ -114,26 +114,25 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* BAGIAN KONTEN TEKS */}
-                <div className="px-6 md:px-12 py-10">
+                {/* KONTEN TEKS */}
+                <div className="px-6 md:px-12 py-8">
                   <div className="flex items-center gap-2 mb-6">
                     <Badge variant="secondary" className="px-3 py-1 text-xs font-semibold uppercase tracking-wider">
                       {article.category?.name || "Info Terkini"}
                     </Badge>
                   </div>
 
-                  <h1 className="text-3xl md:text-4xl font-extrabold mb-6 leading-[1.2] text-foreground tracking-tight">
+                  <h1 className="text-3xl md:text-4xl font-extrabold mb-6 leading-tight tracking-tight text-foreground">
                     {article.title}
                   </h1>
                   
-                  {/* Metadata: Tanggal dan Penulis */}
-                  <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-10 pb-6 border-b border-border/50">
+                  <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-8 pb-6 border-b border-border/50">
                     <div className="flex items-center gap-2">
                       <div className="p-2 bg-primary/10 rounded-full">
                         <Calendar className="w-4 h-4 text-primary" />
                       </div>
                       <span className="font-medium">
-                        {new Date(article.created_at).toLocaleDateString("id-ID", { 
+                        {new Date(article.created_at || article.publishedAt).toLocaleDateString("id-ID", { 
                           day: 'numeric', month: 'long', year: 'numeric' 
                         })}
                       </span>
@@ -143,14 +142,13 @@ export default function HomePage() {
                         <User className="w-4 h-4 text-primary" />
                       </div>
                       <span className="font-medium">
-                        {article.author?.name || article.user?.name || "Admin MEJATIKA"}
+                        {article.user?.name || article.author?.name || "Admin MEJATIKA"}
                       </span>
                     </div>
                   </div>
 
-                  {/* Isi Berita */}
                   <div className="prose prose-lg dark:prose-invert max-w-none">
-                    <div className="whitespace-pre-line leading-relaxed text-foreground/80 text-lg md:text-xl">
+                    <div className="whitespace-pre-line leading-relaxed text-foreground/90 text-lg">
                       {article.content}
                     </div>
                   </div>
