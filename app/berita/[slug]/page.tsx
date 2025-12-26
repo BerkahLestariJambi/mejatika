@@ -42,47 +42,60 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         </Link>
 
         <article className="mx-auto max-w-4xl">
-          <Card className="border-none shadow-xl overflow-hidden">
-            <CardContent className="p-0">
-              {/* Logic Gambar yang Aman agar tidak Server Exception */}
-              <div className="relative w-full aspect-video bg-muted">
-                {article.image ? (
-                  <img
-                    src={article.image}
-                    alt={article.title || "Berita"}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                    Tidak ada gambar
-                  </div>
-                )}
+          <Card className="border-none shadow-xl overflow-hidden bg-card">
+            <CardContent className="p-0 pt-8"> {/* Tambah padding top agar ada jarak ke atas */}
+              
+              {/* BAGIAN GAMBAR DENGAN BATAS KIRI-KANAN */}
+              <div className="px-6 md:px-12">
+                <div className="relative w-full aspect-video bg-muted rounded-2xl overflow-hidden shadow-lg ring-1 ring-border">
+                  {article.image ? (
+                    <img
+                      src={article.image}
+                      alt={article.title || "Berita"}
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      Tidak ada gambar
+                    </div>
+                  )}
+                </div>
               </div>
               
-              <div className="p-6 md:p-10">
+              <div className="p-6 md:p-12">
                 <div className="mb-4">
                   {article.category?.name && (
-                    <Badge variant="secondary">{article.category.name}</Badge>
+                    <Badge variant="secondary" className="px-3 py-1 uppercase tracking-wider text-xs">
+                      {article.category.name}
+                    </Badge>
                   )}
                 </div>
                 
-                <h1 className="text-3xl md:text-5xl font-bold mb-6 leading-tight">
+                <h1 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight tracking-tight text-foreground">
                   {article.title}
                 </h1>
 
-                <div className="flex flex-wrap gap-6 text-sm text-muted-foreground mb-8 pb-8 border-b">
+                <div className="flex flex-wrap gap-6 text-sm text-muted-foreground mb-8 pb-8 border-b border-border/50">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID") : "-"}
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <Calendar className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="font-medium">
+                      {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID", {
+                        day: 'numeric', month: 'long', year: 'numeric'
+                      }) : "-"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    <span>{article.author?.name || article.user?.name || "Admin"}</span>
+                    <div className="p-2 bg-primary/10 rounded-full">
+                      <User className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="font-medium">{article.author?.name || article.user?.name || "Admin MEJATIKA"}</span>
                   </div>
                 </div>
 
-                <div className="prose prose-lg max-w-none">
-                  <div className="whitespace-pre-line text-foreground/80 leading-relaxed">
+                <div className="prose prose-lg dark:prose-invert max-w-none">
+                  <div className="whitespace-pre-line text-foreground/90 leading-relaxed text-lg md:text-xl">
                     {article.content}
                   </div>
                 </div>
