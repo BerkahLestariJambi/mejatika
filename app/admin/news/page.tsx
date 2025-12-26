@@ -14,6 +14,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -87,16 +88,20 @@ export default function NewsManagementPage() {
     formData.append("category_id", String(categoryId));
     if (image) formData.append("image", image);
 
+    // GUNAKAN ID UNTUK UPDATE, BUKAN SLUG (Agar tidak error 404 di API Resource)
     let url = "https://backend.mejatika.com/api/news";
     if (editing) {
-      url = `${url}/${editing.slug}`; // pakai slug
+      url = `${url}/${editing.id}`; 
       formData.append("_method", "PUT");
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // spoofing PUT
-        headers: getAuthHeader(),
+        method: "POST", // Spoofing PUT
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Accept": "application/json"
+        },
         body: formData,
       });
 
@@ -116,13 +121,16 @@ export default function NewsManagementPage() {
     }
   }
 
-  const handleDelete = async (slug: string) => {
+  const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
+      const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
         method: "DELETE",
         headers: getAuthHeader(),
       });
-      if (res.ok) { toast({ title: "Berhasil dihapus!" }); fetchNews(); }
+      if (res.ok) { 
+        toast({ title: "Berhasil dihapus!" }); 
+        fetchNews(); 
+      }
     } catch (err) { console.error(err); }
   }
 
@@ -168,7 +176,7 @@ export default function NewsManagementPage() {
         <CardContent className="pt-6">
           <div className="space-y-4">
             {news.map((article) => (
-              <div key={article.slug} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
+              <div key={article.id} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
                 <img src={article.image || "/placeholder.svg"} className="h-24 w-full sm:w-40 object-cover rounded-lg" />
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
@@ -176,7 +184,8 @@ export default function NewsManagementPage() {
                     <Badge variant="outline">{categories.find(c => c.id === article.category_id)?.name || "Umum"}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground italic mt-1 line-clamp-1">"{article.quote || "Tidak ada kutipan"}"</p>
-                                    <div className="flex gap-2 mt-4">
+                  
+                  <div className="flex gap-2 mt-4">
                     <Button
                       variant="outline"
                       size="sm"
@@ -208,7 +217,8 @@ export default function NewsManagementPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Batal</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(article.slug)}>
+                          {/* Hapus menggunakan ID agar konsisten dengan API */}
+                          <AlertDialogAction onClick={() => handleDelete(article.id)}>
                             Hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
