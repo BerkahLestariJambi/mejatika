@@ -33,19 +33,27 @@ export default function NewsManagementPage() {
 
   // fetch data dari backend
   const fetchNews = async () => {
-    const res = await fetch("https://backend.mejatika.com/api/news", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    const data = await res.json()
-    setNews(data)
+    try {
+      const res = await fetch("https://backend.mejatika.com/api/news", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      const data = await res.json()
+      setNews(Array.isArray(data) ? data : [])
+    } catch (err) {
+      toast({ title: "Gagal ambil berita", description: String(err), variant: "destructive" })
+    }
   }
 
   const fetchCategories = async () => {
-    const res = await fetch("https://backend.mejatika.com/api/news-categories", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    const data = await res.json()
-    setCategories(data)
+    try {
+      const res = await fetch("https://backend.mejatika.com/api/categories", {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      const data = await res.json()
+      setCategories(Array.isArray(data) ? data : [])
+    } catch (err) {
+      toast({ title: "Gagal ambil kategori", description: String(err), variant: "destructive" })
+    }
   }
 
   useEffect(() => {
@@ -120,32 +128,31 @@ export default function NewsManagementPage() {
               Add Article
             </Button>
           </DialogTrigger>
-          <form onSubmit={handleSubmit}>
-            <DialogContent>
+          <DialogContent asChild>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <DialogHeader>
                 <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
-                <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
-                <select
-                  className="w-full border rounded p-2"
-                  value={categoryId ?? ""}
-                  onChange={(e) => setCategoryId(Number(e.target.value))}
-                  required
-                >
-                  <option value="">Pilih Kategori</option>
-                  {categories.map((c) => (
+              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
+              <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
+              <select
+                className="w-full border rounded p-2"
+                value={categoryId ?? ""}
+                onChange={(e) => setCategoryId(Number(e.target.value))}
+                required
+              >
+                <option value="">Pilih Kategori</option>
+                {Array.isArray(categories) &&
+                  categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
-                </select>
-                <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
-                <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
-              </div>
-            </DialogContent>
-          </form>
+              </select>
+              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+              <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
+            </form>
+          </DialogContent>
         </Dialog>
       </div>
 
@@ -156,69 +163,68 @@ export default function NewsManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {news.map((article) => {
-              const category = categories.find((c) => c.id === article.categoryId)
-              return (
-                <div key={article.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
-                  <img
-                    src={article.image || "/placeholder.svg"}
-                    alt={article.title}
-                    className="h-20 w-32 rounded object-cover"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-balance">{article.title}</h3>
-                        <p className="text-sm text-muted-foreground">{article.excerpt}</p>
-                        <div className="mt-2 flex items-center gap-2">
-                          <Badge variant="outline">{category?.name}</Badge>
-                          <Badge variant={article.status === "published" ? "default" : "secondary"}>
-                            {article.status}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(article.publishedAt!).toLocaleDateString("id-ID")}
-                          </span>
+            {Array.isArray(news) &&
+              news.map((article) => {
+                const category = categories.find((c) => c.id === article.categoryId)
+                return (
+                  <div key={article.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
+                    <img
+                      src={article.image || "/placeholder.svg"}
+                      alt={article.title}
+                      className="h-20 w-32 rounded object-cover"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h3 className="font-semibold text-balance">{article.title}</h3>
+                          <p className="text-sm text-muted-foreground">{article.excerpt}</p>
+                          <div className="mt-2 flex items-center gap-2">
+                            <Badge variant="outline">{category?.name ?? "Tanpa kategori"}</Badge>
+                            <Badge variant={article.status === "published" ? "default" : "secondary"}>
+                              {article.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {article.publishedAt && new Date(article.publishedAt).toLocaleDateString("id-ID")}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            setEditing(article)
-                            setTitle(article.title)
-                            setContent(article.content)
-                            setCategoryId(article.categoryId)
-                            setOpenForm(true)
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Batal</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(article.id)}>Hapus</AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditing(article)
+                              setTitle(article.title)
+                              setContent(article.content)
+                              setCategoryId(article.categoryId)
+                              setOpenForm(true)
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Batal</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDelete(article.id)}>Hapus</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
           </div>
         </CardContent>
       </Card>
-    </div>
-  )
-}
+    </div
