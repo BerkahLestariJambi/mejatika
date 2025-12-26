@@ -226,7 +226,7 @@ export default function NewsManagementPage() {
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Batal</AlertDialogCancel>
-                                                          <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                                                           <AlertDialogAction onClick={() => handleDelete(article.id)}>
                                 Hapus
                               </AlertDialogAction>
                             </AlertDialogFooter>
