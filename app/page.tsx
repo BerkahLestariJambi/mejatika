@@ -80,93 +80,98 @@ export default function HomePage() {
       
       <Footer />
 
-      {/* POPUP MODAL UKURAN BESAR (6XL) */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-6xl w-[98vw] h-[90vh] md:h-[85vh] p-0 overflow-hidden border-none bg-transparent shadow-none outline-none">
+        {/* Kontainer Utama Modal dengan Perspektif */}
+        <DialogContent className="max-w-[95vw] md:max-w-7xl h-[90vh] p-0 bg-transparent border-none shadow-none flex items-center justify-center overflow-visible">
           <DialogHeader className="sr-only">
             <DialogTitle>{article?.title || "Detail Berita"}</DialogTitle>
           </DialogHeader>
 
           {loadingDetail ? (
-            <div className="bg-card w-full h-full flex items-center justify-center rounded-3xl">
+            <div className="bg-card w-full max-w-4xl h-[60vh] flex items-center justify-center rounded-3xl shadow-2xl">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
           ) : article && (
-            <div className="relative w-full h-full flex flex-col md:flex-row shadow-[0_35px_60px_-15px_rgba(0,0,0,0.5)] rounded-3xl overflow-hidden bg-white dark:bg-zinc-950">
+            <div className="w-full h-full flex flex-col md:flex-row items-stretch gap-0 perspective-[2000px]">
               
-              {/* HALAMAN 1 (KIRI) */}
-              <div className="flex-1 p-8 md:p-14 border-r border-black/5 relative flex flex-col h-full">
-                <div className="overflow-y-auto flex-grow custom-scrollbar pr-4">
-                  <Badge variant="secondary" className="mb-6 uppercase tracking-widest text-[10px] px-3">
-                    {article.category?.name || "Breaking News"}
-                  </Badge>
-                  <h1 className="text-3xl md:text-4xl font-black italic uppercase leading-[1.1] mb-8 text-foreground tracking-tighter">
+              {/* HALAMAN KIRI (Cover/Text Awal) */}
+              <div 
+                className="flex-1 bg-white dark:bg-zinc-950 p-8 md:p-14 shadow-2xl transition-all duration-500 origin-right
+                rounded-l-3xl md:rounded-r-none border-r border-zinc-200 dark:border-zinc-800
+                flex flex-col relative overflow-hidden h-full"
+                style={{ transform: "rotateY(5deg)" }}
+              >
+                {/* Efek Gradasi Lipatan Dalam */}
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-black/[0.05] dark:from-white/[0.02] to-transparent pointer-events-none" />
+
+                <div className="overflow-y-auto flex-grow pr-4 custom-scrollbar">
+                  <Badge className="mb-6 uppercase font-bold tracking-widest">{article.category?.name || "BERITA"}</Badge>
+                  <h1 className="text-3xl md:text-5xl font-black italic uppercase leading-tight mb-8 text-foreground tracking-tighter">
                     {article.title}
                   </h1>
                   
-                  <div className="flex items-center gap-6 text-[10px] text-muted-foreground mb-10 font-bold uppercase tracking-[0.2em] border-b pb-6">
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4 text-primary" />
-                      {new Date(article.publishedAt || article.created_at || Date.now()).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-primary" />
-                      {article.user?.name || "ADMIN MEJATIKA"}
-                    </div>
+                  <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-widest text-muted-foreground border-b pb-6 mb-8">
+                    <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" /> {new Date(article.publishedAt || article.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                    <span className="flex items-center gap-2"><User className="w-4 h-4 text-primary" /> {article.user?.name || "ADMIN"}</span>
                   </div>
 
-                  <div className="prose prose-lg dark:prose-invert max-w-none text-foreground/90 leading-relaxed text-justify antialiased">
-                    {currentPage === 1 
-                      ? splitContent(article.content)[0] 
-                      : <p className="opacity-50 italic">Halaman ini berisi bagian awal artikel...</p>}
+                  <div className="prose prose-lg dark:prose-invert max-w-none text-justify leading-relaxed">
+                    {currentPage === 1 ? splitContent(article.content)[0] : <p className="opacity-30 italic">Bagian awal artikel...</p>}
                   </div>
                 </div>
-                
-                <div className="pt-6 border-t flex justify-between items-center bg-white dark:bg-zinc-950 z-10">
-                   <span className="text-[10px] font-black italic tracking-widest text-primary">MEJATIKA DIGITAL EDITION</span>
-                   <span className="text-xs font-mono font-bold">PAGE. {currentPage === 1 ? "01" : "03"}</span>
+
+                <div className="pt-6 border-t flex justify-between items-center text-[10px] font-bold opacity-50">
+                  <span>MEJATIKA DIGITAL MAGAZINE</span>
+                  <span>HAL. {currentPage === 1 ? "01" : "03"}</span>
                 </div>
               </div>
 
-              {/* HALAMAN 2 (KANAN) */}
-              <div className="flex-1 p-8 md:p-14 relative flex flex-col h-full bg-zinc-50/50 dark:bg-zinc-900/20 shadow-[inset_20px_0_40px_rgba(0,0,0,0.02)]">
-                <div className="overflow-y-auto flex-grow custom-scrollbar pr-4">
+              {/* HALAMAN KANAN (Image/Text Lanjutan) */}
+              <div 
+                className="flex-1 bg-zinc-50 dark:bg-zinc-900 p-8 md:p-14 shadow-2xl transition-all duration-500 origin-left
+                rounded-r-3xl md:rounded-l-none border-l border-zinc-200 dark:border-zinc-800
+                flex flex-col relative overflow-hidden h-full"
+                style={{ transform: "rotateY(-5deg)" }}
+              >
+                {/* Efek Gradasi Lipatan Dalam */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-black/[0.05] dark:from-white/[0.02] to-transparent pointer-events-none" />
+
+                <div className="overflow-y-auto flex-grow pr-4 custom-scrollbar">
                   {currentPage === 1 ? (
-                    <div className="space-y-8 h-full flex flex-col justify-center">
-                      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl ring-4 ring-white dark:ring-zinc-800 transition-transform hover:scale-[1.02] duration-500">
+                    <div className="flex flex-col justify-center h-full">
+                      <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl ring-8 ring-white dark:ring-zinc-800 mb-8">
                         <img 
                           src={article.image || "/placeholder.svg"} 
                           className="w-full h-full object-cover" 
-                          alt="feature" 
+                          alt="content" 
                         />
                       </div>
-                      <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
-                        <p className="text-sm text-primary font-medium italic leading-relaxed text-center uppercase tracking-tight">
-                          Klik panah di bawah untuk melanjutkan membaca bagian kedua artikel.
+                      <div className="text-center p-6 border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl">
+                        <p className="text-sm font-bold text-muted-foreground uppercase italic tracking-widest">
+                          Gunakan tombol di bawah untuk membalik halaman
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="prose prose-lg dark:prose-invert max-w-none text-foreground/90 leading-relaxed text-justify antialiased">
+                    <div className="prose prose-lg dark:prose-invert max-w-none text-justify leading-relaxed">
                       {splitContent(article.content)[1]}
                     </div>
                   )}
                 </div>
 
-                <div className="pt-6 border-t flex justify-between items-center mt-4 bg-transparent z-10">
-                  <span className="text-xs font-mono font-bold">PAGE. {currentPage === 1 ? "02" : "04"}</span>
+                <div className="pt-6 border-t flex justify-between items-center mt-4">
+                  <span className="text-[10px] font-bold opacity-50 uppercase font-mono">HAL. {currentPage === 1 ? "02" : "04"}</span>
                   
-                  <div className="flex gap-3">
+                  <div className="flex gap-4">
                     {currentPage === 2 && (
-                      <Button size="lg" variant="outline" onClick={() => setCurrentPage(1)} className="rounded-full font-bold text-xs px-6 shadow-sm">
-                        <ChevronLeft className="w-4 h-4 mr-2" /> SEBELUMNYA
+                      <Button onClick={() => setCurrentPage(1)} variant="secondary" className="rounded-full px-6 font-bold">
+                        <ChevronLeft className="mr-2 w-5 h-5" /> KEMBALI
                       </Button>
                     )}
                     {currentPage === 1 && (
                       <Button 
-                        size="icon" 
                         onClick={() => setCurrentPage(2)} 
-                        className="rounded-2xl h-16 w-16 bg-primary hover:bg-primary/90 hover:scale-110 active:scale-95 transition-all shadow-[0_10px_20px_rgba(var(--primary),0.3)]"
+                        className="rounded-full h-16 w-16 bg-primary shadow-xl hover:scale-110 transition-transform active:scale-90"
                       >
                         <ChevronRight className="w-8 h-8" />
                       </Button>
@@ -175,9 +180,8 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* SPINE (LIPATAN TENGAH) */}
-              <div className="absolute left-1/2 top-0 bottom-0 w-[1px] bg-black/5 dark:bg-white/10 hidden md:block" />
-              <div className="absolute left-1/2 top-0 bottom-0 w-12 -translate-x-1/2 bg-gradient-to-r from-transparent via-black/[0.03] dark:via-white/[0.01] to-transparent hidden md:block pointer-events-none" />
+              {/* Spine (Punggung Buku Tengah) */}
+              <div className="absolute left-1/2 top-4 bottom-4 w-4 -translate-x-1/2 bg-gradient-to-r from-black/10 via-white/20 to-black/10 dark:from-black/40 dark:via-white/5 dark:to-black/40 z-20 hidden md:block rounded-full shadow-inner" />
             </div>
           )}
         </DialogContent>
