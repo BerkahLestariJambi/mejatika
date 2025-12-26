@@ -47,7 +47,9 @@ export default function NewsManagementPage() {
       const res = await fetch("https://backend.mejatika.com/api/news");
       const data = await res.json();
       setNews(Array.isArray(data) ? data : []);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error("Fetch News Error:", err); 
+    }
   }
 
   const fetchCategories = async () => {
@@ -59,7 +61,9 @@ export default function NewsManagementPage() {
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : []);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error("Fetch Categories Error:", err); 
+    }
   }
 
   useEffect(() => {
@@ -68,8 +72,13 @@ export default function NewsManagementPage() {
   }, []);
 
   const resetForm = () => {
-    setTitle(""); setContent(""); setQuote("");
-    setImage(null); setPreview(null); setCategoryId(null); setEditing(null);
+    setTitle(""); 
+    setContent(""); 
+    setQuote("");
+    setImage(null); 
+    setPreview(null); 
+    setCategoryId(null); 
+    setEditing(null);
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,18 +95,24 @@ export default function NewsManagementPage() {
     formData.append("content", content);
     formData.append("quote", quote || "");
     formData.append("category_id", String(categoryId));
-    if (image) formData.append("image", image);
+    
+    // Hanya append image jika user memilih file baru
+    if (image) {
+        formData.append("image", image);
+    }
 
-    // MENGGUNAKAN SLUG UNTUK IDENTIFIER UPDATE
     let url = "https://backend.mejatika.com/api/news";
+    
     if (editing) {
+      // 1. URL menggunakan SLUG
       url = `${url}/${editing.slug}`; 
-      formData.append("_method", "PUT"); // Method spoofing tetap diperlukan untuk upload file di Laravel
+      // 2. Method Spoofing agar Laravel mengenali PUT dalam body POST (Multipart)
+      formData.append("_method", "PUT");
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Spoofing PUT dikirim via POST
+        method: "POST", // Selalu POST untuk kirim FormData dengan file
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`,
           "Accept": "application/json"
@@ -105,23 +120,27 @@ export default function NewsManagementPage() {
         body: formData,
       });
 
+      const result = await res.json();
+
       if (res.ok) {
         toast({ title: editing ? "Berhasil diperbarui!" : "Berhasil disimpan!" });
         resetForm(); 
         setOpenForm(false); 
         fetchNews();
       } else {
-        const errData = await res.json();
-        toast({ title: "Gagal menyimpan", description: errData.message, variant: "destructive" });
+        toast({ 
+            title: "Gagal menyimpan", 
+            description: result.message || "Periksa kembali data Anda", 
+            variant: "destructive" 
+        });
       }
     } catch (error) { 
-      toast({ title: "Error sistem", variant: "destructive" }); 
+      toast({ title: "Error sistem", description: "Tidak dapat terhubung ke server", variant: "destructive" }); 
     } finally {
       setLoading(false);
     }
   }
 
-  // DELETE SEKARANG MENGGUNAKAN SLUG
   const handleDelete = async (slug: string) => {
     try {
       const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
@@ -134,7 +153,9 @@ export default function NewsManagementPage() {
       } else {
         toast({ title: "Gagal menghapus", variant: "destructive" });
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error("Delete Error:", err); 
+    }
   }
 
   return (
@@ -150,24 +171,50 @@ export default function NewsManagementPage() {
               <DialogTitle>{editing ? "Edit Artikel" : "Tambah Artikel"}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
-              <Textarea placeholder="Konten" value={content} onChange={(e) => setContent(e.target.value)} required className="min-h-[100px]" />
-              <Textarea placeholder="Kutipan (Quote)" value={quote} onChange={(e) => setQuote(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Judul Berita</label>
+                <Input placeholder="Masukkan judul..." value={title} onChange={(e) => setTitle(e.target.value)} required />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Konten Utama</label>
+                <Textarea placeholder="Tulis isi berita..." value={content} onChange={(e) => setContent(e.target.value)} required className="min-h-[150px]" />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Kutipan (Quote)</label>
+                <Textarea placeholder="Kutipan menarik (opsional)..." value={quote} onChange={(e) => setQuote(e.target.value)} />
+              </div>
               
-              <select className="w-full border rounded p-2" value={categoryId ?? ""} onChange={(e) => setCategoryId(Number(e.target.value))} required>
-                <option value="">Pilih Kategori</option>
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Kategori</label>
+                <select 
+                    className="w-full border rounded-md p-2 bg-background" 
+                    value={categoryId ?? ""} 
+                    onChange={(e) => setCategoryId(Number(e.target.value))} 
+                    required
+                >
+                    <option value="">Pilih Kategori</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
 
-              <Input type="file" accept="image/*" onChange={(e) => {
-                const file = e.target.files?.[0] || null;
-                setImage(file);
-                if (file) setPreview(URL.createObjectURL(file));
-              }} />
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Gambar Unggulan</label>
+                <Input type="file" accept="image/*" onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setImage(file);
+                    if (file) setPreview(URL.createObjectURL(file));
+                }} />
+                {preview && (
+                    <div className="relative mt-2">
+                        <img src={preview} alt="Preview" className="h-48 w-full object-cover rounded-md border" />
+                        <p className="text-[10px] text-muted-foreground mt-1 text-center">Preview Gambar</p>
+                    </div>
+                )}
+              </div>
 
-              {preview && <img src={preview} className="h-40 w-full object-cover rounded border" />}
-
-              <Button type="submit" className="w-full h-12 font-bold" disabled={loading}>
+              <Button type="submit" className="w-full h-12 font-bold mt-4" disabled={loading}>
                 {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "Update Sekarang" : "Simpan Berita"}
               </Button>
             </form>
@@ -175,18 +222,25 @@ export default function NewsManagementPage() {
         </Dialog>
       </div>
 
-      <Card className="border-none shadow-lg">
+      <Card className="border-none shadow-md">
         <CardContent className="pt-6">
-          <div className="space-y-4">
+          <div className="grid gap-4">
+            {news.length === 0 && <p className="text-center text-muted-foreground py-10">Belum ada berita tersedia.</p>}
             {news.map((article) => (
-              <div key={article.slug} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
-                <img src={article.image || "/placeholder.svg"} className="h-24 w-full sm:w-40 object-cover rounded-lg" />
-                <div className="flex-1">
+              <div key={article.slug} className="flex flex-col md:flex-row gap-4 border-b pb-4 last:border-0 last:pb-0">
+                <img 
+                    src={article.image || "/placeholder.svg"} 
+                    alt={article.title} 
+                    className="h-28 w-full md:w-44 object-cover rounded-md bg-muted" 
+                />
+                <div className="flex-1 space-y-1">
                   <div className="flex justify-between items-start">
-                    <h3 className="font-bold">{article.title}</h3>
-                    <Badge variant="outline">{categories.find(c => c.id === article.category_id)?.name || "Umum"}</Badge>
+                    <h3 className="font-bold text-lg leading-tight line-clamp-1">{article.title}</h3>
+                    <Badge variant="secondary" className="ml-2 whitespace-nowrap">
+                        {categories.find(c => c.id === article.category_id)?.name || "Kategori"}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground italic mt-1 line-clamp-1">"{article.quote || "Tidak ada kutipan"}"</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{article.content}</p>
                   
                   <div className="flex gap-2 mt-4">
                     <Button
@@ -213,15 +267,17 @@ export default function NewsManagementPage() {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Hapus Berita?</AlertDialogTitle>
+                          <AlertDialogTitle>Hapus Berita Ini?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tindakan ini tidak bisa dibatalkan. Berita akan dihapus permanen.
+                            Tindakan ini permanen. Judul: <strong>{article.title}</strong>
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Batal</AlertDialogCancel>
-                          {/* MENGGUNAKAN SLUG UNTUK DELETE */}
-                          <AlertDialogAction onClick={() => handleDelete(article.slug)}>
+                          <AlertDialogAction 
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => handleDelete(article.slug)}
+                          >
                             Hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
