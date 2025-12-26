@@ -13,7 +13,7 @@ import { RunningText } from "@/components/running-text"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, User, Loader2, ChevronRight, ChevronLeft, X } from "lucide-react"
+import { Calendar, User, Loader2, ChevronRight, ChevronLeft } from "lucide-react"
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,9 @@ export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [article, setArticle] = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
-  const [currentPage, setCurrentPage] = useState(0) 
+  
+  // State navigasi buku
+  const [currentPage, setCurrentPage] = useState(0) // 0 = Halaman 1 & 2, 1 = Halaman 3 & 4, dst.
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 3000)
@@ -50,17 +52,17 @@ export default function HomePage() {
     setIsModalOpen(true)
   }
 
-  // Fungsi memotong konten agar pas di halaman tinggi tanpa scroll
-  // Kita gunakan batas 1200 karakter untuk ukuran modal besar
+  // FUNGSI MAGIC: Membagi teks menjadi potongan-potongan kecil (Pagination)
+  // 1200 karakter biasanya pas untuk satu halaman buku tanpa scroll
   const paginateContent = (text: string) => {
     if (!text || typeof text !== 'string') return [];
-    const pageSize = 1200; 
+    const pageSize = 1000; // Batas karakter per halaman agar tidak scroll
     const regex = new RegExp(`[\\s\\S]{1,${pageSize}}(?:\\s|$)`, 'g');
     return text.match(regex) || [text];
   }
 
   const pages = article ? paginateContent(article.content) : [];
-  const totalSteps = Math.ceil((pages.length + 1) / 2); // +1 karena halaman pertama kiri dipakai judul
+  const maxPages = Math.ceil(pages.length / 2);
 
   if (showSplash) return <Splash />
 
@@ -85,97 +87,87 @@ export default function HomePage() {
       <Footer />
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        {/* UKURAN MODAL DIBUAT SANGAT BESAR (90vh & 7xl) */}
-        <DialogContent className="max-w-7xl w-[98vw] h-[92vh] p-0 bg-transparent border-none shadow-none outline-none overflow-hidden">
+        <DialogContent className="max-w-6xl w-[95vw] h-[80vh] p-0 bg-transparent border-none shadow-none outline-none overflow-hidden">
           <DialogHeader className="sr-only">
             <DialogTitle>{article?.title}</DialogTitle>
           </DialogHeader>
 
           {loadingDetail ? (
-            <div className="bg-card w-full h-full flex items-center justify-center rounded-3xl">
-              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <div className="bg-card w-full h-full flex items-center justify-center rounded-3xl shadow-2xl">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
           ) : article && (
-            <div className="flex flex-row w-full h-full bg-white dark:bg-zinc-950 rounded-[3rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.7)] overflow-hidden relative border border-white/10">
+            <div className="flex flex-row w-full h-full bg-white dark:bg-zinc-950 rounded-[2rem] shadow-2xl overflow-hidden relative border border-white/10">
               
-              {/* --- TOMBOL CLOSE CUSTOM --- */}
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="absolute top-6 right-8 z-50 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors dark:bg-white/5"
-              >
-                <X className="w-6 h-6" />
-              </button>
-
               {/* --- SISI KIRI --- */}
-              <div className="flex-1 h-full flex flex-col border-r border-black/5 relative">
-                <div className="flex-grow p-12 lg:p-20 overflow-hidden">
+              <div className="flex-1 h-full flex flex-col border-r border-black/10">
+                <div className="flex-grow p-10 lg:p-14 overflow-hidden">
                   {currentPage === 0 ? (
                     /* HALAMAN 1: JUDUL & GAMBAR */
-                    <div className="flex flex-col h-full">
-                      <div className="space-y-6">
-                        <Badge className="w-fit uppercase tracking-widest font-black px-4 py-1.5 text-[11px]">
-                          {article.category?.name || "SPECIAL REPORT"}
-                        </Badge>
-                        <h1 className="text-3xl lg:text-4xl font-black uppercase leading-tight tracking-tighter text-foreground italic">
+                    <div className="flex flex-col h-full justify-between">
+                      <div className="space-y-4">
+                        <Badge variant="outline" className="text-[10px] tracking-widest uppercase">{article.category?.name}</Badge>
+                        <h1 className="text-2xl lg:text-3xl font-black uppercase leading-tight tracking-tighter">
                           {article.title}
                         </h1>
-                        <div className="flex items-center gap-6 text-[11px] font-bold opacity-40 uppercase tracking-[0.2em] border-y py-4">
-                          <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> {new Date(article.publishedAt || article.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                          <span className="flex items-center gap-2"><User className="w-4 h-4" /> {article.user?.name || "ADMIN"}</span>
+                        <div className="flex items-center gap-4 text-[10px] font-bold opacity-50 uppercase tracking-widest">
+                          <span>{new Date(article.publishedAt || article.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long' })}</span>
+                          <span>•</span>
+                          <span>{article.user?.name || "ADMIN"}</span>
                         </div>
                       </div>
-                      <div className="mt-10 relative w-full aspect-[16/10] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-black/5">
+                      <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-md">
                         <img src={article.image} className="w-full h-full object-cover" alt="img" />
                       </div>
                     </div>
                   ) : (
-                    /* HALAMAN BERIKUTNYA (SISI KIRI) */
-                    <div className="prose prose-lg dark:prose-invert text-justify leading-relaxed antialiased">
+                    /* HALAMAN 3, 5, DST: KONTEN */
+                    <div className="prose prose-sm dark:prose-invert text-justify leading-relaxed">
                       {pages[currentPage * 2 - 1]}
                     </div>
                   )}
                 </div>
-                <div className="p-10 border-t text-[10px] font-black opacity-20 tracking-[0.4em] flex justify-between">
-                  <span>MEJATIKA OFFICIAL</span>
+                <div className="p-6 border-t text-[9px] font-bold opacity-30 tracking-[0.2em] flex justify-between">
+                  <span>MEJATIKA EDITION</span>
                   <span>HAL. {currentPage * 2 + 1}</span>
                 </div>
               </div>
 
-              {/* SPINE (GARIS TENGAH) */}
-              <div className="w-[1px] h-full bg-black/10 dark:bg-white/10 relative z-30">
-                <div className="absolute top-0 bottom-0 -left-10 w-20 bg-gradient-to-r from-transparent via-black/[0.04] dark:via-white/[0.02] to-transparent pointer-events-none" />
-              </div>
+              {/* SPINE */}
+              <div className="w-[1px] h-full bg-black/5 relative z-10 shadow-inner" />
 
               {/* --- SISI KANAN --- */}
-              <div className="flex-1 h-full flex flex-col bg-zinc-50/50 dark:bg-zinc-900/10">
-                <div className="flex-grow p-12 lg:p-20 overflow-hidden">
-                  <div className="prose prose-lg dark:prose-invert text-justify leading-relaxed antialiased">
-                    {/* HALAMAN SISI KANAN (Selalu menampilkan urutan genap dari konten) */}
-                    {pages[currentPage * 2] || <p className="opacity-10 italic">Halaman sengaja dikosongkan.</p>}
+              <div className="flex-1 h-full flex flex-col bg-zinc-50/30 dark:bg-zinc-900/10">
+                <div className="flex-grow p-10 lg:p-14 overflow-hidden">
+                  {/* HALAMAN 2, 4, DST: KONTEN */}
+                  <div className="prose prose-sm dark:prose-invert text-justify leading-relaxed">
+                    {currentPage === 0 ? pages[0] : pages[currentPage * 2]}
                   </div>
                 </div>
 
-                <div className="p-10 border-t flex justify-between items-center bg-transparent">
-                  <span className="text-[10px] font-black opacity-20 tracking-[0.4em]">HAL. {currentPage * 2 + 2}</span>
+                <div className="p-6 border-t flex justify-between items-center">
+                  <span className="text-[9px] font-bold opacity-30 tracking-[0.2em]">HAL. {currentPage * 2 + 2}</span>
                   
-                  <div className="flex gap-4">
+                  <div className="flex gap-2">
                     {currentPage > 0 && (
-                      <Button onClick={() => setCurrentPage(v => v - 1)} variant="outline" className="rounded-xl h-14 px-8 font-black uppercase text-xs tracking-widest border-2">
-                        <ChevronLeft className="w-5 h-5 mr-2" /> PREV
+                      <Button size="icon" variant="outline" onClick={() => setCurrentPage(v => v - 1)} className="rounded-full h-10 w-10">
+                        <ChevronLeft className="w-5 h-5" />
                       </Button>
                     )}
-                    {(currentPage + 1) < totalSteps && (
+                    {(currentPage + 1) < maxPages && (
                       <Button 
                         onClick={() => setCurrentPage(v => v + 1)} 
-                        className="rounded-xl h-14 px-8 bg-primary shadow-2xl shadow-primary/40 hover:scale-105 active:scale-95 transition-all font-black text-xs tracking-widest uppercase flex items-center gap-3"
+                        className="rounded-full h-10 px-4 bg-primary text-[10px] font-bold uppercase tracking-widest gap-2"
                       >
-                        NEXT PAGE <ChevronRight className="w-5 h-5" />
+                        Berikutnya <ChevronRight className="w-4 h-4" />
                       </Button>
                     )}
                   </div>
                 </div>
               </div>
 
+              {/* Efek Lipatan Tengah (Visual Saja) */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-20 -translate-x-1/2 bg-gradient-to-r from-transparent via-black/[0.03] to-transparent pointer-events-none" />
             </div>
           )}
         </DialogContent>
