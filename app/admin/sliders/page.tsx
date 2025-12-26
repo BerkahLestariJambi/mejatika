@@ -6,6 +6,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 type Slider = {
   id: number
@@ -23,6 +33,7 @@ export default function SlidersPage() {
   const [image, setImage] = useState<File | null>(null)
   const [editing, setEditing] = useState<Slider | null>(null)
   const [open, setOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null) // untuk konfirmasi hapus
 
   const { toast } = useToast()
 
@@ -86,8 +97,9 @@ export default function SlidersPage() {
     })
   }
 
-  const handleDelete = async (id: number) => {
-    const res = await fetch(`https://backend.mejatika.com/api/sliders/${id}`, {
+  const confirmDelete = async () => {
+    if (!deleteId) return
+    const res = await fetch(`https://backend.mejatika.com/api/sliders/${deleteId}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
@@ -95,7 +107,7 @@ export default function SlidersPage() {
       fetchSliders()
       toast({
         title: "Slider berhasil dihapus!",
-        description: `ID ${id} sudah dihapus dari database.`,
+        description: `ID ${deleteId} sudah dihapus dari database.`,
       })
     } else {
       toast({
@@ -103,6 +115,7 @@ export default function SlidersPage() {
         variant: "destructive",
       })
     }
+    setDeleteId(null)
   }
 
   return (
@@ -141,9 +154,26 @@ export default function SlidersPage() {
                 >
                   Edit
                 </Button>
-                <Button variant="destructive" size="sm" onClick={() => handleDelete(s.id)}>
-                  Hapus
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDeleteId(s.id)}
+                    >
+                      Hapus
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Yakin hapus slider ini?</AlertDialogTitle>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction onClick={confirmDelete}>Ya, Hapus</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </td>
             </tr>
           ))}
@@ -168,11 +198,6 @@ export default function SlidersPage() {
               <Label>Deskripsi</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
-            
-            <div>
-              <Label>Gambar</Label>
-              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
-            </div>
             <div>
               <Label>Aktif</Label>
               <Input
@@ -180,6 +205,10 @@ export default function SlidersPage() {
                 checked={active}
                 onChange={(e) => setActive(e.target.checked)}
               />
+            </div>
+            <div>
+              <Label>Gambar</Label>
+              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
             </div>
             <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
           </form>
