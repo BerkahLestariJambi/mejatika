@@ -28,6 +28,7 @@ export default function NewsManagementPage() {
   const [editing, setEditing] = useState<any | null>(null)
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
+  const [quote, setQuote] = useState("")
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<number | null>(null)
@@ -77,6 +78,7 @@ export default function NewsManagementPage() {
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
+    formData.append("quote", quote);
     formData.append("category_id", String(categoryId));
     if (image) formData.append("image", image);
 
@@ -125,6 +127,7 @@ export default function NewsManagementPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
               <Textarea placeholder="Isi" value={content} onChange={(e) => setContent(e.target.value)} required />
+              <Textarea placeholder="Isi" value={quote} onChange={(e) => setQuote(e.target.value)} />
               <select 
                 className="w-full border rounded p-2" 
                 value={categoryId ?? ""} 
@@ -159,7 +162,7 @@ export default function NewsManagementPage() {
                   <Badge>{categories.find(c => c.id === article.category_id)?.name || "Umum"}</Badge>
                   <div className="flex gap-2 mt-2">
                     <Button variant="outline" size="sm" onClick={() => {
-                        setEditing(article); setTitle(article.title); setContent(article.content);
+                        setEditing(article); setTitle(article.title); setContent(article.content);setQuote(article.quote);
                         setCategoryId(article.category_id); setPreview(article.image); setOpenForm(true);
                     }}><Edit className="h-4 w-4" /></Button>
                     
