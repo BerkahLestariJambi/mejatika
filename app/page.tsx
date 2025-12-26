@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -50,13 +51,11 @@ export default function HomePage() {
     setIsModalOpen(true)
   }
 
-  // Fungsi pemotong konten menjadi dua bagian seimbang
-  const splitContent = (text: any) => {
-    if (!text || typeof text !== 'string') return ["", ""];
-    const mid = Math.floor(text.length / 2);
-    const lastSpace = text.lastIndexOf(' ', mid);
-    const splitIndex = lastSpace !== -1 ? lastSpace : mid;
-    return [text.substring(0, splitIndex).trim(), text.substring(splitIndex).trim()];
+  // Fungsi membagi konten menjadi 3 bagian (untuk halaman 1-kanan, 2-kiri, 2-kanan)
+  const getPagedContent = (text: string) => {
+    if (!text || typeof text !== 'string') return ["", "", ""];
+    const parts = text.match(/[\s\S]{1,1500}(?=\s|$)/g) || [text];
+    return [parts[0] || "", parts[1] || "", parts[2] || ""];
   }
 
   if (showSplash) return <Splash />
@@ -73,7 +72,7 @@ export default function HomePage() {
             <NewsSlider onReadMore={handleOpenDetail} />
             <NewsList onReadMore={handleOpenDetail} />
           </div>
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 text-center items-center">
             <ScheduleSidebar />
           </div>
         </div>
@@ -94,79 +93,76 @@ export default function HomePage() {
           ) : article && (
             <div className="flex flex-row w-full h-full bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)] overflow-hidden border border-white/10">
               
-              {/* === HALAMAN KIRI === */}
+              {/* --- HALAMAN KIRI --- */}
               <div className="flex-1 h-full flex flex-col border-r border-black/10 relative">
-                <div className="flex-grow overflow-y-auto p-10 lg:p-16 custom-scrollbar">
+                <div className="flex-grow overflow-y-auto p-10 lg:p-14 custom-scrollbar">
                   {currentPage === 1 ? (
-                    /* COVER: JUDUL SAJA */
-                    <div className="h-full flex flex-col justify-center">
-                      <Badge className="w-fit mb-6 uppercase tracking-[0.2em] font-bold px-4 py-1">
-                        {article.category?.name || "LATEST NEWS"}
+                    /* HALAMAN 1 KIRI: JUDUL + GAMBAR */
+                    <div className="space-y-8">
+                      <Badge className="w-fit uppercase tracking-widest font-bold px-4 py-1">
+                        {article.category?.name || "MEJATIKA NEWS"}
                       </Badge>
-                      <h1 className="text-4xl lg:text-6xl font-black italic uppercase leading-[0.9] mb-10 tracking-tighter text-foreground">
+                      <h1 className="text-3xl lg:text-5xl font-black italic uppercase leading-none tracking-tighter text-foreground antialiased">
                         {article.title}
                       </h1>
-                      <div className="flex flex-col gap-3 text-[11px] font-bold uppercase text-muted-foreground border-l-4 border-primary pl-4 tracking-widest">
-                        <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" /> {new Date(article.publishedAt || article.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                        <span className="flex items-center gap-2"><User className="w-4 h-4 text-primary" /> BY {article.user?.name || "ADMIN MEJATIKA"}</span>
+                      <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg ring-1 ring-black/5">
+                        <img src={article.image || "/placeholder.svg"} className="w-full h-full object-cover" alt="cover" />
+                      </div>
+                      <div className="flex items-center gap-6 text-[10px] font-bold uppercase text-muted-foreground tracking-widest border-t pt-4">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-primary" /> {new Date(article.publishedAt || article.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                        <span className="flex items-center gap-1.5"><User className="w-4 h-4 text-primary" /> {article.user?.name || "ADMIN"}</span>
                       </div>
                     </div>
                   ) : (
-                    /* KONTEN BAGIAN 1 */
-                    <div className="prose prose-lg dark:prose-invert max-w-none text-justify antialiased">
-                      {splitContent(article.content)[0]}
+                    /* HALAMAN 2 KIRI: LANJUTAN KONTEN */
+                    <div className="prose prose-lg dark:prose-invert max-w-none text-justify leading-relaxed antialiased">
+                      {getPagedContent(article.content)[1]}
                     </div>
                   )}
                 </div>
 
                 <div className="p-8 border-t flex justify-between items-center text-[10px] font-black opacity-30 tracking-[0.3em]">
-                  <span>MEJATIKA MAGZ</span>
-                  <span>{currentPage === 1 ? "VOL. 01" : "PAGE 03"}</span>
+                   <span>MEJATIKA DIGITAL</span>
+                   <span>PAGE {currentPage === 1 ? "01" : "03"}</span>
                 </div>
               </div>
 
-              {/* SPINE (GARIS TENGAH) */}
+              {/* SPINE TENGAH */}
               <div className="w-[1px] h-full bg-black/10 dark:bg-white/10 relative z-20">
                  <div className="absolute top-0 bottom-0 -left-6 w-12 bg-gradient-to-r from-black/[0.05] via-transparent to-black/[0.05] pointer-events-none" />
               </div>
 
-              {/* === HALAMAN KANAN === */}
+              {/* --- HALAMAN KANAN --- */}
               <div className="flex-1 h-full flex flex-col bg-zinc-50/40 dark:bg-zinc-900/10 relative">
-                <div className="flex-grow overflow-y-auto p-10 lg:p-16 custom-scrollbar">
+                <div className="flex-grow overflow-y-auto p-10 lg:p-14 custom-scrollbar">
                   {currentPage === 1 ? (
-                    /* COVER: GAMBAR SAJA */
-                    <div className="h-full flex flex-col justify-center items-center">
-                      <div className="relative w-full aspect-[3/4] rounded-2xl overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] ring-1 ring-black/5">
-                        <img 
-                          src={article.image || "/placeholder.svg"} 
-                          className="w-full h-full object-cover" 
-                          alt="cover-image" 
-                        />
-                      </div>
+                    /* HALAMAN 1 KANAN: LANGSUNG MULAI KONTEN */
+                    <div className="prose prose-lg dark:prose-invert max-w-none text-justify leading-relaxed antialiased">
+                      {getPagedContent(article.content)[0]}
                     </div>
                   ) : (
-                    /* KONTEN BAGIAN 2 */
-                    <div className="prose prose-lg dark:prose-invert max-w-none text-justify antialiased">
-                      {splitContent(article.content)[1]}
+                    /* HALAMAN 2 KANAN: SISA KONTEN */
+                    <div className="prose prose-lg dark:prose-invert max-w-none text-justify leading-relaxed antialiased">
+                      {getPagedContent(article.content)[2] || <p className="opacity-20 italic">Akhir dari artikel.</p>}
                     </div>
                   )}
                 </div>
 
                 <div className="p-8 border-t flex justify-between items-center">
-                  <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">{currentPage === 1 ? "COVER ISSUE" : "PAGE 04"}</span>
+                  <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">PAGE {currentPage === 1 ? "02" : "04"}</span>
                   
                   <div className="flex gap-4">
                     {currentPage === 2 && (
-                      <Button onClick={() => setCurrentPage(1)} variant="outline" className="rounded-full font-bold uppercase text-[10px] px-8 h-10 border-2">
-                        <ChevronLeft className="w-4 h-4 mr-2" /> Kembali ke Judul
+                      <Button onClick={() => setCurrentPage(1)} variant="outline" className="rounded-full font-bold uppercase text-[10px] px-8 h-12 border-2 shadow-sm">
+                        <ChevronLeft className="w-4 h-4 mr-2" /> Halaman Sebelumnya
                       </Button>
                     )}
                     {currentPage === 1 && (
                       <Button 
                         onClick={() => setCurrentPage(2)} 
-                        className="rounded-2xl h-14 px-8 bg-primary shadow-xl shadow-primary/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 font-black text-xs tracking-widest uppercase"
+                        className="rounded-2xl h-14 px-10 bg-primary shadow-xl shadow-primary/40 hover:scale-105 active:scale-95 transition-all flex items-center gap-3 font-black text-xs tracking-[0.2em] uppercase"
                       >
-                        Buka Artikel <ChevronRight className="w-5 h-5" />
+                        Halaman Berikutnya <ChevronRight className="w-5 h-5" />
                       </Button>
                     )}
                   </div>
