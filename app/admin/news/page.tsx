@@ -14,6 +14,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription, // <-- Komponen yang tadi menyebabkan error
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -35,24 +36,24 @@ export default function NewsManagementPage() {
   const fetchNews = async () => {
     try {
       const res = await fetch("https://backend.mejatika.com/api/news", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { "Accept": "application/json" },
       })
       const data = await res.json()
       setNews(Array.isArray(data) ? data : [])
     } catch (err) {
-      toast({ title: "Gagal ambil berita", description: String(err), variant: "destructive" })
+      console.error(err)
     }
   }
 
   const fetchCategories = async () => {
     try {
       const res = await fetch("https://backend.mejatika.com/api/categories", {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { "Accept": "application/json" },
       })
       const data = await res.json()
       setCategories(Array.isArray(data) ? data : [])
     } catch (err) {
-      toast({ title: "Gagal ambil kategori", description: String(err), variant: "destructive" })
+      console.error(err)
     }
   }
 
@@ -82,26 +83,22 @@ export default function NewsManagementPage() {
     formData.append("content", content)
     formData.append("category_id", String(categoryId))
     
-    // Hanya append image jika ada file baru yang dipilih
     if (image) {
       formData.append("image", image)
     }
 
     let url = "https://backend.mejatika.com/api/news"
-    let method = "POST"
-
     if (editing) {
-      url = `https://backend.mejatika.com/api/news/${editing.id}`
-      // Method Spoofing untuk Laravel agar bisa baca FormData di proses PUT
+      url = `${url}/${editing.id}`
       formData.append("_method", "PUT")
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Selalu POST jika mengirim FormData/File ke Laravel
+        method: "POST",
         headers: { 
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Accept": "application/json" // Penting agar server kirim error JSON, bukan HTML
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Accept": "application/json"
         },
         body: formData,
       })
@@ -113,11 +110,7 @@ export default function NewsManagementPage() {
         fetchNews()
       } else {
         const err = await res.json()
-        toast({ 
-            title: "Gagal simpan berita", 
-            description: err.message || "Pastikan Anda memiliki izin akses.", 
-            variant: "destructive" 
-        })
+        toast({ title: "Gagal simpan berita", description: err.message, variant: "destructive" })
       }
     } catch (error) {
       toast({ title: "Terjadi kesalahan sistem", variant: "destructive" })
@@ -129,18 +122,16 @@ export default function NewsManagementPage() {
       const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
         method: "DELETE",
         headers: { 
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Accept": "application/json"
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Accept": "application/json"
         },
       })
       if (res.ok) {
         toast({ title: "Berita berhasil dihapus!" })
         fetchNews()
-      } else {
-        toast({ title: "Gagal hapus berita", variant: "destructive" })
       }
     } catch (err) {
-      toast({ title: "Gagal hapus", description: String(err), variant: "destructive" })
+      console.error(err)
     }
   }
 
@@ -160,8 +151,7 @@ export default function NewsManagementPage() {
         >
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Article
+              <Plus className="mr-2 h-4 w-4" /> Add Article
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
@@ -195,9 +185,9 @@ export default function NewsManagementPage() {
                     type="file"
                     accept="image/*"
                     onChange={(e) => {
-                    const file = e.target.files?.[0] || null
-                    setImage(file)
-                    if (file) setPreview(URL.createObjectURL(file))
+                      const file = e.target.files?.[0] || null
+                      setImage(file)
+                      if (file) setPreview(URL.createObjectURL(file))
                     }}
                 />
               </div>
@@ -223,7 +213,7 @@ export default function NewsManagementPage() {
         <CardContent>
           <div className="space-y-4">
             {news.map((article) => {
-              const category = categories.find((c) => c.id === article.category_id || c.id === article.categoryId)
+              const category = categories.find((c) => c.id === article.category_id)
               return (
                 <div key={article.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
                   <img
@@ -238,9 +228,6 @@ export default function NewsManagementPage() {
                         <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{article.content}</p>
                         <div className="mt-2 flex items-center gap-2">
                           <Badge variant="secondary">{category?.name ?? "Umum"}</Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID") : ""}
-                          </span>
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
@@ -251,7 +238,7 @@ export default function NewsManagementPage() {
                             setEditing(article)
                             setTitle(article.title)
                             setContent(article.content)
-                            setCategoryId(article.category_id || article.categoryId)
+                            setCategoryId(article.category_id)
                             setPreview(article.image)
                             setOpenForm(true)
                           }}
