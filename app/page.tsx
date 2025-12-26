@@ -89,7 +89,7 @@ export default function HomePage() {
           </DialogHeader>
 
           {loadingDetail ? (
-            <div className="bg-card w-full h-full flex items-center justify-center rounded-3xl shadow-2xl text-center">
+            <div className="bg-card w-full h-full flex items-center justify-center rounded-3xl shadow-2xl">
               <Loader2 className="h-12 w-12 animate-spin text-primary" />
             </div>
           ) : article && (
@@ -100,22 +100,11 @@ export default function HomePage() {
                 <div className="flex-grow p-10 lg:p-14 overflow-hidden">
                   {currentPage === 1 ? (
                     <div className="space-y-6">
-                      <Badge className="w-fit uppercase tracking-widest font-bold px-3 py-1 text-[10px]">{article.category?.name || "REPORT"}</Badge>
+                      <Badge className="w-fit uppercase tracking-widest font-bold px-3 py-1 text-[10px]">{article.category?.name}</Badge>
                       <h1 className="text-xl lg:text-3xl font-black uppercase leading-tight italic tracking-tighter">{article.title}</h1>
                       <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md ring-1 ring-black/5">
                         <img src={article.image} className="w-full h-full object-cover" alt="cover" />
                       </div>
-                      
-                      {/* --- KUTIPAN (QUOTE) DARI BACKEND --- */}
-                      {article.quote && (
-                        <div className="relative py-4 px-6 border-l-4 border-primary bg-primary/5 rounded-r-xl italic">
-                          <Quote className="absolute top-2 right-2 w-8 h-8 opacity-10 text-primary" />
-                          <p className="text-sm lg:text-base font-medium text-foreground/80 leading-relaxed">
-                            "{article.quote}"
-                          </p>
-                        </div>
-                      )}
-
                       <div className="flex items-center gap-6 text-[9px] font-bold uppercase text-muted-foreground tracking-widest border-t pt-4">
                         <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-primary" /> {new Date(article.publishedAt || article.created_at).toLocaleDateString("id-ID")}</span>
                         <span className="flex items-center gap-1.5"><User className="w-3 h-3 text-primary" /> {article.user?.name}</span>
@@ -128,7 +117,6 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Footer Kiri (Simetris h-20) */}
                 <div className="h-20 px-10 lg:px-14 border-t flex items-center justify-between text-[10px] font-black opacity-30 tracking-[0.3em] uppercase">
                    <span>MEJATIKA DIGITAL</span>
                    <span>PAGE {currentPage === 1 ? "01" : "03"}</span>
@@ -147,21 +135,37 @@ export default function HomePage() {
                     {currentPage === 1 ? (
                       getPagedContent(article.content)[0]
                     ) : (
-                      <div className="flex flex-col h-full justify-between">
+                      <div className="flex flex-col h-full gap-6">
+                        {/* Konten Utama */}
                         <div>{getPagedContent(article.content)[2]}</div>
                         
-                        {/* Pesan Penutup & Fitur Share */}
-                        <div className="mt-8 p-6 rounded-2xl bg-primary/5 border border-primary/10 text-center space-y-4">
-                          <p className="font-black italic text-primary uppercase tracking-tighter text-base lg:text-lg">Terima kasih sudah membaca!</p>
-                          <div className="flex flex-col items-center gap-3">
-                            <span className="text-[10px] font-bold opacity-50 uppercase tracking-widest flex items-center gap-2">
-                              <Share2 className="w-3 h-3" /> Bagikan:
-                            </span>
-                            <div className="flex gap-4">
-                              <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="p-2 hover:text-green-500 transition-colors"><MessageCircle className="w-5 h-5" /></a>
-                              <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="p-2 hover:text-blue-600 transition-colors"><Facebook className="w-5 h-5" /></a>
-                              <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${shareUrl}`} target="_blank" className="p-2 hover:text-sky-400 transition-colors"><Twitter className="w-5 h-5" /></a>
+                        {/* --- KUTIPAN (QUOTE) DI AKHIR --- */}
+                        {article.quote && (
+                          <div className="relative py-4 px-6 border-l-4 border-primary bg-primary/5 rounded-r-xl italic shadow-sm">
+                            <Quote className="absolute top-2 right-3 w-6 h-6 opacity-20 text-primary" />
+                            <p className="text-sm font-medium text-foreground/90">
+                              "{article.quote}"
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Ucapan Terima Kasih */}
+                        <p className="font-black italic text-primary uppercase tracking-tighter text-center py-2 border-y border-primary/10">
+                          Terima kasih sudah membaca!
+                        </p>
+
+                        {/* --- CARD SHARE TERPISAH --- */}
+                        <div className="bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 rounded-2xl p-4 shadow-xl flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-primary/10 p-2 rounded-lg">
+                              <Share2 className="w-4 h-4 text-primary" />
                             </div>
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Bagikan</span>
+                          </div>
+                          <div className="flex gap-2">
+                            <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl hover:bg-green-500 hover:text-white transition-all"><MessageCircle className="w-4 h-4" /></a>
+                            <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><Facebook className="w-4 h-4" /></a>
+                            <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(article.title)}&url=${shareUrl}`} target="_blank" className="p-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl hover:bg-sky-400 hover:text-white transition-all"><Twitter className="w-4 h-4" /></a>
                           </div>
                         </div>
                       </div>
@@ -169,7 +173,6 @@ export default function HomePage() {
                   </div>
                 </div>
 
-                {/* Footer Kanan (Simetris h-20) */}
                 <div className="absolute bottom-0 left-0 right-0 h-20 px-10 lg:px-14 bg-gradient-to-t from-white via-white dark:from-zinc-950 flex items-center justify-between z-50">
                   <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">PAGE {currentPage === 1 ? "02" : "04"}</span>
                   <div className="flex gap-3">
