@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import Swal from "sweetalert2"
 
 type Slider = {
   id: number
@@ -23,6 +24,7 @@ export default function SlidersPage() {
   const [active, setActive] = useState(true)
   const [image, setImage] = useState<File | null>(null)
   const [editing, setEditing] = useState<Slider | null>(null)
+  const [open, setOpen] = useState(false) // kontrol modal
 
   const fetchSliders = async () => {
     const res = await fetch("https://backend.mejatika.com/api/sliders", {
@@ -50,7 +52,7 @@ export default function SlidersPage() {
 
     if (editing) {
       url = `https://backend.mejatika.com/api/sliders/${editing.id}`
-      formData.append("_method", "PUT") // Laravel expects this
+      formData.append("_method", "PUT")
       method = "POST"
     }
 
@@ -63,25 +65,55 @@ export default function SlidersPage() {
     if (!res.ok) {
       const err = await res.json()
       console.error("Failed:", err)
-      alert("Gagal simpan slider: " + JSON.stringify(err.errors))
+      Swal.fire({
+        icon: "error",
+        title: "Gagal Simpan",
+        text: JSON.stringify(err.errors),
+      })
       return
     }
 
+    // reset form
     setTitle("")
     setDescription("")
     setLink("")
     setActive(true)
     setImage(null)
     setEditing(null)
+    setOpen(false) // tutup modal
     fetchSliders()
+
+    Swal.fire({
+      icon: "success",
+      title: editing ? "Slider berhasil diupdate!" : "Slider berhasil disimpan!",
+      showConfirmButton: false,
+      timer: 1500,
+    })
   }
 
   const handleDelete = async (id: number) => {
+    const confirm = await Swal.fire({
+      title: "Yakin hapus slider?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Ya, hapus",
+      cancelButtonText: "Batal",
+    })
+
+    if (!confirm.isConfirmed) return
+
     await fetch(`https://backend.mejatika.com/api/sliders/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
     fetchSliders()
+
+    Swal.fire({
+      icon: "success",
+      title: "Slider berhasil dihapus!",
+      showConfirmButton: false,
+      timer: 1500,
+    })
   }
 
   return (
@@ -116,6 +148,7 @@ export default function SlidersPage() {
                     setDescription(s.description || "")
                     setLink(s.link || "")
                     setActive(s.active ?? true)
+                    setOpen(true)
                   }}
                 >
                   Edit
@@ -130,9 +163,9 @@ export default function SlidersPage() {
       </table>
 
       {/* Form Tambah/Edit Slider */}
-      <Dialog>
+      <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button>Tambah Slider</Button>
+          <Button onClick={() => setOpen(true)}>Tambah Slider</Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
