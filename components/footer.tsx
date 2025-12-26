@@ -11,7 +11,7 @@ export function Footer() {
               <span className="font-bold text-xl">MEJATIKA</span>
             </div>
             <p className="text-sm text-primary-foreground/80 text-pretty">
-              Platform pembelajaran digital terpercaya untuk mengembangkan keterampilan dan karir Anda.
+              Platform pembelajaran digital terpercaya untuk mengembangkan pengetahuan, keterampilan dan karir Anda.
             </p>
           </div>
 
@@ -24,11 +24,11 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4" />
-                <span>+62 123 4567 890</span>
+                <span>+62 081237026025</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4" />
-                <span>Jakarta, Indonesia</span>
+                <span>Kisol,Kel.Tanah Rata, Kec. KOta Komba, Kab. Manggarai Timur, Flores, NTT  Indonesia</span>
               </div>
             </div>
           </div>
