@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Quote, ImageIcon, Loader2 } from "lucide-react"
+import { Plus, Edit, Trash2, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -14,7 +14,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -27,7 +26,6 @@ export default function NewsManagementPage() {
   const [openForm, setOpenForm] = useState(false)
   const [loading, setLoading] = useState(false)
   
-  // States untuk Form
   const [editing, setEditing] = useState<any | null>(null)
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
@@ -87,24 +85,18 @@ export default function NewsManagementPage() {
     formData.append("content", content);
     formData.append("quote", quote || "");
     formData.append("category_id", String(categoryId));
-    
     if (image) formData.append("image", image);
 
-    // Endpoint URL
     let url = "https://backend.mejatika.com/api/news";
     if (editing) {
-      url = `${url}/${editing.id}`;
-      // Method Spoofing agar Laravel mengenali PUT lewat body POST
+      url = `${url}/${editing.slug}`; // pakai slug
       formData.append("_method", "PUT");
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Selalu gunakan POST untuk upload file yang stabil
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-          "Accept": "application/json"
-        },
+        method: "POST", // spoofing PUT
+        headers: getAuthHeader(),
         body: formData,
       });
 
@@ -124,9 +116,9 @@ export default function NewsManagementPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (slug: string) => {
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
+      const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
         method: "DELETE",
         headers: getAuthHeader(),
       });
@@ -176,7 +168,7 @@ export default function NewsManagementPage() {
         <CardContent className="pt-6">
           <div className="space-y-4">
             {news.map((article) => (
-              <div key={article.id} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
+              <div key={article.slug} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
                 <img src={article.image || "/placeholder.svg"} className="h-24 w-full sm:w-40 object-cover rounded-lg" />
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
@@ -184,20 +176,41 @@ export default function NewsManagementPage() {
                     <Badge variant="outline">{categories.find(c => c.id === article.category_id)?.name || "Umum"}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground italic mt-1 line-clamp-1">"{article.quote || "Tidak ada kutipan"}"</p>
-                  <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" onClick={() => {
-                        setEditing(article); setTitle(article.title); setContent(article.content);
-                        setQuote(article.quote || ""); setCategoryId(article.category_id); 
-                        setPreview(article.image); setOpenForm(true);
-                    }}><Edit className="h-4 w-4 mr-1" /> Edit</Button>
-                    
+                                    <div className="flex gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditing(article);
+                        setTitle(article.title);
+                        setContent(article.content);
+                        setQuote(article.quote || "");
+                        setCategoryId(article.category_id);
+                        setPreview(article.image);
+                        setOpenForm(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 mr-1" /> Edit
+                    </Button>
+
                     <AlertDialog>
-                      <AlertDialogTrigger asChild><Button variant="destructive" size="sm"><Trash2 className="h-4 w-4 mr-1" /> Delete</Button></AlertDialogTrigger>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm">
+                          <Trash2 className="h-4 w-4 mr-1" /> Delete
+                        </Button>
+                      </AlertDialogTrigger>
                       <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Hapus Berita?</AlertDialogTitle></AlertDialogHeader>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Hapus Berita?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tindakan ini tidak bisa dibatalkan. Berita akan dihapus permanen.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Batal</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDelete(article.id)}>Hapus</AlertDialogAction>
+                          <AlertDialogAction onClick={() => handleDelete(article.slug)}>
+                            Hapus
+                          </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
