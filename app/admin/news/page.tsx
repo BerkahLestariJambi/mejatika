@@ -212,12 +212,14 @@ export default function NewsManagementPage() {
                           <AlertDialogDescription>
                             Tindakan ini tidak bisa dibatalkan. Berita akan dihapus permanen.
                           </AlertDialogDescription>
+                          </AlertDialogHeader>
                                                 <AlertDialogFooter>
                           <AlertDialogCancel>Batal</AlertDialogCancel>
                           {/* MENGGUNAKAN SLUG UNTUK DELETE */}
                           <AlertDialogAction onClick={() => handleDelete(article.slug)}>
                             Hapus
                           </AlertDialogAction>
+                                                  
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
