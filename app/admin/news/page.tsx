@@ -83,26 +83,34 @@ export default function NewsManagementPage() {
       method = "POST"
     }
 
-    const res = await fetch(url, {
-      method,
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      body: formData,
-    })
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: formData,
+      })
 
-    if (res.ok) {
-      toast({ title: editing ? "Berita berhasil diupdate!" : "Berita berhasil ditambahkan!" })
-      setTitle("")
-      setContent("")
-      setImage(null)
-      setPreview(null)
-      setCategoryId(null)
-      setEditing(null)
-      setOpenForm(false)
-      fetchNews()
-    } else {
-      const err = await res.json()
-      toast({ title: "Gagal simpan berita", description: JSON.stringify(err.errors), variant: "destructive" })
+      if (res.ok) {
+        toast({ title: editing ? "Berita berhasil diupdate!" : "Berita berhasil ditambahkan!" })
+        resetForm()
+        setOpenForm(false)
+        fetchNews()
+      } else {
+        const err = await res.json()
+        toast({ title: "Gagal simpan berita", description: JSON.stringify(err.errors), variant: "destructive" })
+      }
+    } catch (error) {
+      toast({ title: "Terjadi kesalahan sistem", variant: "destructive" })
     }
+  }
+
+  const resetForm = () => {
+    setTitle("")
+    setContent("")
+    setImage(null)
+    setPreview(null)
+    setCategoryId(null)
+    setEditing(null)
   }
 
   const handleDelete = async (id: number) => {
@@ -125,43 +133,56 @@ export default function NewsManagementPage() {
           <h1 className="text-2xl font-bold lg:text-3xl">News Management</h1>
           <p className="text-muted-foreground">Create and manage news articles</p>
         </div>
-        <Dialog open={openForm} onOpenChange={setOpenForm}>
+        <Dialog 
+          open={openForm} 
+          onOpenChange={(open) => {
+            setOpenForm(open);
+            if (!open) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               Add Article
             </Button>
           </DialogTrigger>
-          <DialogContent asChild>
-            <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <DialogHeader>
-                  <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
-                </DialogHeader>
-                <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
-                <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
-                <select
-                  className="w-full border rounded p-2"
-                  value={categoryId ?? ""}
-                  onChange={(e) => setCategoryId(Number(e.target.value))}
-                  required
-                >
-                  <option value="">Pilih Kategori</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <Input
-                  type="file"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null
-                    setImage(file)
-                    if (file) setPreview(URL.createObjectURL(file))
-                  }}
-                />
-                {preview && <img src={preview} alt="Preview" className="h-24 rounded object-cover" />}
+          {/* Perbaikan Utama: Menghapus asChild dari DialogContent */}
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
+              <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
+              <select
+                className="w-full border rounded p-2 bg-background"
+                value={categoryId ?? ""}
+                onChange={(e) => setCategoryId(Number(e.target.value))}
+                required
+              >
+                <option value="">Pilih Kategori</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null
+                  setImage(file)
+                  if (file) setPreview(URL.createObjectURL(file))
+                }}
+              />
+              {preview && (
+                <div className="relative h-40 w-full overflow-hidden rounded-md border">
+                  <img src={preview} alt="Preview" className="h-full w-full object-cover" />
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setOpenForm(false)}>Batal</Button>
                 <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
               </div>
             </form>
@@ -177,7 +198,7 @@ export default function NewsManagementPage() {
         <CardContent>
           <div className="space-y-4">
             {news.map((article) => {
-              const category = categories.find((c) => c.id === article.categoryId)
+              const category = categories.find((c) => c.id === article.category_id || c.id === article.categoryId)
               return (
                 <div key={article.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
                   <img
@@ -187,17 +208,19 @@ export default function NewsManagementPage() {
                   />
                   <div className="flex-1">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-balance">{article.title}</h3>
-                        <p className="text-sm text-muted-foreground">{article.excerpt}</p>
+                      <div className="space-y-1">
+                        <h3 className="font-semibold leading-none">{article.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{article.content}</p>
                         <div className="mt-2 flex items-center gap-2">
                           <Badge variant="outline">{category?.name ?? "Tanpa kategori"}</Badge>
                           <Badge variant={article.status === "published" ? "default" : "secondary"}>
-                            {article.status}
+                            {article.status || "draft"}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {article.publishedAt && new Date(article.publishedAt).toLocaleDateString("id-ID")}
-                          </span>
+                          {article.publishedAt && (
+                             <span className="text-xs text-muted-foreground">
+                              {new Date(article.publishedAt).toLocaleDateString("id-ID")}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -208,7 +231,8 @@ export default function NewsManagementPage() {
                             setEditing(article)
                             setTitle(article.title)
                             setContent(article.content)
-                            setCategoryId(article.categoryId)
+                            setCategoryId(article.category_id || article.categoryId)
+                            setPreview(article.image)
                             setOpenForm(true)
                           }}
                         >
@@ -223,10 +247,11 @@ export default function NewsManagementPage() {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
+                              <CardDescription>Tindakan ini tidak dapat dibatalkan.</CardDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Batal</AlertDialogCancel>
-                                                            <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                              <AlertDialogAction onClick={() => handleDelete(article.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                                 Hapus
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -238,6 +263,9 @@ export default function NewsManagementPage() {
                 </div>
               )
             })}
+            {news.length === 0 && (
+              <p className="text-center text-muted-foreground py-10">Belum ada berita.</p>
+            )}
           </div>
         </CardContent>
       </Card>
