@@ -12,14 +12,10 @@ export const dynamic = "force-dynamic";
 
 async function getArticleDetail(slug: string) {
   try {
-    // Pastikan URL ini bisa dibuka di browser Anda
     const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
-      cache: 'no-store', // Jangan simpan cache di sisi server Next.js
-      headers: {
-        'Accept': 'application/json'
-      }
+      cache: "no-store",
+      headers: { Accept: "application/json" },
     });
-
     if (!res.ok) return null;
     return res.json();
   } catch (error) {
@@ -28,14 +24,10 @@ async function getArticleDetail(slug: string) {
   }
 }
 
-// Next.js 15+ mengharuskan params di-await
-export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = await params;
-  const slug = resolvedParams.slug;
-
+export default async function NewsDetailPage({ params }: { params: { slug: string } }) {
+  const { slug } = params;
   const article = await getArticleDetail(slug);
 
-  // Jika data dari Laravel null, tampilkan halaman 404
   if (!article) {
     notFound();
   }
@@ -64,16 +56,14 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
                   className="w-full h-full object-cover"
                 />
               </div>
-              
+
               <div className="p-6 md:p-10">
-                <div className="mb-4">
-                  {category && (
-                    <Badge variant="secondary" className="px-3 py-1 text-sm">
-                      {category.name}
-                    </Badge>
-                  )}
-                </div>
-                
+                {category && (
+                  <Badge variant="secondary" className="px-3 py-1 text-sm mb-4">
+                    {category.name}
+                  </Badge>
+                )}
+
                 <h1 className="text-3xl md:text-5xl font-extrabold mb-6 leading-tight tracking-tight text-balance">
                   {article.title}
                 </h1>
@@ -81,11 +71,13 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
                 <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-8 pb-8 border-b">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
-                    {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    }) : "-"}
+                    {article.created_at
+                      ? new Date(article.created_at).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "-"}
                   </div>
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-primary" />
@@ -94,9 +86,13 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
                 </div>
 
                 <div className="prose prose-blue prose-lg max-w-none">
-                  <div className="whitespace-pre-line leading-relaxed text-foreground/80 text-lg">
-                    {article.content}
-                  </div>
+                  {typeof article.content === "string" ? (
+                    <div className="whitespace-pre-line leading-relaxed text-foreground/80 text-lg">
+                      {article.content}
+                    </div>
+                  ) : (
+                    <div dangerouslySetInnerHTML={{ __html: article.content }} />
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -105,5 +101,5 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
       </main>
       <Footer />
     </div>
-  )
+  );
 }
