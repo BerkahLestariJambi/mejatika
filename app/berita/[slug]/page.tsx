@@ -10,6 +10,7 @@ import { notFound } from "next/navigation"
 // Fungsi Fetch Detail Berita dari Laravel
 async function getArticleDetail(slug: string) {
   try {
+    // Memanggil API Laravel secara langsung menggunakan slug
     const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
       next: { revalidate: 60 }, // Cache detail selama 60 detik
     });
@@ -22,20 +23,23 @@ async function getArticleDetail(slug: string) {
   }
 }
 
-export default async function NewsDetailPage({ params }: { params: { slug: string } }) {
-  // Ambil data artikel dari API
-  const article = await getArticleDetail(params.slug);
+// Tambahkan async pada props params karena di Next.js terbaru ini adalah Promise
+export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  // 1. AWAIT params terlebih dahulu untuk mendapatkan slug
+  const { slug } = await params;
 
-  // Jika artikel tidak ditemukan di backend, tampilkan halaman 404
+  // 2. Ambil data artikel dari API Laravel
+  const article = await getArticleDetail(slug);
+
+  // 3. Jika artikel tidak ditemukan di backend, tampilkan halaman 404
   if (!article) {
     notFound();
   }
 
-  // Catatan: Karena di Laravel NewsController Anda sudah menggunakan ->load('category'),
-  // data kategori biasanya sudah ada di dalam objek 'article.category'
+  // Ambil data kategori (Laravel menggunakan snake_case: category_id)
   const category = article.category;
   
-  // Jika author dikirim dari backend, sesuaikan namanya (biasanya article.user atau article.author)
+  // Author name dari relasi user/author di Laravel
   const authorName = article.author?.name || article.user?.name || "Admin MEJATIKA";
 
   return (
@@ -53,7 +57,7 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
           <Card className="shadow-lg border-none">
             <CardContent className="p-0">
               <img
-                // Gunakan URL gambar dari backend yang sudah lengkap (asset URL)
+                // Gunakan URL gambar lengkap dari Laravel asset()
                 src={article.image || "/placeholder.svg"}
                 alt={article.title}
                 className="w-full h-[300px] md:h-[500px] object-cover rounded-t-lg"
@@ -74,6 +78,7 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
                 <div className="flex flex-wrap items-center gap-6 text-sm text-muted-foreground mb-8 pb-8 border-b">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary" />
+                    {/* Gunakan created_at dari Laravel */}
                     {new Date(article.created_at).toLocaleDateString("id-ID", {
                       day: "numeric",
                       month: "long",
@@ -87,7 +92,7 @@ export default async function NewsDetailPage({ params }: { params: { slug: strin
                 </div>
 
                 <div className="prose prose-blue prose-lg max-w-none">
-                  {/* Menampilkan isi berita dengan format line break yang terjaga */}
+                  {/* whitespace-pre-line penting agar baris baru di teks berita tetap terjaga */}
                   <div className="whitespace-pre-line leading-relaxed text-foreground/90">
                     {article.content}
                   </div>
