@@ -28,10 +28,10 @@ export default function NewsManagementPage() {
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [image, setImage] = useState<File | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const { toast } = useToast()
 
-  // fetch data dari backend
   const fetchNews = async () => {
     try {
       const res = await fetch("https://backend.mejatika.com/api/news", {
@@ -61,14 +61,18 @@ export default function NewsManagementPage() {
     fetchCategories()
   }, [])
 
-  // submit tambah / edit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!categoryId) {
+      toast({ title: "Kategori wajib dipilih", variant: "destructive" })
+      return
+    }
+
     const formData = new FormData()
     formData.append("title", title)
     formData.append("content", content)
     if (image) formData.append("image", image)
-    if (categoryId) formData.append("category_id", String(categoryId))
+    formData.append("category_id", String(categoryId))
 
     let url = "https://backend.mejatika.com/api/news"
     let method: "POST" | "PUT" = "POST"
@@ -90,6 +94,7 @@ export default function NewsManagementPage() {
       setTitle("")
       setContent("")
       setImage(null)
+      setPreview(null)
       setCategoryId(null)
       setEditing(null)
       setOpenForm(false)
@@ -100,7 +105,6 @@ export default function NewsManagementPage() {
     }
   }
 
-  // hapus berita
   const handleDelete = async (id: number) => {
     const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
       method: "DELETE",
@@ -123,34 +127,43 @@ export default function NewsManagementPage() {
         </div>
         <Dialog open={openForm} onOpenChange={setOpenForm}>
           <DialogTrigger asChild>
-            <Button onClick={() => setOpenForm(true)}>
+            <Button>
               <Plus className="mr-2 h-4 w-4" />
               Add Article
             </Button>
           </DialogTrigger>
           <DialogContent asChild>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <DialogHeader>
-                <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
-              </DialogHeader>
-              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
-              <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
-              <select
-                className="w-full border rounded p-2"
-                value={categoryId ?? ""}
-                onChange={(e) => setCategoryId(Number(e.target.value))}
-                required
-              >
-                <option value="">Pilih Kategori</option>
-                {Array.isArray(categories) &&
-                  categories.map((c) => (
+            <form onSubmit={handleSubmit}>
+              <div className="space-y-4">
+                <DialogHeader>
+                  <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
+                </DialogHeader>
+                <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
+                <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
+                <select
+                  className="w-full border rounded p-2"
+                  value={categoryId ?? ""}
+                  onChange={(e) => setCategoryId(Number(e.target.value))}
+                  required
+                >
+                  <option value="">Pilih Kategori</option>
+                  {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
                     </option>
                   ))}
-              </select>
-              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
-              <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
+                </select>
+                <Input
+                  type="file"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null
+                    setImage(file)
+                    if (file) setPreview(URL.createObjectURL(file))
+                  }}
+                />
+                {preview && <img src={preview} alt="Preview" className="h-24 rounded object-cover" />}
+                <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
@@ -163,58 +176,61 @@ export default function NewsManagementPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {Array.isArray(news) &&
-              news.map((article) => {
-                const category = categories.find((c) => c.id === article.categoryId)
-                return (
-                  <div key={article.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
-                    <img
-                      src={article.image || "/placeholder.svg"}
-                      alt={article.title}
-                      className="h-20 w-32 rounded object-cover"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-balance">{article.title}</h3>
-                          <p className="text-sm text-muted-foreground">{article.excerpt}</p>
-                          <div className="mt-2 flex items-center gap-2">
-                            <Badge variant="outline">{category?.name ?? "Tanpa kategori"}</Badge>
-                            <Badge variant={article.status === "published" ? "default" : "secondary"}>
-                              {article.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {article.publishedAt && new Date(article.publishedAt).toLocaleDateString("id-ID")}
-                            </span>
-                          </div>
+            {news.map((article) => {
+              const category = categories.find((c) => c.id === article.categoryId)
+              return (
+                <div key={article.id} className="flex items-start gap-4 border-b pb-4 last:border-0">
+                  <img
+                    src={article.image || "/placeholder.svg"}
+                    alt={article.title}
+                    className="h-20 w-32 rounded object-cover"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-balance">{article.title}</h3>
+                        <p className="text-sm text-muted-foreground">{article.excerpt}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge variant="outline">{category?.name ?? "Tanpa kategori"}</Badge>
+                          <Badge variant={article.status === "published" ? "default" : "secondary"}>
+                            {article.status}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {article.publishedAt && new Date(article.publishedAt).toLocaleDateString("id-ID")}
+                          </span>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditing(article)
-                              setTitle(article.title)
-                              setContent(article.content)
-                              setCategoryId(article.categoryId)
-                              setOpenForm(true)
-                            }}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
-                              </AlertDialogHeader>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditing(article)
+                            setTitle(article.title)
+                            setContent(article.content)
+                            setCategoryId(article.categoryId)
+                            setOpenForm(true)
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Batal</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDelete(article.id)}>Hapus</AlertDialogAction>
+                                <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                                  Hapus
+                                </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
@@ -225,7 +241,7 @@ export default function NewsManagementPage() {
                 )
               })}
           </div>
-               </CardContent>
+        </CardContent>
       </Card>
     </div>
   )
