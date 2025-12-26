@@ -88,16 +88,16 @@ export default function NewsManagementPage() {
     formData.append("category_id", String(categoryId));
     if (image) formData.append("image", image);
 
-    // GUNAKAN ID UNTUK UPDATE, BUKAN SLUG (Agar tidak error 404 di API Resource)
+    // MENGGUNAKAN SLUG UNTUK IDENTIFIER UPDATE
     let url = "https://backend.mejatika.com/api/news";
     if (editing) {
-      url = `${url}/${editing.id}`; 
-      formData.append("_method", "PUT");
+      url = `${url}/${editing.slug}`; 
+      formData.append("_method", "PUT"); // Method spoofing tetap diperlukan untuk upload file di Laravel
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Spoofing PUT
+        method: "POST", // Spoofing PUT dikirim via POST
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`,
           "Accept": "application/json"
@@ -121,15 +121,18 @@ export default function NewsManagementPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  // DELETE SEKARANG MENGGUNAKAN SLUG
+  const handleDelete = async (slug: string) => {
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
+      const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
         method: "DELETE",
         headers: getAuthHeader(),
       });
       if (res.ok) { 
         toast({ title: "Berhasil dihapus!" }); 
         fetchNews(); 
+      } else {
+        toast({ title: "Gagal menghapus", variant: "destructive" });
       }
     } catch (err) { console.error(err); }
   }
@@ -176,7 +179,7 @@ export default function NewsManagementPage() {
         <CardContent className="pt-6">
           <div className="space-y-4">
             {news.map((article) => (
-              <div key={article.id} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
+              <div key={article.slug} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
                 <img src={article.image || "/placeholder.svg"} className="h-24 w-full sm:w-40 object-cover rounded-lg" />
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
@@ -217,8 +220,8 @@ export default function NewsManagementPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Batal</AlertDialogCancel>
-                          {/* Hapus menggunakan ID agar konsisten dengan API */}
-                          <AlertDialogAction onClick={() => handleDelete(article.id)}>
+                          {/* MENGGUNAKAN SLUG UNTUK DELETE */}
+                          <AlertDialogAction onClick={() => handleDelete(article.slug)}>
                             Hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
