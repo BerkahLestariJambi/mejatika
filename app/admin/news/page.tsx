@@ -88,16 +88,20 @@ export default function NewsManagementPage() {
     formData.append("category_id", String(categoryId));
     if (image) formData.append("image", image);
 
+    // MENGGUNAKAN SLUG UNTUK IDENTIFIER UPDATE
     let url = "https://backend.mejatika.com/api/news";
     if (editing) {
       url = `${url}/${editing.slug}`; 
-      formData.append("_method", "PUT"); // spoofing PUT
+      formData.append("_method", "PUT"); // Method spoofing tetap diperlukan untuk upload file di Laravel
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST",
-        headers: getAuthHeader(),
+        method: "POST", // Spoofing PUT dikirim via POST
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          "Accept": "application/json"
+        },
         body: formData,
       });
 
@@ -117,6 +121,7 @@ export default function NewsManagementPage() {
     }
   }
 
+  // DELETE SEKARANG MENGGUNAKAN SLUG
   const handleDelete = async (slug: string) => {
     try {
       const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
@@ -175,7 +180,7 @@ export default function NewsManagementPage() {
           <div className="space-y-4">
             {news.map((article) => (
               <div key={article.slug} className="flex flex-col sm:flex-row gap-4 border-b pb-4">
-                <img src={article.image_url || "/placeholder.svg"} className="h-24 w-full sm:w-40 object-cover rounded-lg" />
+                <img src={article.image || "/placeholder.svg"} className="h-24 w-full sm:w-40 object-cover rounded-lg" />
                 <div className="flex-1">
                   <div className="flex justify-between items-start">
                     <h3 className="font-bold">{article.title}</h3>
@@ -193,7 +198,7 @@ export default function NewsManagementPage() {
                         setContent(article.content);
                         setQuote(article.quote || "");
                         setCategoryId(article.category_id);
-                        setPreview(article.image_url);
+                        setPreview(article.image);
                         setOpenForm(true);
                       }}
                     >
@@ -212,14 +217,13 @@ export default function NewsManagementPage() {
                           <AlertDialogDescription>
                             Tindakan ini tidak bisa dibatalkan. Berita akan dihapus permanen.
                           </AlertDialogDescription>
-                          </AlertDialogHeader>
-                                                <AlertDialogFooter>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
                           <AlertDialogCancel>Batal</AlertDialogCancel>
                           {/* MENGGUNAKAN SLUG UNTUK DELETE */}
                           <AlertDialogAction onClick={() => handleDelete(article.slug)}>
                             Hapus
                           </AlertDialogAction>
-                                                  
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
