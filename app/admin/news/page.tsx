@@ -1,12 +1,107 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2 } from "lucide-react"
-import { db } from "@/lib/db"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
-export default async function NewsManagementPage() {
-  const news = await db.getNews()
-  const categories = await db.getNewsCategories()
+export default function NewsManagementPage() {
+  const [news, setNews] = useState<any[]>([])
+  const [categories, setCategories] = useState<any[]>([])
+  const [openForm, setOpenForm] = useState(false)
+  const [editing, setEditing] = useState<any | null>(null)
+  const [title, setTitle] = useState("")
+  const [content, setContent] = useState("")
+  const [image, setImage] = useState<File | null>(null)
+  const { toast } = useToast()
+
+  // fetch data dari backend
+  const fetchNews = async () => {
+    const res = await fetch("https://backend.mejatika.com/api/news", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    const data = await res.json()
+    setNews(data)
+  }
+
+  const fetchCategories = async () => {
+    const res = await fetch("https://backend.mejatika.com/api/news-categories", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    const data = await res.json()
+    setCategories(data)
+  }
+
+  useEffect(() => {
+    fetchNews()
+    fetchCategories()
+  }, [])
+
+  // submit tambah / edit
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const formData = new FormData()
+    formData.append("title", title)
+    formData.append("content", content)
+    if (image) formData.append("image", image)
+
+    let url = "https://backend.mejatika.com/api/news"
+    let method: "POST" | "PUT" = "POST"
+
+    if (editing) {
+      url = `https://backend.mejatika.com/api/news/${editing.id}`
+      formData.append("_method", "PUT")
+      method = "POST"
+    }
+
+    const res = await fetch(url, {
+      method,
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      body: formData,
+    })
+
+    if (res.ok) {
+      toast({ title: editing ? "Berita berhasil diupdate!" : "Berita berhasil ditambahkan!" })
+      setTitle("")
+      setContent("")
+      setImage(null)
+      setEditing(null)
+      setOpenForm(false)
+      fetchNews()
+    } else {
+      const err = await res.json()
+      toast({ title: "Gagal simpan berita", description: JSON.stringify(err.errors), variant: "destructive" })
+    }
+  }
+
+  // hapus berita
+  const handleDelete = async (id: number) => {
+    const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    if (res.ok) {
+      toast({ title: "Berita berhasil dihapus!" })
+      fetchNews()
+    } else {
+      toast({ title: "Gagal hapus berita", variant: "destructive" })
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -15,10 +110,25 @@ export default async function NewsManagementPage() {
           <h1 className="text-2xl font-bold lg:text-3xl">News Management</h1>
           <p className="text-muted-foreground">Create and manage news articles</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Article
-        </Button>
+        <Dialog open={openForm} onOpenChange={setOpenForm}>
+          <DialogTrigger asChild>
+            <Button onClick={() => setOpenForm(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Article
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
+              <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
+              <Input type="file" onChange={(e) => setImage(e.target.files?.[0] || null)} />
+              <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Card>
@@ -53,12 +163,34 @@ export default async function NewsManagementPage() {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button variant="ghost" size="icon">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditing(article)
+                            setTitle(article.title)
+                            setContent(article.content)
+                            setOpenForm(true)
+                          }}
+                        >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Batal</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(article.id)}>Hapus</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   </div>
