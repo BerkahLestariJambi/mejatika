@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
@@ -61,6 +61,15 @@ export default function NewsManagementPage() {
     fetchCategories()
   }, [])
 
+  const resetForm = () => {
+    setTitle("")
+    setContent("")
+    setImage(null)
+    setPreview(null)
+    setCategoryId(null)
+    setEditing(null)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!categoryId) {
@@ -104,25 +113,20 @@ export default function NewsManagementPage() {
     }
   }
 
-  const resetForm = () => {
-    setTitle("")
-    setContent("")
-    setImage(null)
-    setPreview(null)
-    setCategoryId(null)
-    setEditing(null)
-  }
-
   const handleDelete = async (id: number) => {
-    const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    if (res.ok) {
-      toast({ title: "Berita berhasil dihapus!" })
-      fetchNews()
-    } else {
-      toast({ title: "Gagal hapus berita", variant: "destructive" })
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      if (res.ok) {
+        toast({ title: "Berita berhasil dihapus!" })
+        fetchNews()
+      } else {
+        toast({ title: "Gagal hapus berita", variant: "destructive" })
+      }
+    } catch (err) {
+      toast({ title: "Gagal hapus berita", description: String(err), variant: "destructive" })
     }
   }
 
@@ -136,8 +140,8 @@ export default function NewsManagementPage() {
         <Dialog 
           open={openForm} 
           onOpenChange={(open) => {
-            setOpenForm(open);
-            if (!open) resetForm();
+            setOpenForm(open)
+            if (!open) resetForm()
           }}
         >
           <DialogTrigger asChild>
@@ -146,14 +150,27 @@ export default function NewsManagementPage() {
               Add Article
             </Button>
           </DialogTrigger>
-          {/* Perbaikan Utama: Menghapus asChild dari DialogContent */}
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
+              <DialogDescription>
+                Lengkapi formulir di bawah ini untuk menyimpan artikel berita.
+              </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <Input placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} required />
-              <Textarea placeholder="Isi berita" value={content} onChange={(e) => setContent(e.target.value)} required />
+              <Input 
+                placeholder="Judul" 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                required 
+              />
+              <Textarea 
+                placeholder="Isi berita" 
+                value={content} 
+                onChange={(e) => setContent(e.target.value)} 
+                required 
+                className="min-h-[150px]"
+              />
               <select
                 className="w-full border rounded p-2 bg-background"
                 value={categoryId ?? ""}
@@ -181,9 +198,13 @@ export default function NewsManagementPage() {
                   <img src={preview} alt="Preview" className="h-full w-full object-cover" />
                 </div>
               )}
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setOpenForm(false)}>Batal</Button>
-                <Button type="submit">{editing ? "Update" : "Simpan"}</Button>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setOpenForm(false)}>
+                  Batal
+                </Button>
+                <Button type="submit">
+                  {editing ? "Update" : "Simpan"}
+                </Button>
               </div>
             </form>
           </DialogContent>
@@ -204,14 +225,14 @@ export default function NewsManagementPage() {
                   <img
                     src={article.image || "/placeholder.svg"}
                     alt={article.title}
-                    className="h-20 w-32 rounded object-cover"
+                    className="h-20 w-32 rounded object-cover flex-shrink-0"
                   />
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1">
-                        <h3 className="font-semibold leading-none">{article.title}</h3>
+                        <h3 className="font-semibold leading-none truncate">{article.title}</h3>
                         <p className="text-sm text-muted-foreground line-clamp-2">{article.content}</p>
-                        <div className="mt-2 flex items-center gap-2">
+                        <div className="mt-2 flex items-center gap-2 flex-wrap">
                           <Badge variant="outline">{category?.name ?? "Tanpa kategori"}</Badge>
                           <Badge variant={article.status === "published" ? "default" : "secondary"}>
                             {article.status || "draft"}
@@ -223,7 +244,7 @@ export default function NewsManagementPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-shrink-0">
                         <Button
                           variant="ghost"
                           size="icon"
@@ -247,11 +268,16 @@ export default function NewsManagementPage() {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Yakin hapus berita ini?</AlertDialogTitle>
-                              <CardDescription>Tindakan ini tidak dapat dibatalkan.</CardDescription>
+                              <AlertDialogDescription>
+                                Tindakan ini tidak dapat dibatalkan dan akan menghapus data secara permanen.
+                              </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Batal</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(article.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              <AlertDialogAction 
+                                onClick={() => handleDelete(article.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
                                 Hapus
                               </AlertDialogAction>
                             </AlertDialogFooter>
