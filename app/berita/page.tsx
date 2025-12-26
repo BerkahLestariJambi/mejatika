@@ -26,7 +26,7 @@ export default function BeritaPage() {
   const [article, setArticle] = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
-  // 1. Fetch daftar berita saat halaman pertama kali dibuka
+  // 1. Ambil daftar berita saat halaman dimuat
   useEffect(() => {
     fetch("https://backend.mejatika.com/api/news")
       .then((res) => res.json())
@@ -37,7 +37,7 @@ export default function BeritaPage() {
       .catch(() => setLoadingList(false))
   }, [])
 
-  // 2. Fetch detail berita hanya saat Modal dibuka
+  // 2. Ambil detail berita saat Modal dibuka
   useEffect(() => {
     if (selectedSlug && isModalOpen) {
       setLoadingDetail(true)
@@ -58,22 +58,22 @@ export default function BeritaPage() {
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="mb-10">
-          <h1 className="text-4xl font-extrabold">Berita & Artikel</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight">Berita & Artikel</h1>
           <p className="text-muted-foreground mt-2">Update informasi terbaru dari MEJATIKA</p>
         </div>
 
-        {/* MENAMPILKAN DAFTAR BERITA */}
+        {/* DAFTAR BERITA UTAMA */}
         {loadingList ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin" /></div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {news.map((item: any) => (
-              <Card key={item.id} className="overflow-hidden flex flex-col shadow-md hover:shadow-xl transition-all">
+              <Card key={item.id} className="overflow-hidden flex flex-col shadow-md hover:shadow-xl transition-all border-none">
                 <div className="relative h-52 w-full bg-muted">
                   <img
                     src={item.image || "/placeholder.svg"}
                     alt={item.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                   />
                 </div>
                 <CardContent className="p-6 flex flex-col flex-grow">
@@ -96,9 +96,9 @@ export default function BeritaPage() {
           </div>
         )}
 
-        {/* POPUP MODAL (INI ADALAH "FRAME" DETAIL BERITA) */}
+        {/* POPUP MODAL DETAIL BERITA */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl">
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl bg-card">
             <DialogHeader className="sr-only">
               <DialogTitle>{article?.title || "Detail Berita"}</DialogTitle>
             </DialogHeader>
@@ -107,39 +107,52 @@ export default function BeritaPage() {
               {loadingDetail ? (
                 <div className="flex flex-col items-center justify-center p-24 gap-4">
                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="text-muted-foreground">Menyiapkan berita...</p>
+                  <p className="text-muted-foreground animate-pulse">Menyiapkan berita...</p>
                 </div>
               ) : article && (
-                <article>
-                  <div className="relative aspect-video w-full bg-muted">
-                    <img 
-                      src={article.image || "/placeholder.svg"} 
-                      alt={article.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
-                    />
+                <article className="py-8">
+                  
+                  {/* BAGIAN GAMBAR: Dengan batas kiri-kanan (px-6/px-12) */}
+                  <div className="px-6 md:px-12">
+                    <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-muted shadow-lg ring-1 ring-border">
+                      <img 
+                        src={article.image || "/placeholder.svg"} 
+                        alt={article.title}
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                        onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
+                      />
+                    </div>
                   </div>
-                  <div className="p-6 md:p-10 bg-card">
-                    <Badge className="mb-4">{article.category?.name || "Umum"}</Badge>
-                    <h1 className="text-3xl md:text-4xl font-bold mb-6 leading-tight">
+
+                  {/* BAGIAN KONTEN TEKS */}
+                  <div className="px-6 md:px-12 py-10">
+                    <Badge variant="secondary" className="mb-4 px-3 py-1 uppercase tracking-wider text-xs">
+                      {article.category?.name || "Umum"}
+                    </Badge>
+                    
+                    <h1 className="text-3xl md:text-4xl font-extrabold mb-6 leading-tight tracking-tight">
                       {article.title}
                     </h1>
                     
-                    <div className="flex flex-wrap gap-6 text-sm text-muted-foreground mb-8 pb-6 border-b">
+                    <div className="flex flex-wrap gap-6 text-sm text-muted-foreground mb-8 pb-6 border-b border-border/50">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-primary" />
-                        {new Date(article.created_at).toLocaleDateString("id-ID", {
-                          day: "numeric", month: "long", year: "numeric"
-                        })}
+                        <span className="font-medium">
+                          {new Date(article.created_at).toLocaleDateString("id-ID", {
+                            day: "numeric", month: "long", year: "numeric"
+                          })}
+                        </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-primary" />
-                        <span>{article.author?.name || article.user?.name || "Admin MEJATIKA"}</span>
+                        <span className="font-medium">
+                          {article.author?.name || article.user?.name || "Admin MEJATIKA"}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="prose prose-lg max-w-none">
-                      <div className="whitespace-pre-line leading-relaxed text-foreground/90">
+                    <div className="prose prose-lg dark:prose-invert max-w-none">
+                      <div className="whitespace-pre-line leading-relaxed text-foreground/90 text-lg md:text-xl">
                         {article.content}
                       </div>
                     </div>
