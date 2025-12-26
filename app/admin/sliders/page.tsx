@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import Swal from "sweetalert2"
 
 type Slider = {
   id: number
   title: string
   description?: string
   image: string
-  link?: string
   active?: boolean
 }
 
@@ -20,11 +18,10 @@ export default function SlidersPage() {
   const [sliders, setSliders] = useState<Slider[]>([])
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
-  const [link, setLink] = useState("")
   const [active, setActive] = useState(true)
   const [image, setImage] = useState<File | null>(null)
   const [editing, setEditing] = useState<Slider | null>(null)
-  const [open, setOpen] = useState(false) // kontrol modal
+  const [open, setOpen] = useState(false)
 
   const fetchSliders = async () => {
     const res = await fetch("https://backend.mejatika.com/api/sliders", {
@@ -43,7 +40,6 @@ export default function SlidersPage() {
     const formData = new FormData()
     if (title) formData.append("title", title)
     if (description) formData.append("description", description)
-    if (link) formData.append("link", link)
     formData.append("active", active ? "1" : "0")
     if (image) formData.append("image", image)
 
@@ -64,56 +60,33 @@ export default function SlidersPage() {
 
     if (!res.ok) {
       const err = await res.json()
-      console.error("Failed:", err)
-      Swal.fire({
-        icon: "error",
-        title: "Gagal Simpan",
-        text: JSON.stringify(err.errors),
-      })
+      alert("Gagal simpan slider: " + JSON.stringify(err.errors))
       return
     }
 
     // reset form
     setTitle("")
     setDescription("")
-    setLink("")
     setActive(true)
     setImage(null)
     setEditing(null)
-    setOpen(false) // tutup modal
+    setOpen(false)
     fetchSliders()
 
-    Swal.fire({
-      icon: "success",
-      title: editing ? "Slider berhasil diupdate!" : "Slider berhasil disimpan!",
-      showConfirmButton: false,
-      timer: 1500,
-    })
+    alert(editing ? "Slider berhasil diupdate!" : "Slider berhasil disimpan!")
   }
 
   const handleDelete = async (id: number) => {
-    const confirm = await Swal.fire({
-      title: "Yakin hapus slider?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Ya, hapus",
-      cancelButtonText: "Batal",
-    })
-
-    if (!confirm.isConfirmed) return
-
-    await fetch(`https://backend.mejatika.com/api/sliders/${id}`, {
+    const res = await fetch(`https://backend.mejatika.com/api/sliders/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
-    fetchSliders()
-
-    Swal.fire({
-      icon: "success",
-      title: "Slider berhasil dihapus!",
-      showConfirmButton: false,
-      timer: 1500,
-    })
+    if (res.ok) {
+      fetchSliders()
+      alert("Slider berhasil dihapus!")
+    } else {
+      alert("Gagal hapus slider")
+    }
   }
 
   return (
@@ -146,7 +119,6 @@ export default function SlidersPage() {
                     setEditing(s)
                     setTitle(s.title)
                     setDescription(s.description || "")
-                    setLink(s.link || "")
                     setActive(s.active ?? true)
                     setOpen(true)
                   }}
@@ -179,10 +151,6 @@ export default function SlidersPage() {
             <div>
               <Label>Deskripsi</Label>
               <Input value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-            <div>
-              <Label>Link</Label>
-              <Input value={link} onChange={(e) => setLink(e.target.value)} />
             </div>
             <div>
               <Label>Aktif</Label>
