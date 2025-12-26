@@ -7,29 +7,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const limit = searchParams.get("limit")
 
-    // Ambil data langsung dari Laravel
     const res = await fetch(LARAVEL_API_URL, {
-      next: { revalidate: 10 } // Cache singkat 10 detik
+      cache: 'no-store' // Memastikan data berita di halaman utama selalu segar
     })
     
     if (!res.ok) throw new Error("Gagal mengambil data dari Laravel")
     
     let news = await res.json()
 
-    // Jika ada limit, kita potong array-nya
     if (limit) {
       news = news.slice(0, Number.parseInt(limit))
     }
 
-    // Sesuaikan format data Laravel ke format yang diharapkan Frontend
     const formattedNews = news.map((item: any) => ({
       ...item,
-      // Map properti snake_case Laravel ke camelCase Next.js jika diperlukan
+      // Mapping agar komponen UI tidak error mencari property ini
       categoryId: item.category_id,
-      publishedAt: item.created_at,
+      publishedAt: item.created_at, 
       author: {
-        id: 1, // Default jika Laravel belum mengirim data User
-        name: "Admin MEJATIKA",
+        id: item.user_id || 1,
+        name: item.author?.name || item.user?.name || "Admin MEJATIKA",
         avatar: "/placeholder-user.jpg",
       },
     }))
@@ -40,34 +37,14 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json()
-    const token = request.headers.get("Authorization") // Teruskan token admin
-
-    const res = await fetch(LARAVEL_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": token || "",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify(body)
-    })
-
-    const data = await res.json()
-    return NextResponse.json(data, { status: res.status })
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to create news" }, { status: 500 })
-  }
-}
-
+// DELETE harus bisa menangani ID dari database Laravel
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
     const token = request.headers.get("Authorization")
 
+    // Pastikan endpoint Laravel Anda menerima DELETE di api/news/{id}
     const res = await fetch(`${LARAVEL_API_URL}/${id}`, {
       method: "DELETE",
       headers: {
@@ -79,7 +56,9 @@ export async function DELETE(request: Request) {
     if (res.ok) {
       return NextResponse.json({ success: true })
     } else {
-      return NextResponse.json({ error: "Gagal menghapus" }, { status: res.status })
+      // Mengambil pesan error dari Laravel jika gagal (misal: 401 Unauthorized)
+      const errorData = await res.json();
+      return NextResponse.json({ error: errorData.message || "Gagal menghapus" }, { status: res.status })
     }
   } catch (error) {
     return NextResponse.json({ error: "Failed to delete news" }, { status: 500 })
