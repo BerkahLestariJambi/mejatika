@@ -16,17 +16,17 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar, User, ArrowRight, Loader2 } from "lucide-react"
 
 export default function BeritaPage() {
-  // State untuk daftar berita
+  // State untuk daftar berita utama
   const [news, setNews] = useState([])
   const [loadingList, setLoadingList] = useState(true)
 
-  // State untuk Modal Detail
+  // State untuk kontrol Modal Popup
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [article, setArticle] = useState<any>(null)
   const [loadingDetail, setLoadingDetail] = useState(false)
 
-  // 1. Ambil daftar berita saat halaman dimuat
+  // 1. Fetch daftar berita saat halaman pertama kali dibuka
   useEffect(() => {
     fetch("https://backend.mejatika.com/api/news")
       .then((res) => res.json())
@@ -37,11 +37,11 @@ export default function BeritaPage() {
       .catch(() => setLoadingList(false))
   }, [])
 
-  // 2. Ambil detail berita saat tombol diklik (Popup dibuka)
+  // 2. Fetch detail berita hanya saat Modal dibuka
   useEffect(() => {
     if (selectedSlug && isModalOpen) {
       setLoadingDetail(true)
-      setArticle(null) // Reset data lama
+      setArticle(null) 
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
         .then((res) => res.json())
         .then((data) => {
@@ -52,33 +52,28 @@ export default function BeritaPage() {
     }
   }, [selectedSlug, isModalOpen])
 
-  const handleOpenDetail = (slug: string) => {
-    setSelectedSlug(slug)
-    setIsModalOpen(true)
-  }
-
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navigation />
       
       <main className="flex-grow container mx-auto px-4 py-8">
         <div className="mb-10">
-          <h1 className="text-4xl font-extrabold tracking-tight">Berita & Artikel</h1>
+          <h1 className="text-4xl font-extrabold">Berita & Artikel</h1>
           <p className="text-muted-foreground mt-2">Update informasi terbaru dari MEJATIKA</p>
         </div>
 
-        {/* LIST BERITA */}
+        {/* MENAMPILKAN DAFTAR BERITA */}
         {loadingList ? (
           <div className="flex justify-center py-20"><Loader2 className="animate-spin" /></div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {news.map((item: any) => (
-              <Card key={item.id} className="group overflow-hidden flex flex-col border-none shadow-md hover:shadow-xl transition-all">
-                <div className="relative h-52 w-full overflow-hidden bg-muted">
+              <Card key={item.id} className="overflow-hidden flex flex-col shadow-md hover:shadow-xl transition-all">
+                <div className="relative h-52 w-full bg-muted">
                   <img
                     src={item.image || "/placeholder.svg"}
                     alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover"
                   />
                 </div>
                 <CardContent className="p-6 flex flex-col flex-grow">
@@ -87,8 +82,11 @@ export default function BeritaPage() {
                     {item.content}
                   </p>
                   <Button 
-                    onClick={() => handleOpenDetail(item.slug)} 
-                    className="w-full bg-primary hover:bg-primary/90"
+                    onClick={() => {
+                      setSelectedSlug(item.slug);
+                      setIsModalOpen(true);
+                    }} 
+                    className="w-full"
                   >
                     Baca Selengkapnya <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -98,7 +96,7 @@ export default function BeritaPage() {
           </div>
         )}
 
-        {/* POPUP MODAL (FRAME DETAIL) */}
+        {/* POPUP MODAL (INI ADALAH "FRAME" DETAIL BERITA) */}
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden border-none shadow-2xl">
             <DialogHeader className="sr-only">
