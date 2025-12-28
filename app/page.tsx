@@ -50,11 +50,19 @@ export default function HomePage() {
     setIsModalOpen(true)
   }
 
-  const getPagedContent = (text: string) => {
-    if (!text || typeof text !== 'string') return ["", "", ""];
-    const part1 = text.match(/[\s\S]{1,900}(?=\s|$)/g) || [text];
+  // PERBAIKAN: Fungsi untuk membersihkan HTML dan membagi konten lebih rapi
+  const getPagedContent = (htmlContent: string) => {
+    if (!htmlContent) return ["", "", ""];
+    
+    // Membuat div sementara untuk memproses text tanpa tag HTML yang rusak
+    const div = document.createElement("div");
+    div.innerHTML = htmlContent;
+    const text = div.innerText || div.textContent || "";
+
+    const part1 = text.match(/[\s\S]{1,800}(?=\s|$)/g) || [text];
     const remaining = text.substring(part1[0].length);
-    const otherParts = remaining.match(/[\s\S]{1,1100}(?=\s|$)/g) || [""];
+    const otherParts = remaining.match(/[\s\S]{1,1000}(?=\s|$)/g) || [""];
+    
     return [part1[0] || "", otherParts[0] || "", otherParts[1] || ""];
   }
 
@@ -96,12 +104,12 @@ export default function HomePage() {
             <div className="flex flex-row w-full h-full bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-2xl overflow-hidden border border-white/10 relative">
               
               {/* --- HALAMAN KIRI --- */}
-              <div className="flex-1 h-full flex flex-col border-r border-black/10 relative overflow-hidden">
-                <div className="flex-grow p-10 lg:p-14 overflow-hidden">
+              <div className="flex-1 h-full flex flex-col border-r border-black/10 relative overflow-hidden bg-white dark:bg-zinc-950">
+                <div className="flex-grow p-10 lg:p-14 overflow-y-auto">
                   {currentPage === 1 ? (
                     <div className="space-y-6">
                       <Badge className="w-fit uppercase tracking-widest font-bold px-3 py-1 text-[10px]">{article.category?.name}</Badge>
-                      <h1 className="text-xl lg:text-3xl font-black uppercase leading-tight italic tracking-tighter">{article.title}</h1>
+                      <h1 className="text-xl lg:text-3xl font-black uppercase leading-tight italic tracking-tighter text-zinc-900 dark:text-white">{article.title}</h1>
                       <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-md ring-1 ring-black/5">
                         <img src={article.image} className="w-full h-full object-cover" alt="cover" />
                       </div>
@@ -111,8 +119,10 @@ export default function HomePage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="prose prose-sm lg:prose-base dark:prose-invert max-w-none text-justify leading-relaxed">
-                      {getPagedContent(article.content)[1]}
+                    <div className="prose prose-sm lg:prose-base dark:prose-invert max-w-none text-justify leading-relaxed text-zinc-700 dark:text-zinc-300">
+                      {/* Gunakan dangerouslySetInnerHTML jika ingin tetap ada format HTML, 
+                          tapi untuk kebersihan layout majalah, teks bersih lebih baik */}
+                      <p className="whitespace-pre-line">{getPagedContent(article.content)[1]}</p>
                     </div>
                   )}
                 </div>
@@ -130,16 +140,16 @@ export default function HomePage() {
 
               {/* --- HALAMAN KANAN --- */}
               <div className="flex-1 h-full flex flex-col bg-zinc-50/40 dark:bg-zinc-900/10 relative overflow-hidden">
-                <div className="flex-grow p-10 lg:p-14 pb-32 lg:pb-40 overflow-hidden">
-                  <div className="prose prose-sm lg:prose-base dark:prose-invert max-w-none text-justify leading-relaxed">
+                <div className="flex-grow p-10 lg:p-14 pb-32 lg:pb-40 overflow-y-auto">
+                  <div className="prose prose-sm lg:prose-base dark:prose-invert max-w-none text-justify leading-relaxed text-zinc-700 dark:text-zinc-300">
                     {currentPage === 1 ? (
-                      getPagedContent(article.content)[0]
+                      <p className="whitespace-pre-line">{getPagedContent(article.content)[0]}</p>
                     ) : (
                       <div className="flex flex-col h-full gap-6">
-                        {/* Konten Utama */}
-                        <div>{getPagedContent(article.content)[2]}</div>
+                        <div>
+                          <p className="whitespace-pre-line">{getPagedContent(article.content)[2]}</p>
+                        </div>
                         
-                        {/* --- KUTIPAN (QUOTE) DI AKHIR --- */}
                         {article.quote && (
                           <div className="relative py-4 px-6 border-l-4 border-primary bg-primary/5 rounded-r-xl italic shadow-sm">
                             <Quote className="absolute top-2 right-3 w-6 h-6 opacity-20 text-primary" />
@@ -149,12 +159,10 @@ export default function HomePage() {
                           </div>
                         )}
 
-                        {/* Ucapan Terima Kasih */}
                         <p className="font-black italic text-primary uppercase tracking-tighter text-center py-2 border-y border-primary/10">
                           Terima kasih sudah membaca!
                         </p>
 
-                        {/* --- CARD SHARE TERPISAH --- */}
                         <div className="bg-white dark:bg-zinc-900 border border-black/5 dark:border-white/5 rounded-2xl p-4 shadow-xl flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="bg-primary/10 p-2 rounded-lg">
@@ -174,7 +182,7 @@ export default function HomePage() {
                 </div>
 
                 <div className="absolute bottom-0 left-0 right-0 h-20 px-10 lg:px-14 bg-gradient-to-t from-white via-white dark:from-zinc-950 flex items-center justify-between z-50">
-                  <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest">PAGE {currentPage === 1 ? "02" : "04"}</span>
+                  <span className="text-[10px] font-bold opacity-30 uppercase tracking-widest text-zinc-900 dark:text-white">PAGE {currentPage === 1 ? "02" : "04"}</span>
                   <div className="flex gap-3">
                     {currentPage === 2 && (
                       <Button onClick={() => setCurrentPage(1)} variant="outline" size="sm" className="rounded-full font-bold uppercase text-[9px] px-6 h-9 border-2">
@@ -182,7 +190,7 @@ export default function HomePage() {
                       </Button>
                     )}
                     {currentPage === 1 && (
-                      <Button onClick={() => setCurrentPage(2)} className="rounded-xl h-10 px-6 bg-primary font-black text-[9px] tracking-widest uppercase">
+                      <Button onClick={() => setCurrentPage(2)} className="rounded-xl h-10 px-6 bg-primary font-black text-[9px] tracking-widest uppercase text-white">
                         Halaman Berikutnya <ChevronRight className="w-4 h-4 ml-1" />
                       </Button>
                     )}
