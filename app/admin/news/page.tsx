@@ -96,18 +96,16 @@ export default function NewsManagementPage() {
       formData.append("image", image);
     }
 
-    // Penentuan URL: Gunakan ID untuk update agar tidak kena Error 405
     let url = "https://backend.mejatika.com/api/news";
     
     if (editing) {
-      // Sama seperti SlidersPage: Target ID + Method Spoofing PUT
       url = `https://backend.mejatika.com/api/news/${editing.id}`;
       formData.append("_method", "PUT");
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Selalu POST untuk kirim FormData
+        method: "POST",
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`,
           "Accept": "application/json"
@@ -136,9 +134,9 @@ export default function NewsManagementPage() {
     }
   }
 
-  const handleDelete = async (slug: string) => {
+  const handleDelete = async (id: number) => {
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/news/${slug}`, {
+      const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
         method: "DELETE",
         headers: getAuthHeader(),
       });
@@ -279,7 +277,7 @@ export default function NewsManagementPage() {
                               <AlertDialogCancel>Batal</AlertDialogCancel>
                               <AlertDialogAction 
                                 className="bg-red-600 hover:bg-red-700"
-                                onClick={() => handleDelete(article.slug)}
+                                onClick={() => handleDelete(article.id)}
                               >
                                 Ya, Hapus
                               </AlertDialogAction>
