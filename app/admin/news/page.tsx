@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Edit, Trash2, Loader2, Image as ImageIcon, X } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import {
@@ -22,6 +21,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
+// --- IMPORT REACT QUILL DINAMIS ---
+import dynamic from 'next/dynamic'
+const ReactQuill = dynamic(() => import('react-quill'), { 
+  ssr: false,
+  loading: () => <div className="h-40 w-full bg-muted animate-pulse rounded-md" />
+})
+import 'react-quill/dist/quill.snow.css'
+
 export default function NewsManagementPage() {
   const [news, setNews] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([])
@@ -31,19 +38,30 @@ export default function NewsManagementPage() {
   // Form States
   const [editing, setEditing] = useState<any | null>(null)
   const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [quote, setQuote] = useState("")
+  const [content, setContent] = useState("") // Akan berisi HTML string
+  const [quote, setQuote] = useState("")     // Akan berisi HTML string
   const [image, setImage] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null) // State untuk Preview
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState("")
   
   const { toast } = useToast()
+
+  // Konfigurasi Toolbar Editor
+  const modules = useMemo(() => ({
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      [{ 'align': [] }],
+      ['link', 'clean']
+    ],
+  }), [])
 
   // Handle Image Change & Preview
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
     setImage(file)
-
     if (file) {
       const url = URL.createObjectURL(file)
       setPreviewUrl(url)
@@ -62,7 +80,6 @@ export default function NewsManagementPage() {
     setEditing(null)
   }
 
-  // Helpers
   const getAuthHeader = () => ({
     "Authorization": `Bearer ${localStorage.getItem("token")}`,
     "Accept": "application/json"
@@ -73,23 +90,17 @@ export default function NewsManagementPage() {
       const res = await fetch("https://backend.mejatika.com/api/news");
       const data = await res.json();
       setNews(Array.isArray(data) ? data : []);
-    } catch (err) { 
-      console.error("Fetch News Error:", err); 
-    }
+    } catch (err) { console.error(err); }
   }
 
   const fetchCategories = async () => {
     try {
-      const res = await fetch("https://backend.mejatika.com/api/categories", {
-        headers: getAuthHeader(),
-      });
+      const res = await fetch("https://backend.mejatika.com/api/categories", { headers: getAuthHeader() });
       if (res.ok) {
         const data = await res.json();
         setCategories(Array.isArray(data) ? data : []);
       }
-    } catch (err) { 
-      console.error("Fetch Categories Error:", err); 
-    }
+    } catch (err) { console.error(err); }
   }
 
   useEffect(() => {
@@ -103,7 +114,7 @@ export default function NewsManagementPage() {
 
     const formData = new FormData();
     formData.append("title", title);
-    formData.append("content", content);
+    formData.append("content", content); // Mengirim HTML string
     formData.append("quote", quote || "");
     formData.append("category_id", categoryId);
     
@@ -120,10 +131,7 @@ export default function NewsManagementPage() {
     try {
       const res = await fetch(url, {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-          "Accept": "application/json"
-        },
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}`, "Accept": "application/json" },
         body: formData,
       });
 
@@ -164,22 +172,31 @@ export default function NewsManagementPage() {
           <DialogTrigger asChild>
             <Button className="font-semibold"><Plus className="mr-2 h-4 w-4" /> Tambah Berita</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[95vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editing ? "Edit Artikel Berita" : "Buat Artikel Baru"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+            <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+              
               <div className="space-y-2">
-                <Label>Judul Berita</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+                <Label className="text-base">Judul Berita</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Masukkan judul utama..." required />
               </div>
 
               <div className="space-y-2">
-                <Label>Konten Utama</Label>
-                <Textarea value={content} onChange={(e) => setContent(e.target.value)} required className="min-h-[150px]" />
+                <Label className="text-base">Konten Utama</Label>
+                <div className="prose-editor">
+                  <ReactQuill 
+                    theme="snow" 
+                    value={content} 
+                    onChange={setContent} 
+                    modules={modules}
+                    className="h-64 mb-12"
+                  />
+                </div>
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
                 <div className="space-y-2">
                   <Label>Kategori</Label>
                   <select 
@@ -193,62 +210,56 @@ export default function NewsManagementPage() {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Kutipan (Optional)</Label>
-                  <Input value={quote} onChange={(e) => setQuote(e.target.value)} />
+                  <Label>Kutipan Singkat (Optional)</Label>
+                  <div className="h-24">
+                     <ReactQuill 
+                        theme="snow" 
+                        value={quote} 
+                        onChange={setQuote}
+                        modules={{ toolbar: [['bold', 'italic', 'underline']] }}
+                        className="h-16"
+                     />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <Label>Gambar Unggulan</Label>
-                
-                {/* PREVIEW BOX */}
-                <div className="relative mt-2 border-2 border-dashed rounded-lg p-4 flex flex-col items-center justify-center bg-muted/30 min-h-[200px]">
+              <div className="space-y-3 pt-4">
+                <Label className="text-base">Gambar Unggulan</Label>
+                <div className="relative border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center bg-muted/30 min-h-[200px]">
                   {previewUrl ? (
-                    <div className="relative w-full">
-                      <img 
-                        src={previewUrl} 
-                        alt="Preview" 
-                        className="max-h-[250px] w-full object-contain rounded-md" 
-                      />
+                    <div className="relative w-full flex justify-center">
+                      <img src={previewUrl} className="max-h-[300px] rounded-lg shadow-md" alt="Preview" />
                       <Button 
-                        type="button" 
-                        variant="destructive" 
-                        size="icon" 
-                        className="absolute -top-2 -right-2 h-7 w-7 rounded-full shadow-lg"
+                        type="button" variant="destructive" size="icon" 
+                        className="absolute -top-3 -right-3 rounded-full"
                         onClick={() => { setImage(null); setPreviewUrl(editing?.image || null); }}
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
                   ) : (
-                    <div className="text-center space-y-2">
-                      <ImageIcon className="h-10 w-10 text-muted-foreground mx-auto" />
-                      <p className="text-xs text-muted-foreground italic">Belum ada gambar dipilih</p>
+                    <div className="text-center text-muted-foreground">
+                      <ImageIcon className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Klik input di bawah untuk pilih gambar</p>
                     </div>
                   )}
                 </div>
-
-                <Input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleImageChange} 
-                  className="cursor-pointer"
-                />
+                <Input type="file" accept="image/*" onChange={handleImageChange} className="mt-2" />
               </div>
 
-              <Button type="submit" className="w-full h-12 font-bold" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "Simpan Perubahan" : "Publikasikan Berita"}
+              <Button type="submit" className="w-full h-14 text-lg font-bold" disabled={loading}>
+                {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "Update Berita" : "Terbitkan Berita Sekarang"}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card className="shadow-sm">
+      <Card className="shadow-md">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
-              <thead className="bg-muted/50 text-muted-foreground font-medium border-b">
+              <thead className="bg-muted/50 text-muted-foreground font-semibold border-b">
                 <tr>
                   <th className="p-4 w-24">Gambar</th>
                   <th className="p-4">Informasi Berita</th>
@@ -257,31 +268,29 @@ export default function NewsManagementPage() {
               </thead>
               <tbody className="divide-y">
                 {news.map((article) => (
-                  <tr key={article.id} className="hover:bg-muted/20 transition-colors">
+                  <tr key={article.id} className="hover:bg-muted/10 transition-colors">
                     <td className="p-4">
-                      <img 
-                        src={article.image || "/placeholder.svg"} 
-                        className="h-16 w-16 object-cover rounded-md border" 
-                      />
+                      <img src={article.image || "/placeholder.svg"} className="h-16 w-16 object-cover rounded-lg border shadow-sm" />
                     </td>
-                    <td className="p-4 font-medium">
-                        {article.title}
-                        <Badge className="ml-2 bg-blue-100 text-blue-700 hover:bg-blue-100">
-                            {categories.find(c => c.id === Number(article.category_id))?.name || "News"}
+                    <td className="p-4">
+                      <div className="font-bold text-base text-slate-800">{article.title}</div>
+                      <div className="flex gap-2 mt-1">
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200">
+                          {categories.find(c => c.id === Number(article.category_id))?.name || "General"}
                         </Badge>
+                      </div>
                     </td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end gap-2">
                         <Button
-                          variant="ghost"
-                          size="icon"
+                          variant="outline" size="icon" className="text-blue-600 border-blue-200 bg-blue-50/50"
                           onClick={() => {
                             setEditing(article);
                             setTitle(article.title);
                             setContent(article.content);
                             setQuote(article.quote || "");
                             setCategoryId(String(article.category_id));
-                            setPreviewUrl(article.image); // Set preview ke gambar lama saat edit
+                            setPreviewUrl(article.image);
                             setOpenForm(true);
                           }}
                         >
@@ -290,13 +299,13 @@ export default function NewsManagementPage() {
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                            <Button variant="outline" size="icon" className="text-red-600 border-red-200 bg-red-50/50"><Trash2 className="h-4 w-4" /></Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
-                            <AlertDialogHeader><AlertDialogTitle>Hapus?</AlertDialogTitle></AlertDialogHeader>
+                            <AlertDialogHeader><AlertDialogTitle>Hapus Berita?</AlertDialogTitle></AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Batal</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(article.id)}>Ya</AlertDialogAction>
+                              <AlertDialogAction onClick={() => handleDelete(article.id)} className="bg-red-600">Ya, Hapus</AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
