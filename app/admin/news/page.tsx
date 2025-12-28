@@ -8,6 +8,7 @@ import { Plus, Edit, Trash2, Loader2 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
 import {
   AlertDialog,
@@ -33,7 +34,7 @@ export default function NewsManagementPage() {
   const [quote, setQuote] = useState("")
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
-  const [categoryId, setCategoryId] = useState<number | null>(null)
+  const [categoryId, setCategoryId] = useState<string>("")
   
   const { toast } = useToast()
 
@@ -48,7 +49,7 @@ export default function NewsManagementPage() {
       const data = await res.json();
       setNews(Array.isArray(data) ? data : []);
     } catch (err) { 
-        console.error("Fetch News Error:", err); 
+      console.error("Fetch News Error:", err); 
     }
   }
 
@@ -62,7 +63,7 @@ export default function NewsManagementPage() {
         setCategories(Array.isArray(data) ? data : []);
       }
     } catch (err) { 
-        console.error("Fetch Categories Error:", err); 
+      console.error("Fetch Categories Error:", err); 
     }
   }
 
@@ -77,7 +78,7 @@ export default function NewsManagementPage() {
     setQuote("");
     setImage(null); 
     setPreview(null); 
-    setCategoryId(null); 
+    setCategoryId(""); 
     setEditing(null);
   }
 
@@ -85,34 +86,29 @@ export default function NewsManagementPage() {
     e.preventDefault();
     setLoading(true);
 
-    if (!categoryId) {
-      setLoading(false);
-      return toast({ title: "Kategori wajib dipilih", variant: "destructive" });
-    }
-
     const formData = new FormData();
     formData.append("title", title);
     formData.append("content", content);
     formData.append("quote", quote || "");
-    formData.append("category_id", String(categoryId));
+    formData.append("category_id", categoryId);
     
-    // Hanya append image jika user memilih file baru
     if (image) {
-        formData.append("image", image);
+      formData.append("image", image);
     }
 
     let url = "https://backend.mejatika.com/api/news";
-    
+    let method = "POST"; // Default untuk tambah
+
     if (editing) {
-      // 1. URL menggunakan SLUG
-      url = `${url}/${editing.slug}`; 
-      // 2. Method Spoofing agar Laravel mengenali PUT dalam body POST (Multipart)
+      // Mengikuti pola SlidersPage: URL ke slug, method POST + spoofing PUT
+      url = `https://backend.mejatika.com/api/news/${editing.slug}`;
       formData.append("_method", "PUT");
+      method = "POST"; 
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Selalu POST untuk kirim FormData dengan file
+        method: method,
         headers: {
           "Authorization": `Bearer ${localStorage.getItem("token")}`,
           "Accept": "application/json"
@@ -123,15 +119,18 @@ export default function NewsManagementPage() {
       const result = await res.json();
 
       if (res.ok) {
-        toast({ title: editing ? "Berhasil diperbarui!" : "Berhasil disimpan!" });
+        toast({ 
+          title: editing ? "Berhasil diperbarui!" : "Berhasil disimpan!",
+          description: "Data berita telah sinkron dengan server."
+        });
         resetForm(); 
         setOpenForm(false); 
         fetchNews();
       } else {
         toast({ 
-            title: "Gagal menyimpan", 
-            description: result.message || "Periksa kembali data Anda", 
-            variant: "destructive" 
+          title: "Gagal menyimpan", 
+          description: result.message || JSON.stringify(result.errors), 
+          variant: "destructive" 
         });
       }
     } catch (error) { 
@@ -148,7 +147,7 @@ export default function NewsManagementPage() {
         headers: getAuthHeader(),
       });
       if (res.ok) { 
-        toast({ title: "Berhasil dihapus!" }); 
+        toast({ title: "Berhasil dihapus!", description: "Artikel telah dihapus selamanya." }); 
         fetchNews(); 
       } else {
         toast({ title: "Gagal menghapus", variant: "destructive" });
@@ -159,7 +158,7 @@ export default function NewsManagementPage() {
   }
 
   return (
-    <div className="space-y-6 p-4">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">News Management</h1>
         <Dialog open={openForm} onOpenChange={(open) => { setOpenForm(open); if(!open) resetForm(); }}>
@@ -172,26 +171,26 @@ export default function NewsManagementPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 pt-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Judul Berita</label>
+                <Label>Judul Berita</Label>
                 <Input placeholder="Masukkan judul..." value={title} onChange={(e) => setTitle(e.target.value)} required />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Konten Utama</label>
+                <Label>Konten Utama</Label>
                 <Textarea placeholder="Tulis isi berita..." value={content} onChange={(e) => setContent(e.target.value)} required className="min-h-[150px]" />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Kutipan (Quote)</label>
-                <Textarea placeholder="Kutipan menarik (opsional)..." value={quote} onChange={(e) => setQuote(e.target.value)} />
+                <Label>Kutipan (Quote)</Label>
+                <Input placeholder="Kutipan menarik (opsional)..." value={quote} onChange={(e) => setQuote(e.target.value)} />
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-medium">Kategori</label>
+                <Label>Kategori</Label>
                 <select 
-                    className="w-full border rounded-md p-2 bg-background" 
-                    value={categoryId ?? ""} 
-                    onChange={(e) => setCategoryId(Number(e.target.value))} 
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+                    value={categoryId} 
+                    onChange={(e) => setCategoryId(e.target.value)} 
                     required
                 >
                     <option value="">Pilih Kategori</option>
@@ -200,7 +199,7 @@ export default function NewsManagementPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium">Gambar Unggulan</label>
+                <Label>Gambar Unggulan</Label>
                 <Input type="file" accept="image/*" onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     setImage(file);
@@ -215,7 +214,7 @@ export default function NewsManagementPage() {
               </div>
 
               <Button type="submit" className="w-full h-12 font-bold mt-4" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "Update Sekarang" : "Simpan Berita"}
+                {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "Update Berita" : "Simpan Berita"}
               </Button>
             </form>
           </DialogContent>
@@ -237,7 +236,7 @@ export default function NewsManagementPage() {
                   <div className="flex justify-between items-start">
                     <h3 className="font-bold text-lg leading-tight line-clamp-1">{article.title}</h3>
                     <Badge variant="secondary" className="ml-2 whitespace-nowrap">
-                        {categories.find(c => c.id === article.category_id)?.name || "Kategori"}
+                        {categories.find(c => c.id === Number(article.category_id))?.name || "Kategori"}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2">{article.content}</p>
@@ -251,7 +250,7 @@ export default function NewsManagementPage() {
                         setTitle(article.title);
                         setContent(article.content);
                         setQuote(article.quote || "");
-                        setCategoryId(article.category_id);
+                        setCategoryId(String(article.category_id));
                         setPreview(article.image);
                         setOpenForm(true);
                       }}
@@ -269,7 +268,7 @@ export default function NewsManagementPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Hapus Berita Ini?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Tindakan ini permanen. Judul: <strong>{article.title}</strong>
+                            Tindakan ini tidak dapat dibatalkan. Judul: <strong>{article.title}</strong>
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -278,7 +277,7 @@ export default function NewsManagementPage() {
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             onClick={() => handleDelete(article.slug)}
                           >
-                            Hapus
+                            Ya, Hapus
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
