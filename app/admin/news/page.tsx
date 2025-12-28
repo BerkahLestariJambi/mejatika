@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Loader2, Image as ImageIcon, X } from "lucide-react"
+import { Plus, Edit, Trash2, Loader2, Image as ImageIcon, Calendar, Tag } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -46,14 +46,11 @@ export default function NewsManagementPage() {
   
   const { toast } = useToast()
 
-  // Toolbar Configuration
   const modules = useMemo(() => ({
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
       ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
       [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      [{ 'align': [] }],
       ['link', 'clean']
     ],
   }), [])
@@ -68,15 +65,6 @@ export default function NewsManagementPage() {
     setEditing(null)
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    setImage(file)
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-    }
-  };
-
   const fetchNews = async () => {
     try {
       const res = await fetch("https://backend.mejatika.com/api/news");
@@ -87,8 +75,9 @@ export default function NewsManagementPage() {
 
   const fetchCategories = async () => {
     try {
+      const token = localStorage.getItem("token");
       const res = await fetch("https://backend.mejatika.com/api/categories", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+        headers: { "Authorization": `Bearer ${token}` }
       });
       const data = await res.json();
       setCategories(Array.isArray(data) ? data : []);
@@ -125,117 +114,190 @@ export default function NewsManagementPage() {
       });
 
       if (res.ok) {
-        toast({ title: "Berhasil disimpan!" });
+        toast({ title: "Berhasil!", description: "Data berita telah diperbarui." });
         setOpenForm(false);
         resetForm();
         fetchNews();
       }
     } catch (error) {
-      toast({ title: "Error", variant: "destructive" });
+      toast({ title: "Gagal", variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/news/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+      });
+      if (res.ok) {
+        toast({ title: "Terhapus", description: "Berita telah dihapus." });
+        fetchNews();
+      }
+    } catch (error) {
+      toast({ title: "Gagal menghapus", variant: "destructive" });
     }
   }
 
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Kelola Berita</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Kelola Berita</h1>
+          <p className="text-muted-foreground">Atur publikasi berita dan artikel Anda di sini.</p>
+        </div>
         <Dialog open={openForm} onOpenChange={(open) => { setOpenForm(open); if(!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" /> Tambah Berita</Button>
+            <Button className="bg-primary hover:bg-primary/90 shadow-md">
+              <Plus className="mr-2 h-4 w-4" /> Tambah Berita
+            </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
             <DialogHeader>
-              <DialogTitle>{editing ? "Edit Berita" : "Tambah Berita"}</DialogTitle>
+              <DialogTitle className="text-xl font-bold">{editing ? "Edit Berita" : "Buat Berita Baru"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label>Judul</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Konten Utama</Label>
-                <div className="prose-editor">
-                  <ReactQuill theme="snow" value={content} onChange={setContent} modules={modules} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Kategori</Label>
+                  <Label className="font-semibold">Judul Berita</Label>
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Masukkan judul..." className="focus:ring-primary" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold">Kategori</Label>
                   <select 
-                    className="w-full p-2 border rounded-md bg-background"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus:border-primary"
                     value={categoryId} 
                     onChange={(e) => setCategoryId(e.target.value)} 
                     required
                   >
                     <option value="">Pilih Kategori</option>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
                   </select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Kutipan (Rich Text)</Label>
-                  <div className="prose-editor h-32">
-                    <ReactQuill 
-                        theme="snow" 
-                        value={quote} 
-                        onChange={setQuote} 
-                        modules={{ toolbar: [['bold', 'italic', 'underline']] }} 
-                        className="h-20"
-                    />
-                  </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label>Gambar</Label>
-                {previewUrl && <img src={previewUrl} className="h-40 w-full object-cover rounded-md mb-2" />}
-                <Input type="file" accept="image/*" onChange={handleImageChange} />
+                <Label className="font-semibold">Isi Berita</Label>
+                <div className="prose-editor">
+                  <ReactQuill theme="snow" value={content} onChange={setContent} modules={modules} />
+                </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin" /> : "Simpan Berita"}
-              </Button>
+              <div className="space-y-2">
+                <Label className="font-semibold">Kutipan Singkat (Quote)</Label>
+                <div className="prose-editor h-28">
+                  <ReactQuill theme="snow" value={quote} onChange={setQuote} className="h-20" modules={{ toolbar: [['bold', 'italic']] }} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="font-semibold">Gambar Utama</Label>
+                {previewUrl && <img src={previewUrl} className="h-48 w-full object-cover rounded-xl border shadow-sm mb-2" alt="Preview" />}
+                <Input type="file" accept="image/*" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    setImage(file);
+                    setPreviewUrl(URL.createObjectURL(file));
+                  }
+                }} className="cursor-pointer" />
+              </div>
+
+              <div className="pt-4">
+                <Button type="submit" className="w-full text-lg h-12 shadow-lg" disabled={loading}>
+                  {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "Perbarui Berita" : "Publikasikan Berita"}
+                </Button>
+              </div>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Tabel News tetap sama seperti sebelumnya */}
-      <Card>
-        <CardContent className="p-0">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-muted">
-              <tr>
-                <th className="p-4">Gambar</th>
-                <th className="p-4">Judul</th>
-                <th className="p-4 text-right">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {news.map((item) => (
-                <tr key={item.id} className="border-b">
-                  <td className="p-4"><img src={item.image} className="h-12 w-12 object-cover rounded" /></td>
-                  <td className="p-4 font-medium">{item.title}</td>
-                  <td className="p-4 text-right">
-                    <Button variant="ghost" size="icon" onClick={() => {
-                        setEditing(item);
-                        setTitle(item.title);
-                        setContent(item.content);
-                        setQuote(item.quote || "");
-                        setCategoryId(String(item.category_id));
-                        setPreviewUrl(item.image);
-                        setOpenForm(true);
-                    }}><Edit className="h-4 w-4" /></Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+      {/* CARD LAYOUT UNTUK DAFTAR BERITA */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {news.length === 0 ? (
+          <div className="col-span-full py-20 text-center bg-card border rounded-xl border-dashed">
+            <ImageIcon className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <p className="mt-2 text-muted-foreground">Belum ada berita yang dipublikasikan.</p>
+          </div>
+        ) : (
+          news.map((item) => (
+            <Card key={item.id} className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-border/50">
+              <div className="relative aspect-video overflow-hidden">
+                <img 
+                  src={item.image} 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                  alt={item.title} 
+                />
+                <div className="absolute top-2 left-2">
+                  <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm shadow-sm border-primary/20">
+                    <Tag className="w-3 h-3 mr-1" />
+                    {item.category?.name || "Uncategorized"}
+                  </Badge>
+                </div>
+              </div>
+              <CardHeader className="p-4 space-y-2">
+                <CardTitle className="line-clamp-2 text-lg leading-snug group-hover:text-primary transition-colors">
+                  {item.title}
+                </CardTitle>
+                <div className="flex items-center text-xs text-muted-foreground gap-3">
+                  <span className="flex items-center"><Calendar className="w-3 h-3 mr-1" /> {new Date().toLocaleDateString('id-ID')}</span>
+                </div>
+              </CardHeader>
+              <CardFooter className="p-4 pt-0 flex justify-between gap-2 border-t mt-auto bg-muted/20">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="flex-1 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                  onClick={() => {
+                    setEditing(item);
+                    setTitle(item.title);
+                    setContent(item.content);
+                    setQuote(item.quote || "");
+                    setCategoryId(String(item.category_id));
+                    setPreviewUrl(item.image);
+                    setOpenForm(true);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" /> Edit
+                </Button>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="flex-1 hover:bg-red-50 hover:text-red-600 transition-colors text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" /> Hapus
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Hapus Berita?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Apakah Anda yakin? Tindakan ini tidak dapat dibatalkan dan akan menghapus data berita secara permanen.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Batal</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={() => handleDelete(item.id)} 
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Hapus Permanen
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardFooter>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   )
 }
