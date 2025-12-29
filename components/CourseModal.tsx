@@ -4,11 +4,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, DollarSign, Clock, ImagePlus, Globe } from "lucide-react"
+import { Loader2, ImagePlus, Clock, Link as LinkIcon } from "lucide-react"
 
 export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
   const [loading, setLoading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null) // Untuk file gambar
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -40,24 +40,26 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     e.preventDefault()
     setLoading(true)
 
-    const token = localStorage.getItem("token")
-    const API_URL = "https://backend.mejatika.com/api/courses"
-    const url = course ? `${API_URL}/${course.id}` : API_URL
-
+    const token = localStorage.getItem("token") // Solusi Unauthenticated
+    
+    // GUNAKAN FORMDATA AGAR BISA UPLOAD GAMBAR
     const data = new FormData()
     data.append("title", formData.title)
     data.append("slug", formData.slug)
     data.append("description", formData.description || "")
     data.append("category_id", formData.category_id)
     data.append("price", formData.price)
-    data.append("duration", formData.duration) // <--- Memastikan duration terkirim
+    data.append("duration", formData.duration)
     
     if (selectedFile) {
-      data.append("thumbnail", selectedFile) // <--- Memastikan file gambar terkirim
+      data.append("thumbnail", selectedFile)
     }
 
+    const url = course ? `https://backend.mejatika.com/api/courses/${course.id}` : `https://backend.mejatika.com/api/courses`
+    
+    // Trik Laravel: Jika update, gunakan POST + _method PUT agar file terbaca
     if (course) {
-      data.append("_method", "PUT")
+        data.append("_method", "PUT")
     }
 
     try {
@@ -67,18 +69,19 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}` 
         },
-        body: data
+        body: data // Kirim objek FormData langsung
       })
+
+      const result = await res.json()
 
       if (res.ok) {
         onSuccess()
         onClose()
       } else {
-        const result = await res.json()
-        alert("Gagal: " + (result.message || "Periksa kembali data Anda"))
+        alert("Gagal: " + (result.message || "Pastikan login Admin masih aktif"))
       }
     } catch (err) {
-      alert("Kesalahan koneksi ke server Laravel")
+      alert("Gagal terhubung ke API");
     } finally {
       setLoading(false)
     }
@@ -93,101 +96,54 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-5 mt-6 font-bold uppercase tracking-widest text-[10px]">
+        <form onSubmit={handleSubmit} className="space-y-4 mt-6 font-bold uppercase tracking-widest text-[10px]">
           
-          {/* TITLE SECTION */}
+          {/* TITLE & SLUG */}
           <div className="space-y-1">
             <label className="text-zinc-400 ml-2">Course Title</label>
             <Input 
-              placeholder="CONTOH: WEB DEVELOPMENT"
               value={formData.title} 
               onChange={(e) => setFormData({...formData, title: e.target.value, slug: createSlug(e.target.value)})}
-              className="rounded-2xl h-12 border-zinc-100"
-              required 
+              className="rounded-2xl h-12 border-zinc-100" required 
             />
           </div>
 
-          {/* PRICE & DURATION GRID */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-zinc-400 ml-2 flex items-center gap-1">
-                <DollarSign className="w-3 h-3 text-amber-500" /> Price (IDR)
-              </label>
-              <Input 
-                type="number" 
-                placeholder="1500000"
-                value={formData.price} 
-                onChange={(e) => setFormData({...formData, price: e.target.value})} 
-                className="rounded-2xl h-12 border-zinc-100" 
-                required 
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-zinc-400 ml-2 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-amber-500" /> Duration
-              </label>
-              <Input 
-                placeholder="2 BULAN"
-                value={formData.duration} 
-                onChange={(e) => setFormData({...formData, duration: e.target.value})} 
-                className="rounded-2xl h-12 border-zinc-100" 
-                required
-              />
-            </div>
-          </div>
-
-          {/* CATEGORY & SLUG GRID */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-zinc-400 ml-2">Category ID</label>
-              <Input 
-                type="number" 
-                value={formData.category_id} 
-                onChange={(e) => setFormData({...formData, category_id: e.target.value})} 
-                className="rounded-2xl h-12 border-zinc-100" 
-                required 
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-zinc-400 ml-2 flex items-center gap-1">
-                 <Globe className="w-3 h-3 text-amber-500" /> Slug (Auto)
-              </label>
-              <Input value={formData.slug} readOnly className="rounded-2xl h-12 bg-zinc-50 border-none italic text-zinc-500" />
-            </div>
-          </div>
-
-          {/* FILE UPLOAD SECTION */}
           <div className="space-y-1">
-            <label className="text-zinc-400 ml-2 flex items-center gap-1">
-              <ImagePlus className="w-3 h-3 text-amber-500" /> Upload Thumbnail Image
-            </label>
-            <div className="relative">
-              <Input 
-                type="file" 
-                accept="image/*"
-                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                className="rounded-2xl h-14 border-zinc-100 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-amber-100 file:text-amber-700"
-              />
-            </div>
-            {selectedFile && <p className="text-[9px] text-amber-600 mt-1 ml-2">File terpilih: {selectedFile.name}</p>}
+            <label className="text-zinc-400 ml-2 flex items-center gap-1"><LinkIcon size={10}/> Slug (URL)</label>
+            <Input value={formData.slug} onChange={(e) => setFormData({...formData, slug: e.target.value})} className="rounded-2xl h-12 bg-zinc-50 border-none italic text-zinc-400" required />
+          </div>
+          
+          {/* PRICE & DURATION */}
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-1">
+                <label className="text-zinc-400 ml-2">Price (IDR)</label>
+                <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-2xl h-12" required />
+             </div>
+             <div className="space-y-1">
+                <label className="text-zinc-400 ml-2 flex items-center gap-1"><Clock size={10}/> Duration</label>
+                <Input placeholder="MISAL: 2 BULAN" value={formData.duration} onChange={(e) => setFormData({...formData, duration: e.target.value})} className="rounded-2xl h-12" required />
+             </div>
           </div>
 
-          {/* DESCRIPTION */}
+          {/* CATEGORY & UPLOAD */}
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-1">
+                <label className="text-zinc-400 ml-2">Category ID</label>
+                <Input type="number" value={formData.category_id} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className="rounded-2xl h-12" required />
+             </div>
+             <div className="space-y-1">
+                <label className="text-zinc-400 ml-2 flex items-center gap-1"><ImagePlus size={10}/> Upload Image</label>
+                <Input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="rounded-2xl h-12 border-dashed pt-2 cursor-pointer" />
+             </div>
+          </div>
+
           <div className="space-y-1">
             <label className="text-zinc-400 ml-2">Description</label>
-            <Textarea 
-              placeholder="Deskripsi kursus..."
-              value={formData.description} 
-              onChange={(e) => setFormData({...formData, description: e.target.value})} 
-              className="rounded-2xl min-h-[80px] border-zinc-100 focus:border-amber-500" 
-            />
+            <Textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="rounded-2xl min-h-[100px]" />
           </div>
 
-          <Button 
-            disabled={loading} 
-            className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl mt-4 transition-all"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : "Save Data to Laravel"}
+          <Button disabled={loading} className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl mt-4">
+            {loading ? <Loader2 className="animate-spin" /> : "Save Course Data"}
           </Button>
         </form>
       </DialogContent>
