@@ -13,7 +13,17 @@ export default function DashboardPage() {
   const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
-  // 1. Inisialisasi awal
+  // Fungsi helper krusial untuk mencegah "React Error #31"
+  // Memastikan data yang dirender HANYA string atau angka
+  const safeRender = (data: any): string => {
+    if (typeof data === "string") return data;
+    if (typeof data === "number") return data.toString();
+    if (typeof data === "object" && data !== null) {
+      return data.name || data.title || "Data Detail";
+    }
+    return "";
+  };
+
   useEffect(() => {
     setIsClient(true)
     
@@ -27,15 +37,14 @@ export default function DashboardPage() {
 
     try {
       const parsedUser = JSON.parse(userData)
-      // Pastikan merender string, bukan objek
-      setUserName(parsedUser.name ? String(parsedUser.name) : "Peserta")
+      // Paksa menjadi string agar tidak crash
+      setUserName(safeRender(parsedUser.name || "Peserta"))
     } catch (e) {
-      console.error("Gagal membaca data user")
+      console.error("Gagal parse data user")
     }
-    
-    // Panggil fetch kursus hanya sekali
+
     fetchCourses(token)
-  }, []) // Empty dependency array agar tidak loop
+  }, [])
 
   const fetchCourses = async (token: string) => {
     try {
@@ -46,81 +55,90 @@ export default function DashboardPage() {
         }
       })
       
-      if (res.ok) {
-        const data = await res.json()
-        // Penanganan jika API membungkus data dalam properti .data
-        const finalData = Array.isArray(data) ? data : (data?.data || [])
-        setCourses(finalData)
+      const responseData = await res.json()
+      
+      // Standarisasi data ke format Array
+      if (Array.isArray(responseData)) {
+        setCourses(responseData)
+      } else if (responseData?.data && Array.isArray(responseData.data)) {
+        setCourses(responseData.data)
       }
     } catch (err) {
-      console.error("Gagal memuat kursus:", err)
+      console.error("Error fetching courses:", err)
     } finally {
+      // Pastikan loading berhenti meskipun terjadi error
       setLoading(false)
     }
   }
 
   const handleLogout = () => {
     localStorage.clear()
-    window.location.href = "/login" // Gunakan window.location agar refresh total
+    window.location.href = "/login"
   }
 
-  // Jangan render apapun selama build atau sebelum browser siap
   if (!isClient) return null
 
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-zinc-50">
         <Loader2 className="animate-spin text-amber-500 h-10 w-10 mb-4" />
-        <p className="font-black uppercase italic text-zinc-400 text-xs tracking-widest">Menyiapkan Dashboard...</p>
+        <p className="font-black uppercase italic text-zinc-400 text-[10px] tracking-[0.3em]">
+          MENYIAPKAN DASHBOARD...
+        </p>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-20 text-zinc-900">
-      {/* NAVBAR */}
-      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-10 flex justify-between items-center">
+      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-10 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-2 font-black italic tracking-tighter text-xl uppercase">
             MEJA<span className="text-amber-500">TIKA</span>
         </div>
-        <Button variant="ghost" onClick={handleLogout} className="text-red-500 font-bold hover:bg-red-50 rounded-xl">
+        <Button variant="ghost" onClick={handleLogout} className="text-red-500 font-bold hover:bg-red-50 rounded-xl px-4">
           <LogOut size={18} className="mr-2" /> LOGOUT
         </Button>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 pt-10">
-        {/* HEADER */}
-        <header className="mb-10 bg-zinc-900 rounded-[2rem] p-8 text-white shadow-xl">
-          <h2 className="text-3xl font-black uppercase italic tracking-tighter">
-            Hello, <span className="text-amber-500">{userName}</span>
-          </h2>
-          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2">Area Member Peserta</p>
+        <header className="mb-10 bg-zinc-900 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl relative overflow-hidden">
+          <div className="relative z-10">
+            <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter">
+              Hello, <span className="text-amber-500">{userName}</span>
+            </h2>
+            <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.4em] mt-2 opacity-70">
+              Welcome to Member Area
+            </p>
+          </div>
+          <GraduationCap className="absolute right-[-20px] bottom-[-20px] h-48 w-48 text-white/5 -rotate-12" />
         </header>
 
-        {/* LIST KURSUS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {courses.length > 0 ? (
             courses.map((course: any) => (
-              <Card key={course.id?.toString() || Math.random()} className="border-none shadow-lg rounded-[2rem] overflow-hidden bg-white">
-                <div className="bg-zinc-100 h-24 flex items-center justify-center">
-                  <GraduationCap className="h-10 w-10 text-zinc-300" />
+              <Card key={course.id?.toString() || Math.random()} className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white hover:shadow-2xl transition-all duration-300">
+                <div className="bg-zinc-100 h-32 flex items-center justify-center relative">
+                   <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent" />
+                   <GraduationCap className="h-12 w-12 text-zinc-300" />
                 </div>
-                <CardContent className="p-6">
-                  <CardTitle className="font-black uppercase italic tracking-tighter text-lg mb-2">
-                    {String(course.title || "Tanpa Judul")}
+                <CardContent className="p-8">
+                  <CardTitle className="font-black uppercase italic tracking-tighter text-xl mb-3 leading-tight">
+                    {safeRender(course.title)}
                   </CardTitle>
-                  <p className="text-zinc-500 text-xs mb-6 line-clamp-2 font-medium">
-                    {String(course.description || "Tidak ada deskripsi tersedia.")}
+                  <p className="text-zinc-500 text-sm mb-8 line-clamp-2 font-medium leading-relaxed">
+                    {safeRender(course.description)}
                   </p>
-                  <Button className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-xl h-12 font-black uppercase tracking-widest transition-all">
-                    Daftar Kursus <ArrowRight size={16} className="ml-2" />
+                  <Button className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-2xl h-14 font-black uppercase tracking-widest shadow-lg shadow-zinc-200 active:scale-95 transition-all">
+                    Daftar Sekarang <ArrowRight size={18} className="ml-2" />
                   </Button>
                 </CardContent>
               </Card>
             ))
           ) : (
-            <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border-2 border-dashed">
-               <p className="font-black uppercase italic text-zinc-300 text-xl">Belum ada kursus tersedia</p>
+            <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed border-zinc-200">
+               <p className="font-black uppercase italic text-zinc-300 text-2xl tracking-tighter">
+                 Belum ada kursus tersedia
+               </p>
             </div>
           )}
         </div>
