@@ -2,24 +2,24 @@
 
 import { useEffect, useState, Suspense } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { 
-  Loader2, 
+  Users, 
   BookOpen, 
-  GraduationCap, 
-  Calendar, 
-  ArrowRight, 
-  LogOut
+  LayoutDashboard, 
+  Settings, 
+  LogOut, 
+  Loader2, 
+  TrendingUp,
+  PlusCircle
 } from "lucide-react"
+import Link from "next/link"
 
-// Pisahkan komponen utama agar bisa dibungkus Suspense jika diperlukan
-function DashboardContent() {
-  const [courses, setCourses] = useState<any[]>([])
+function AdminDashboardContent() {
+  const [stats, setStats] = useState({ users: 0, courses: 0, registrations: 0 })
   const [loading, setLoading] = useState(true)
-  const [registeringId, setRegisteringId] = useState<number | null>(null)
-  const [userName, setUserName] = useState("") // Gunakan string, jangan simpan objek user langsung untuk dirender
+  const [adminName, setAdminName] = useState("")
   const router = useRouter()
 
   useEffect(() => {
@@ -32,68 +32,29 @@ function DashboardContent() {
     }
 
     try {
-      const parsedUser = JSON.parse(userData)
-      // PASTIKAN HANYA STRING YANG DISIMPAN KE STATE UNTUK DIRENDER
-      setUserName(parsedUser.name || "Peserta")
-      
-      if (parsedUser.role !== "peserta") {
-        router.push("/login") 
+      const user = JSON.parse(userData)
+      if (user.role !== "admin") {
+        router.push("/dashboard") // Jika bukan admin, lempar ke dashboard peserta
+        return
       }
+      setAdminName(user.name)
     } catch (e) {
-      localStorage.clear()
       router.push("/login")
     }
 
-    fetchCourses()
+    // Simulasi pengambilan data statistik (Anda bisa hubungkan ke API asli nanti)
+    const fetchStats = async () => {
+      try {
+        // Contoh endpoint: https://backend.mejatika.com/api/admin/stats
+        // Untuk sementara kita set data dummy agar UI terlihat
+        setStats({ users: 120, courses: 15, registrations: 45 })
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
   }, [router])
-
-  const fetchCourses = async () => {
-    try {
-      const res = await fetch("https://backend.mejatika.com/api/courses", {
-        headers: {
-          "Accept": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        }
-      })
-      const data = await res.json()
-      // Pastikan data adalah array sebelum disimpan
-      if (Array.isArray(data)) {
-        setCourses(data)
-      } else if (data.data && Array.isArray(data.data)) {
-        setCourses(data.data)
-      }
-    } catch (err) {
-      console.error("Gagal memuat data kursus")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleEnroll = async (courseId: number) => {
-    if (!confirm("Daftar kursus ini?")) return
-    setRegisteringId(courseId)
-    try {
-      const res = await fetch("https://backend.mejatika.com/api/registrations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({ course_id: courseId })
-      })
-      if (res.ok) {
-        alert("Berhasil mendaftar!")
-      } else {
-        const errData = await res.json()
-        alert(errData.message || "Gagal mendaftar.")
-      }
-    } catch (err) {
-      alert("Error koneksi.")
-    } finally {
-      setRegisteringId(null)
-    }
-  }
 
   const handleLogout = () => {
     localStorage.clear()
@@ -107,53 +68,125 @@ function DashboardContent() {
   )
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-20">
-      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-10 flex justify-between items-center">
-        <div className="flex items-center gap-2 font-black italic tracking-tighter">
-            MEJA<span className="text-amber-500">TIKA</span>
+    <div className="min-h-screen bg-zinc-50 flex">
+      {/* SIDEBAR */}
+      <aside className="w-64 bg-zinc-900 text-white hidden md:flex flex-col p-6">
+        <div className="font-black italic text-2xl mb-10 tracking-tighter">
+          MEJA<span className="text-amber-500">TIKA</span>
+          <span className="block text-[10px] not-italic font-bold text-zinc-500 tracking-[0.3em] uppercase">Admin Panel</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500">
-          <LogOut size={20} />
+        
+        <nav className="space-y-2 flex-1">
+          <Link href="/admin" className="flex items-center gap-3 p-3 bg-amber-500 text-zinc-900 rounded-xl font-black uppercase text-xs">
+            <LayoutDashboard size={18} /> Dashboard
+          </Link>
+          <Link href="/admin/courses" className="flex items-center gap-3 p-3 hover:bg-zinc-800 rounded-xl font-bold uppercase text-xs transition-colors">
+            <BookOpen size={18} /> Manage Courses
+          </Link>
+          <Link href="/admin/users" className="flex items-center gap-3 p-3 hover:bg-zinc-800 rounded-xl font-bold uppercase text-xs transition-colors">
+            <Users size={18} /> Manage Users
+          </Link>
+        </nav>
+
+        <Button variant="ghost" onClick={handleLogout} className="justify-start gap-3 text-red-400 hover:text-red-300 hover:bg-red-500/10 font-bold uppercase text-xs p-3">
+          <LogOut size={18} /> Logout
         </Button>
-      </nav>
+      </aside>
 
-      <main className="max-w-7xl mx-auto px-6 pt-10">
-        <section className="mb-12 bg-zinc-900 rounded-[2rem] p-8 text-white">
-          <h2 className="text-4xl font-black uppercase italic tracking-tighter">
-            Hello, <span className="text-amber-500">{userName}</span>
-          </h2>
-          <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest mt-2">Dashboard Peserta</p>
-        </section>
+      {/* MAIN CONTENT */}
+      <main className="flex-1 p-6 md:p-10 overflow-y-auto">
+        <header className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-black uppercase italic tracking-tighter text-zinc-900">
+              Admin <span className="text-amber-500">Overview</span>
+            </h1>
+            <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest mt-1">Selamat datang kembali, {adminName}</p>
+          </div>
+          <Button className="bg-zinc-900 hover:bg-amber-500 text-white rounded-xl font-black uppercase text-xs h-12 px-6 shadow-lg">
+            <PlusCircle size={18} className="mr-2" /> New Course
+          </Button>
+        </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {courses.map((course) => (
-            <Card key={course.id} className="border-none shadow-xl rounded-[2rem] overflow-hidden">
-              <CardHeader className="bg-zinc-100 h-32 flex items-center justify-center">
-                <GraduationCap className="h-12 w-12 text-zinc-300" />
-              </CardHeader>
-              <CardContent className="pt-6">
-                <CardTitle className="font-black uppercase italic tracking-tighter mb-2">{course.title}</CardTitle>
-                <p className="text-zinc-500 text-sm mb-6 line-clamp-2">{course.description}</p>
-                <Button 
-                  onClick={() => handleEnroll(course.id)}
-                  disabled={registeringId === course.id}
-                  className="w-full bg-zinc-900 hover:bg-amber-500 rounded-xl font-black uppercase"
-                >
-                  {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar Kursus"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+        {/* STATS CARDS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <Card className="border-none shadow-xl rounded-[2rem] bg-white p-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Total Students</CardTitle>
+              <Users className="h-5 w-5 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-black italic tracking-tighter">{stats.users}</div>
+              <p className="text-[10px] text-emerald-500 font-bold mt-1 flex items-center gap-1">
+                <TrendingUp size={12} /> +12% from last month
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-xl rounded-[2rem] bg-white p-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Active Courses</CardTitle>
+              <BookOpen className="h-5 w-5 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-black italic tracking-tighter">{stats.courses}</div>
+              <p className="text-[10px] text-zinc-400 font-bold mt-1 uppercase">Ready for enrollment</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-none shadow-xl rounded-[2rem] bg-white p-2">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">New Registrations</CardTitle>
+              <Settings className="h-5 w-5 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-black italic tracking-tighter">{stats.registrations}</div>
+              <p className="text-[10px] text-amber-600 font-bold mt-1 uppercase italic tracking-wider italic">Awaiting Approval</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* QUICK ACTIONS SECTION */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <section className="bg-white p-8 rounded-[2.5rem] shadow-xl border border-zinc-100">
+            <h3 className="font-black uppercase italic tracking-tighter text-xl mb-6">Recent Activities</h3>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100">
+                  <div className="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 font-bold italic">
+                    {i}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">Peserta Baru Mendaftar</p>
+                    <p className="text-[10px] text-zinc-400 uppercase font-black">2 Minutes Ago</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="bg-zinc-900 p-8 rounded-[2.5rem] shadow-xl text-white flex flex-col justify-center relative overflow-hidden">
+            <div className="relative z-10">
+              <h3 className="font-black uppercase italic tracking-tighter text-3xl mb-2 text-amber-500">System Status</h3>
+              <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest leading-relaxed">
+                Backend Laravel: <span className="text-emerald-400 italic">Connected</span><br />
+                Frontend Next.js: <span className="text-emerald-400 italic">Optimized</span>
+              </p>
+              <Button className="mt-6 bg-white text-zinc-900 hover:bg-amber-500 hover:text-white rounded-xl font-black uppercase text-xs transition-all shadow-lg">
+                View Server Logs
+              </Button>
+            </div>
+            <TrendingUp className="absolute right-[-20px] bottom-[-20px] h-48 w-48 text-white/5 -rotate-12" />
+          </section>
         </div>
       </main>
     </div>
   )
 }
 
-export default function DashboardPage() {
+export default function AdminDashboardPage() {
   return (
-    <Suspense fallback={<Loader2 className="animate-spin" />}>
-      <DashboardContent />
+    <Suspense fallback={null}>
+      <AdminDashboardContent />
     </Suspense>
   )
 }
