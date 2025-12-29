@@ -1,14 +1,20 @@
 "use client"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
+import dynamic from "next/dynamic"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Loader2, ImagePlus, Clock, Link as LinkIcon } from "lucide-react"
+import { Loader2, ImagePlus, Clock, Link as LinkIcon, X } from "lucide-react"
+
+// Import Quill secara dinamis untuk menghindari error SSR di Next.js
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+import "react-quill/dist/quill.snow.css";
 
 export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
   const [loading, setLoading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null) // Untuk file gambar fisik
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null) // State untuk preview
+  
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -17,6 +23,16 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     price: "",
     duration: ""
   })
+
+  // Pengaturan Toolbar Editor
+  const modules = useMemo(() => ({
+    toolbar: [
+      [{ header: [1, 2, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["clean"],
+    ],
+  }), []);
 
   useEffect(() => {
     if (course) {
@@ -28,11 +44,22 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
         price: course.price?.toString() || "",
         duration: course.duration || ""
       })
+      setPreviewUrl(course.thumbnail || null)
     } else {
       setFormData({ title: "", slug: "", description: "", category_id: "1", price: "", duration: "" })
+      setPreviewUrl(null)
     }
     setSelectedFile(null)
   }, [course, isOpen])
+
+  // Fungsi Preview Gambar
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      setPreviewUrl(URL.createObjectURL(file)) // Buat URL sementara untuk preview
+    }
+  }
 
   const createSlug = (text: string) => text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "")
 
@@ -41,44 +68,34 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     setLoading(true)
 
     const token = localStorage.getItem("token")
-    const API_URL = "https://backend.mejatika.com/api/courses"
-    const url = course ? `${API_URL}/${course.id}` : API_URL
-    
-    // MENGGUNAKAN FORMDATA UNTUK MENDUKUNG UPLOAD GAMBAR
     const data = new FormData()
     data.append("title", formData.title)
     data.append("slug", formData.slug)
-    data.append("description", formData.description || "")
+    data.append("description", formData.description) // Mengambil konten dari Quill
     data.append("category_id", formData.category_id)
     data.append("price", formData.price)
     data.append("duration", formData.duration)
     
-    if (selectedFile) {
-      data.append("thumbnail", selectedFile)
-    }
-
-    // Trik Laravel: Update dengan File harus pakai POST + _method PUT
-    if (course) {
-      data.append("_method", "PUT")
-    }
+    if (selectedFile) data.append("thumbnail", selectedFile)
+    if (course) data.append("_method", "PUT")
 
     try {
+      const url = course ? `https://backend.mejatika.com/api/courses/${course.id}` : `https://backend.mejatika.com/api/courses`
       const res = await fetch(url, {
-        method: "POST", // Selalu POST jika mengirim FormData
+        method: "POST",
         headers: { 
           "Accept": "application/json",
-          "Authorization": `Bearer ${token}` // Atasi Unauthenticated
+          "Authorization": `Bearer ${token}` 
         },
         body: data
       })
-
-      const result = await res.json()
 
       if (res.ok) {
         onSuccess()
         onClose()
       } else {
-        alert("Gagal: " + (result.message || "Cek kembali data Anda"))
+        const result = await res.json()
+        alert("Gagal: " + (result.message || "Terjadi kesalahan"))
       }
     } catch (err) {
       alert("Gagal terhubung ke API")
@@ -89,63 +106,87 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh] bg-white">
+      <DialogContent className="rounded-[2.5rem] p-8 max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[95vh] bg-white">
         <DialogHeader>
           <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">
             {course ? "Update" : "Add"} <span className="text-amber-500">Course</span>
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-6 font-bold uppercase tracking-widest text-[10px]">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6 font-bold uppercase tracking-widest text-[10px]">
           
-          <div className="space-y-1">
-            <label className="text-zinc-400 ml-2">Course Title</label>
-            <Input 
-              value={formData.title} 
-              onChange={(e) => setFormData({...formData, title: e.target.value, slug: createSlug(e.target.value)})}
-              className="rounded-2xl h-12 border-zinc-100" required 
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-zinc-400 ml-2 flex items-center gap-1"><LinkIcon size={10}/> Slug (URL)</label>
-            <Input 
-              value={formData.slug} 
-              onChange={(e) => setFormData({...formData, slug: e.target.value})} 
-              className="rounded-2xl h-12 bg-zinc-50 border-none italic text-zinc-400" 
-            />
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-1">
-                <label className="text-zinc-400 ml-2">Price (IDR)</label>
-                <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-2xl h-12" required />
-             </div>
-             <div className="space-y-1">
-                <label className="text-zinc-400 ml-2 flex items-center gap-1"><Clock size={10}/> Duration</label>
-                <Input placeholder="E.G. 2 BULAN" value={formData.duration} onChange={(e) => setFormData({...formData, duration: e.target.value})} className="rounded-2xl h-12" required />
-             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <div className="space-y-1">
-                <label className="text-zinc-400 ml-2">Category ID</label>
-                <Input type="number" value={formData.category_id} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className="rounded-2xl h-12" required />
-             </div>
-             <div className="space-y-1">
-                <label className="text-zinc-400 ml-2 flex items-center gap-1"><ImagePlus size={10}/> Thumbnail Image</label>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* SISI KIRI: INPUT TEKS */}
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-zinc-400 ml-2">Course Title</label>
                 <Input 
+                  value={formData.title} 
+                  onChange={(e) => setFormData({...formData, title: e.target.value, slug: createSlug(e.target.value)})}
+                  className="rounded-2xl h-12 border-zinc-100" required 
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-zinc-400 ml-2 flex items-center gap-1"><LinkIcon size={10}/> Slug</label>
+                <Input value={formData.slug} readOnly className="rounded-2xl h-12 bg-zinc-50 border-none text-zinc-400 italic" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label className="text-zinc-400 ml-2">Price (IDR)</label>
+                  <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-2xl h-12" required />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-zinc-400 ml-2 flex items-center gap-1"><Clock size={10}/> Duration</label>
+                  <Input placeholder="2 BULAN" value={formData.duration} onChange={(e) => setFormData({...formData, duration: e.target.value})} className="rounded-2xl h-12" required />
+                </div>
+              </div>
+            </div>
+
+            {/* SISI KANAN: PREVIEW UPLOAD */}
+            <div className="space-y-2">
+              <label className="text-zinc-400 ml-2 flex items-center gap-1"><ImagePlus size={10}/> Thumbnail Preview</label>
+              <div className="relative group h-40 w-full rounded-[2rem] border-2 border-dashed border-zinc-200 flex items-center justify-center overflow-hidden bg-zinc-50 transition-all hover:border-amber-400">
+                {previewUrl ? (
+                  <>
+                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
+                    <button 
+                      type="button"
+                      onClick={() => {setPreviewUrl(null); setSelectedFile(null)}}
+                      className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={14} />
+                    </button>
+                  </>
+                ) : (
+                  <div className="text-center p-4">
+                    <ImagePlus className="mx-auto text-zinc-300 mb-2" size={32} />
+                    <p className="text-[8px] text-zinc-400">KLIK UNTUK UNGGAH GAMBAR<br/>(PNG, JPG MAX 2MB)</p>
+                  </div>
+                )}
+                <input 
                   type="file" 
                   accept="image/*" 
-                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
-                  className="rounded-2xl h-12 border-dashed pt-2 cursor-pointer" 
+                  onChange={handleFileChange} 
+                  className="absolute inset-0 opacity-0 cursor-pointer" 
                 />
-             </div>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-zinc-400 ml-2">Description</label>
-            <Textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="rounded-2xl min-h-[100px]" />
+          {/* FULL WIDTH: EDITOR DESKRIPSI */}
+          <div className="space-y-2">
+            <label className="text-zinc-400 ml-2">Description (Rich Text)</label>
+            <div className="rounded-[1.5rem] overflow-hidden border border-zinc-100 shadow-sm bg-zinc-50">
+              <ReactQuill 
+                theme="snow" 
+                value={formData.description} 
+                onChange={(content) => setFormData({...formData, description: content})} 
+                modules={modules}
+                className="bg-white min-h-[150px]"
+              />
+            </div>
           </div>
 
           <Button disabled={loading} className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl mt-4">
