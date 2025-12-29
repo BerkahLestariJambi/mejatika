@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Loader2, Calendar, Search, X, Image as ImageIcon } from "lucide-react"
+import { Plus, Edit, Trash2, Loader2, Calendar, Search, X, Image as ImageIcon, Quote as QuoteIcon } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -35,22 +35,18 @@ export default function NewsManagementPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState("")
 
-  // SweetAlert Toast Configuration
   const Toast = Swal.mixin({
     toast: true,
     position: 'top-end',
     showConfirmButton: false,
     timer: 3000,
     timerProgressBar: true,
-    background: 'oklch(var(--card))',
-    color: 'oklch(var(--foreground))'
   })
 
-  // Toolbar Quill
   const modules = useMemo(() => ({
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
+      ['bold', 'italic', 'underline'],
       [{ 'list': 'ordered' }, { 'list': 'bullet' }],
       ['link', 'clean']
     ],
@@ -79,7 +75,6 @@ export default function NewsManagementPage() {
     fetchCategories();
   }, []);
 
-  // Filter Berita
   const filteredNews = useMemo(() => {
     return news.filter((item) =>
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -132,12 +127,9 @@ export default function NewsManagementPage() {
 
   const handleDelete = (id: number) => {
     Swal.fire({
-      title: 'Hapus berita ini?',
-      text: "Data yang dihapus tidak dapat dipulihkan!",
+      title: 'Hapus berita?',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
       confirmButtonText: 'Ya, Hapus!',
       cancelButtonText: 'Batal'
     }).then(async (result) => {
@@ -147,172 +139,154 @@ export default function NewsManagementPage() {
             method: "DELETE",
             headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
           });
-          if (res.ok) {
-            Toast.fire({ icon: 'success', title: 'Berita telah dihapus' });
-            fetchNews();
-          }
-        } catch (error) {
-          Toast.fire({ icon: 'error', title: 'Gagal menghapus' });
-        }
+          if (res.ok) { fetchNews(); }
+        } catch (error) { console.error(error); }
       }
     })
   }
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto min-h-screen">
-      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
-          <h1 className="text-3xl font-black tracking-tight">MANAGEMENT BERITA</h1>
-          <p className="text-muted-foreground">Kelola semua artikel publikasi MEJATIKA.</p>
+          <h1 className="text-3xl font-black tracking-tight uppercase italic text-amber-600">MANAGEMENT BERITA</h1>
+          <p className="text-muted-foreground">Arsip Warta Digital Mejatika</p>
         </motion.div>
 
         <Dialog open={openForm} onOpenChange={(open) => { setOpenForm(open); if(!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button size="lg" className="rounded-xl shadow-lg hover:scale-105 transition-transform">
-              <Plus className="mr-2 h-5 w-5" /> Tambah Berita
+            <Button size="lg" className="bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg">
+              <Plus className="mr-2 h-5 w-5" /> Terbitkan Warta
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">{editing ? "Edit Berita" : "Buat Berita Baru"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <DialogContent className="max-w-4xl p-0 bg-transparent border-none shadow-none overflow-visible">
+            {/* GULUNGAN ATAS FORM (BATIK CERAH) */}
+            <div className="relative z-50 w-[95%] mx-auto">
+              <div className="w-full h-14 bg-amber-500 rounded-full shadow-xl flex items-center justify-between px-10 relative overflow-hidden border-b-4 border-amber-700/30">
+                <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
+                <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] z-10">EDITOR WARTA</span>
+                <span className="text-[10px] font-black text-amber-900/50 uppercase tracking-[0.4em] z-10 italic">MEJATIKA</span>
+              </div>
+            </div>
+
+            {/* BODY FORM (KERTAS GULUNG) */}
+            <div className="bg-[#fffdfa] dark:bg-zinc-950 -mt-6 pt-12 pb-10 px-8 md:px-12 rounded-b-xl shadow-2xl relative border-x border-black/5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                
+                {/* Judul 14pt */}
                 <div className="space-y-2">
-                  <Label>Judul Berita</Label>
-                  <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ketik judul..." />
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Judul Berita (Maksimal 14pt tampilan)</Label>
+                  <Input 
+                    value={title} 
+                    onChange={(e) => setTitle(e.target.value)} 
+                    required 
+                    placeholder="Masukkan judul utama..." 
+                    className="text-[18px] font-black uppercase tracking-wider border-amber-200 focus:ring-amber-500"
+                  />
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest">Kategori</Label>
+                    <select 
+                      className="flex h-10 w-full rounded-md border border-amber-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 outline-none"
+                      value={categoryId} 
+                      onChange={(e) => setCategoryId(e.target.value)} 
+                      required
+                    >
+                      <option value="">Pilih Kategori</option>
+                      {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-2">
+                       <QuoteIcon className="w-3 h-3" /> Quote Highlight
+                    </Label>
+                    <Input 
+                      value={quote} 
+                      onChange={(e) => setQuote(e.target.value)} 
+                      placeholder="Kutipan penting artikel..." 
+                      className="border-amber-200"
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label>Kategori</Label>
-                  <select 
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary outline-none"
-                    value={categoryId} 
-                    onChange={(e) => setCategoryId(e.target.value)} 
-                    required
-                  >
-                    <option value="">Pilih Kategori</option>
-                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <Label className="text-[10px] font-bold uppercase tracking-widest">Gambar Utama</Label>
+                  {previewUrl && <img src={previewUrl} className="h-40 w-full object-cover rounded-lg mb-2 shadow-inner border border-amber-100" alt="Preview" />}
+                  <Input type="file" accept="image/*" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) { setImage(file); setPreviewUrl(URL.createObjectURL(file)); }
+                  }} className="cursor-pointer file:bg-amber-50 file:text-amber-700 file:border-none" />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Konten Utama</Label>
-                <div className="prose-editor">
-                  <ReactQuill theme="snow" value={content} onChange={setContent} modules={modules} />
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest">Isi Berita</Label>
+                  <div className="bg-white rounded-md border border-amber-200 overflow-hidden">
+                    <ReactQuill theme="snow" value={content} onChange={setContent} modules={modules} />
+                  </div>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Gambar Utama</Label>
-                {previewUrl && <img src={previewUrl} className="h-44 w-full object-cover rounded-xl border mb-2 shadow-sm" alt="Preview" />}
-                <Input type="file" accept="image/*" onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) { setImage(file); setPreviewUrl(URL.createObjectURL(file)); }
-                }} />
-              </div>
-
-              <Button type="submit" className="w-full h-12 text-lg shadow-md" disabled={loading}>
-                {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "Perbarui" : "Posting Sekarang"}
-              </Button>
-            </form>
+                <Button type="submit" className="w-full bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest h-12" disabled={loading}>
+                  {loading ? <Loader2 className="animate-spin mr-2" /> : editing ? "SIMPAN PERUBAHAN" : "TERBITKAN SEKARANG"}
+                </Button>
+              </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* SEARCH BAR */}
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* SEARCH */}
+      <div className="relative max-w-md">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
         <Input 
-          placeholder="Cari judul atau kategori..." 
-          className="pl-10 h-11 rounded-xl bg-card border-none shadow-sm focus:ring-2 focus:ring-primary"
+          placeholder="Cari warta..." 
+          className="pl-10 rounded-full border-amber-100 bg-white shadow-sm"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        {searchQuery && (
-          <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-            <X className="h-4 w-4 text-muted-foreground hover:text-destructive" />
-          </button>
-        )}
-      </motion.div>
+      </div>
 
-      {/* TABLE SECTION */}
-      <Card className="border-none shadow-2xl bg-card/60 backdrop-blur-md rounded-2xl overflow-hidden">
+      {/* TABLE */}
+      <Card className="border-none shadow-xl bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted/40 border-b text-xs font-bold uppercase text-muted-foreground">
-                  <th className="px-6 py-4 text-left w-[60px]">No</th>
-                  <th className="px-6 py-4 text-left">Detail Berita</th>
-                  <th className="px-6 py-4 text-left">Kategori</th>
-                  <th className="px-6 py-4 text-right">Aksi</th>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-amber-50/50 border-b border-amber-100 text-[10px] font-black uppercase tracking-widest text-amber-700">
+                <th className="px-6 py-4 text-left">Warta</th>
+                <th className="px-6 py-4 text-left">Kategori</th>
+                <th className="px-6 py-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredNews.map((item) => (
+                <tr key={item.id} className="border-b border-zinc-50 hover:bg-amber-50/30 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-4">
+                      <img src={item.image} className="h-10 w-14 object-cover rounded shadow-sm" alt="" />
+                      <div>
+                        <p className="font-bold text-sm text-zinc-800 line-clamp-1 group-hover:text-amber-600">{item.title}</p>
+                        <p className="text-[9px] uppercase tracking-tighter text-muted-foreground italic">Update: {new Date(item.created_at).toLocaleDateString('id-ID')}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Badge className="bg-amber-100 text-amber-700 text-[9px] border-none">{item.category?.name}</Badge>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-blue-500" onClick={() => {
+                        setEditing(item); setTitle(item.title); setContent(item.content); setQuote(item.quote || "");
+                        setCategoryId(String(item.category_id)); setPreviewUrl(item.image); setOpenForm(true);
+                      }}><Edit className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => handleDelete(item.id)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="relative">
-                <AnimatePresence mode="popLayout">
-                  {filteredNews.length > 0 ? (
-                    filteredNews.map((item, index) => (
-                      <motion.tr 
-                        key={item.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        transition={{ delay: index * 0.05 }}
-                        className="group border-b last:border-0 hover:bg-primary/5 transition-colors"
-                      >
-                        <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
-                          {index + 1}
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-4">
-                            <div className="h-12 w-16 flex-shrink-0 overflow-hidden rounded-lg shadow-sm border">
-                              <img src={item.image} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" />
-                            </div>
-                            <div>
-                              <p className="font-bold text-sm line-clamp-1 group-hover:text-primary transition-colors">{item.title}</p>
-                              <p className="text-[10px] text-muted-foreground flex items-center mt-1 uppercase tracking-wider">
-                                <Calendar className="h-3 w-3 mr-1" /> {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <Badge variant="secondary" className="bg-primary/10 text-primary border-none text-[10px] font-bold px-2 py-0.5">
-                            {item.category?.name || "Umum"}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-blue-200 hover:bg-blue-50" onClick={() => {
-                              setEditing(item); setTitle(item.title); setContent(item.content);
-                              setCategoryId(String(item.category_id)); setPreviewUrl(item.image);
-                              setOpenForm(true);
-                            }}>
-                              <Edit className="h-4 w-4 text-blue-500" />
-                            </Button>
-                            <Button size="icon" variant="outline" className="h-8 w-8 rounded-full border-red-200 hover:bg-red-50" onClick={() => handleDelete(item.id)}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </td>
-                      </motion.tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-20 text-center">
-                        <div className="flex flex-col items-center text-muted-foreground">
-                          <ImageIcon className="h-10 w-10 opacity-20 mb-2" />
-                          <p className="italic">Data berita tidak ditemukan...</p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </AnimatePresence>
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
     </div>
