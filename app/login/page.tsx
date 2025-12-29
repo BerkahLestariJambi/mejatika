@@ -1,31 +1,56 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ShieldCheck, Loader2, Mail, Lock, ArrowRight } from "lucide-react"
+import { ShieldCheck, Loader2, Mail, Lock, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [loading, setLoading] = useState(false)
   const [mounted, setMounted] = useState(false)
 
-  // Memastikan komponen hanya berinteraksi dengan browser sebelum akses localStorage
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // 1. Cek jika ada pesan sukses dari halaman registrasi
+    const msg = searchParams.get("success")
+    if (msg) setSuccess(msg)
+
+    // 2. Cek jika user sudah login, langsung alihkan ke dashboard yang sesuai
+    const token = localStorage.getItem("token")
+    const userData = localStorage.getItem("user")
+    if (token && userData) {
+      const user = JSON.parse(userData)
+      redirectUser(user.role)
+    }
+  }, [searchParams])
+
+  const redirectUser = (role: string) => {
+    if (role === "admin") {
+      router.push("/admin")
+    } else if (role === "kontributor") {
+      router.push("/kontributor")
+    } else {
+      router.push("/dashboard")
+    }
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSuccess("")
     setLoading(true)
 
     try {
@@ -41,37 +66,24 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        // Menangani error jika response bukan 200 OK
         setError(data.error || data.message || "Email atau password salah")
         setLoading(false)
         return
       }
 
-      // Simpan ke localStorage dengan aman
       if (typeof window !== "undefined") {
         localStorage.setItem("user", JSON.stringify(data.user))
         localStorage.setItem("token", data.token)
       }
 
-      // Logic Redirect
-      const role = data.user.role
-      if (role === "admin") {
-        router.push("/admin")
-      } else if (role === "kontributor") {
-        router.push("/kontributor")
-      } else {
-        router.push("/dashboard")
-      }
+      redirectUser(data.user.role)
       
     } catch (err) {
       setError("Gagal terhubung ke server. Periksa koneksi internet Anda.")
-    } finally {
-      // Jangan set loading false di sini jika redirect berhasil agar transisi halus
-      if (error) setLoading(false)
+      setLoading(false)
     }
   }
 
-  // Mencegah Hydration Error
   if (!mounted) return null
 
   return (
@@ -90,10 +102,20 @@ export default function LoginPage() {
         </CardHeader>
         <CardContent className="p-8 pt-0">
           <form onSubmit={handleLogin} className="space-y-4">
+            {/* Alert Error */}
             {error && (
               <Alert className="bg-red-50 border-red-100 text-red-600 rounded-xl py-3">
-                <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider">
+                <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider flex items-center gap-2">
                     {error}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Alert Success */}
+            {success && (
+              <Alert className="bg-emerald-50 border-emerald-100 text-emerald-600 rounded-xl py-3">
+                <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider flex items-center gap-2">
+                    <CheckCircle2 size={14} /> {success}
                 </AlertDescription>
               </Alert>
             )}
@@ -105,7 +127,7 @@ export default function LoginPage() {
                 <Input
                   type="email"
                   placeholder="name@example.com"
-                  className="pl-12 rounded-xl h-12 border-zinc-100 bg-zinc-50/50 focus:ring-amber-500"
+                  className="pl-12 rounded-xl h-12 border-zinc-100 bg-zinc-50/50 focus:ring-amber-500 focus:border-amber-500"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -114,17 +136,29 @@ export default function LoginPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="font-black text-[10px] uppercase tracking-[0.2em] text-zinc-400 ml-1">Secret Password</Label>
+              <div className="flex justify-between items-center">
+                <Label className="font-black text-[10px] uppercase tracking-[0.2em] text-zinc-400 ml-1">Secret Password</Label>
+                <Link href="/forgot-password" size="sm" className="text-[10px] font-bold uppercase text-amber-600 hover:text-zinc-900 transition-colors">
+                  Lupa Password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                 <Input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
-                  className="pl-12 rounded-xl h-12 border-zinc-100 bg-zinc-50/50 focus:ring-amber-500"
+                  className="px-12 rounded-xl h-12 border-zinc-100 bg-zinc-50/50 focus:ring-amber-500 focus:border-amber-500"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 
@@ -143,7 +177,7 @@ export default function LoginPage() {
             <div className="mt-8 text-center">
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-tighter">
                 Belum punya akun?{" "}
-                <Link href="/register" className="text-amber-600 hover:text-zinc-900 underline underline-offset-4 decoration-2">
+                <Link href="/register" className="text-amber-600 hover:text-zinc-900 underline underline-offset-4 decoration-2 decoration-amber-500/30 hover:decoration-amber-500 transition-all">
                   Daftar di sini
                 </Link>
               </p>
