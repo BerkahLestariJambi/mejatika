@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, User, ArrowLeft } from "lucide-react"
+import { Calendar, User, ArrowLeft, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { Navigation } from "@/components/navigation"
@@ -32,81 +32,92 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-zinc-50 flex flex-col">
       <Navigation />
       
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <Link href="/berita">
-          <Button variant="ghost" className="mb-6 hover:bg-primary/10 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Berita
-          </Button>
-        </Link>
+      {/* HEADER DEKORATIF (Opsional, agar senada dengan halaman dinamis lainnya) */}
+      <div className="h-24 bg-amber-500 w-full relative overflow-hidden">
+         <div className="absolute inset-0 opacity-10 pointer-events-none" 
+              style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }} />
+      </div>
 
-        <article className="mx-auto max-w-4xl">
-          <Card className="border-none shadow-xl overflow-hidden bg-card">
-            <CardContent className="p-0 pt-8 md:pt-10"> {/* Memberi jarak ke atas sebelum gambar */}
-              
-              {/* --- BAGIAN GAMBAR DENGAN BATAS KIRI-KANAN --- */}
-              <div className="px-6 md:px-12"> 
-                <div className="relative w-full aspect-video bg-muted rounded-2xl overflow-hidden shadow-lg ring-1 ring-border">
-                  {article.image ? (
-                    <img
-                      src={article.image}
-                      alt={article.title || "Berita"}
-                      className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                      Tidak ada gambar tersedia
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* ------------------------------------------- */}
-              
-              <div className="p-6 md:p-12">
-                <div className="mb-6">
-                  {article.category?.name && (
-                    <Badge variant="secondary" className="px-3 py-1 uppercase tracking-wider text-xs font-semibold">
-                      {article.category.name}
+      <main className="flex-grow container mx-auto px-4 -mt-12 relative z-10 pb-20">
+        <div className="max-w-4xl mx-auto">
+          
+          {/* TOMBOL KEMBALI */}
+          <Link href="/berita">
+            <Button variant="outline" className="mb-6 bg-white/80 backdrop-blur shadow-sm border-amber-200 hover:bg-amber-50 hover:text-amber-600 rounded-full transition-all group">
+              <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" /> 
+              KEMBALI KE BERITA
+            </Button>
+          </Link>
+
+          <article>
+            <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-[2.5rem]">
+              <CardContent className="p-0">
+                
+                {/* --- HEADER KONTEN --- */}
+                <div className="p-8 md:p-12 pb-0">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Badge className="bg-amber-500 hover:bg-amber-600 px-4 py-1.5 uppercase tracking-widest text-[10px] font-black border-none shadow-sm">
+                      {article.category?.name || "UMUM"}
                     </Badge>
-                  )}
+                    <div className="h-[2px] w-12 bg-amber-200 rounded-full" />
+                  </div>
+                  
+                  <h1 className="text-3xl md:text-5xl font-black mb-8 leading-[1.1] tracking-tighter text-zinc-900 uppercase italic">
+                    {article.title}
+                  </h1>
+
+                  <div className="flex flex-wrap gap-6 text-[11px] font-bold uppercase tracking-widest text-zinc-400 mb-10 pb-8 border-b border-zinc-100">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-amber-500" />
+                      <span>
+                        {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID", {
+                          day: 'numeric', month: 'long', year: 'numeric'
+                        }) : "-"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-amber-500" />
+                      <span>
+                        {article.author?.name || article.user?.name || "ADMIN MEJATIKA"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* --- GAMBAR UTAMA --- */}
+                <div className="px-8 md:px-12"> 
+                  <div className="relative w-full aspect-video bg-zinc-100 rounded-3xl overflow-hidden shadow-inner ring-1 ring-zinc-100">
+                    {article.image ? (
+                      <img
+                        src={article.image}
+                        alt={article.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-300">
+                        <BookOpen className="w-12 h-12 mb-2 opacity-20" />
+                        <span className="text-xs font-bold uppercase tracking-widest">No Image Preview</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
-                <h1 className="text-3xl md:text-5xl font-extrabold mb-8 leading-tight tracking-tight text-foreground">
-                  {article.title}
-                </h1>
-
-                <div className="flex flex-wrap gap-6 text-sm text-muted-foreground mb-10 pb-8 border-b border-border/50">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-primary/10 rounded-full">
-                      <Calendar className="w-4 h-4 text-primary" />
+                {/* --- ISI BERITA --- */}
+                <div className="p-8 md:p-12 md:pt-10">
+                  <div className="prose prose-zinc prose-lg max-w-none">
+                    <div className="whitespace-pre-line text-zinc-700 leading-relaxed text-lg font-medium">
+                      {article.content}
                     </div>
-                    <span className="font-medium">
-                      {article.created_at ? new Date(article.created_at).toLocaleDateString("id-ID", {
-                        day: 'numeric', month: 'long', year: 'numeric'
-                      }) : "-"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-primary/10 rounded-full">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-medium">
-                      {article.author?.name || article.user?.name || "Admin MEJATIKA"}
-                    </span>
                   </div>
                 </div>
 
-                <div className="prose prose-lg dark:prose-invert max-w-none">
-                  <div className="whitespace-pre-line text-foreground/80 leading-relaxed text-lg md:text-xl">
-                    {article.content}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </article>
+              </CardContent>
+            </Card>
+          </article>
+        </div>
       </main>
       
       <Footer />
