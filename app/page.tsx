@@ -137,7 +137,7 @@ export default function HomePage() {
                       <div className="relative py-12 px-8 lg:px-14 border-y-4 border-amber-500 bg-amber-50/40 dark:bg-amber-900/10 italic text-center rounded-xl shadow-inner">
                          <Quote className="absolute top-4 left-6 w-12 h-12 opacity-20 text-amber-600" />
                          <p className="text-xl lg:text-3xl font-black leading-tight uppercase tracking-tighter text-amber-950 dark:text-amber-100 relative z-10 px-6">
-                           "{article.quote || article.quote}"
+                           "{article.quote || article.excerpt}"
                          </p>
                          <Quote className="absolute bottom-4 right-6 w-12 h-12 opacity-20 text-amber-600 rotate-180" />
                       </div>
