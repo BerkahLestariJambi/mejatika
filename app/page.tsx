@@ -13,7 +13,7 @@ import { RunningText } from "@/components/running-text"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Calendar, User, Loader2, Quote, ArrowLeft, Share2, Facebook, MessageCircle, Instagram } from "lucide-react"
+import { Calendar, User, Loader2, Quote, ArrowLeft, Share2, Facebook, MessageCircle } from "lucide-react"
 
 export const dynamic = "force-dynamic";
 
@@ -84,96 +84,90 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-6 flex flex-col items-center"
             >
-              <div className="w-full max-w-4xl flex mb-4">
-                <Button 
-                  onClick={() => setSelectedSlug(null)}
-                  variant="ghost" 
-                  className="group gap-2 font-black uppercase text-[10px] tracking-widest hover:text-primary"
-                >
-                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" /> KEMBALI
-                </Button>
-              </div>
-
-              {/* --- GULUNGAN ATAS: BATIK CERAH (AMBER/GOLD) --- */}
+              {/* --- GULUNGAN ATAS BATIK CERAH --- */}
               <div className="w-full max-w-4xl relative z-30">
-                <div className="w-full h-16 bg-amber-500 dark:bg-amber-600 rounded-full shadow-[0_10px_30px_rgba(245,158,11,0.4)] flex items-center justify-between px-12 relative overflow-hidden border-b-4 border-amber-700/30">
-                  {/* Pattern Batik yang Lebih Kontras */}
+                <div className="w-full h-16 bg-amber-500 dark:bg-amber-600 rounded-full shadow-2xl flex items-center justify-between px-12 relative overflow-hidden border-b-4 border-amber-700/30">
                   <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-                  
                   <span className="text-[12px] font-black text-white uppercase tracking-[0.5em] z-10 drop-shadow-md">MEJATIKA</span>
                   <div className="flex gap-1.5 z-10">
-                    {[1,2,3].map(i => <div key={i} className="w-2 h-2 rounded-full bg-white/80 animate-pulse" />)}
+                    {[1,2,3].map(i => <div key={i} className="w-2 h-2 rounded-full bg-white/80" />)}
                   </div>
                   <span className="text-[12px] font-black text-amber-900/60 uppercase tracking-[0.5em] z-10 italic">Warta Digital</span>
                 </div>
               </div>
 
               {/* BODY KERTAS */}
-              <div className="w-full max-w-[92%] lg:max-w-[850px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-8 lg:px-20 py-20 -mt-8 relative border-x border-black/5 z-20">
+              <div className="w-full max-w-[92%] lg:max-w-[850px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-8 lg:px-20 py-16 -mt-8 relative border-x border-black/5 z-20">
                 
                 {loadingDetail ? (
                   <div className="h-[40vh] flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
                 ) : article && (
-                  <article className="space-y-12">
-                    <header className="space-y-6 text-center">
-                      <Badge className="bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-[0.4em] font-black text-[10px] px-5 py-2 mx-auto">
-                        {article.category?.name || "BERITA UTAMA"}
+                  <article className="space-y-10">
+                    <header className="space-y-4 text-center">
+                      <Badge className="bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-[0.4em] font-black text-[9px] px-4 py-1.5 mx-auto">
+                        {article.category?.name || "BERITA"}
                       </Badge>
-                      <h1 className="text-4xl lg:text-6xl font-black uppercase leading-[1.1] italic tracking-tighter text-zinc-900 dark:text-white">
+
+                      {/* JUDUL BERITA UKURAN 14PT (18PX) */}
+                      <h1 className="text-[18px] lg:text-[18px] font-black uppercase leading-snug tracking-widest text-zinc-900 dark:text-white">
                         {article.title}
                       </h1>
                       
-                      {/* PENULIS / AUTHOR */}
-                      <div className="flex items-center justify-center gap-6 text-[10px] font-black uppercase text-muted-foreground tracking-[0.3em] border-y border-black/5 py-5">
-                        <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-amber-600" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        <span className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100 bg-amber-50 dark:bg-amber-950/30 px-3 py-1 rounded-full">
-                          <User className="w-4 h-4 text-amber-600" /> {article.user?.name || "Admin Mejatika"}
+                      {/* AUTHOR & DATE */}
+                      <div className="flex items-center justify-center gap-4 text-[9px] font-black uppercase text-muted-foreground tracking-[0.2em] pt-2">
+                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-amber-600" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
+                        <span className="w-1 h-1 rounded-full bg-amber-500" />
+                        <span className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
+                          <User className="w-3.5 h-3.5 text-amber-600" /> {article.user?.name || "Admin Mejatika"}
                         </span>
                       </div>
                     </header>
 
-                    <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl ring-1 ring-black/5">
-                      <img src={article.image} className="w-full h-full object-cover" alt="content" />
+                    <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg border border-black/5">
+                      <img src={article.image} className="w-full h-full object-cover" alt="news" />
                     </div>
 
-                    <div className="text-xl lg:text-2xl leading-[1.9] text-justify text-zinc-800 dark:text-zinc-200 first-letter:text-8xl first-letter:font-black first-letter:text-amber-600 first-letter:mr-4 first-letter:float-left first-letter:leading-[0.8] first-letter:mt-2">
+                    {/* CONTENT DENGAN DROP CAP */}
+                    <div className="text-lg lg:text-xl leading-[1.8] text-justify text-zinc-800 dark:text-zinc-200 first-letter:text-7xl first-letter:font-black first-letter:text-amber-600 first-letter:mr-3 first-letter:float-left first-letter:leading-[0.85] first-letter:mt-1">
                       {getCleanContent(article.content)}
                     </div>
 
                     {/* QUOTE EDITORIAL */}
                     {article.quote && (
-                      <div className="relative py-14 px-10 lg:px-16 border-y-4 border-amber-500/20 bg-amber-50/30 dark:bg-amber-900/10 italic text-center rounded-xl">
-                         <Quote className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-12 opacity-20 text-amber-600 rotate-180" />
-                         <p className="text-2xl lg:text-4xl font-black leading-tight uppercase tracking-tighter text-amber-900 dark:text-amber-100 relative z-10">
+                      <div className="relative py-10 px-8 lg:px-14 border-y-2 border-amber-500/10 bg-amber-50/20 dark:bg-amber-900/5 italic text-center rounded-lg">
+                         <Quote className="absolute top-3 left-1/2 -translate-x-1/2 w-10 h-10 opacity-10 text-amber-600 rotate-180" />
+                         <p className="text-xl lg:text-2xl font-black leading-tight uppercase tracking-tighter text-amber-900 dark:text-amber-100 relative z-10">
                            "{article.quote}"
                          </p>
-                         <div className="mt-6 h-1 w-12 bg-amber-500 mx-auto rounded-full" />
                       </div>
                     )}
 
-                    {/* TOMBOL SHARE */}
-                    <div className="flex flex-col items-center gap-8 pt-10 border-t border-black/5">
-                      <span className="text-[11px] font-black uppercase tracking-[0.5em] text-amber-600">BAGIKAN KE REKAN</span>
-                      <div className="flex gap-6">
-                        <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="group flex flex-col items-center gap-2">
-                          <div className="p-4 rounded-2xl bg-green-50 text-green-600 group-hover:bg-green-600 group-hover:text-white transition-all shadow-md">
-                            <MessageCircle className="w-7 h-7" />
-                          </div>
-                          <span className="text-[8px] font-bold">WHATSAPP</span>
-                        </a>
-                        <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="group flex flex-col items-center gap-2">
-                          <div className="p-4 rounded-2xl bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-md">
-                            <Facebook className="w-7 h-7" />
-                          </div>
-                          <span className="text-[8px] font-bold">FACEBOOK</span>
-                        </a>
-                        <button onClick={() => navigator.share?.({ title: article.title, url: shareUrl })} className="group flex flex-col items-center gap-2">
-                          <div className="p-4 rounded-2xl bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white transition-all shadow-md">
-                            <Share2 className="w-7 h-7" />
-                          </div>
-                          <span className="text-[8px] font-bold">LAINNYA</span>
-                        </button>
+                    {/* SHARE & NAVIGASI BAWAH */}
+                    <div className="flex flex-col items-center gap-10 pt-8 border-t border-black/5">
+                      {/* Section Share */}
+                      <div className="flex flex-col items-center gap-4 w-full">
+                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600">BAGIKAN WARTA</span>
+                        <div className="flex gap-5">
+                          <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="p-3.5 rounded-xl bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-sm">
+                            <MessageCircle className="w-5 h-5" />
+                          </a>
+                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="p-3.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm">
+                            <Facebook className="w-5 h-5" />
+                          </a>
+                          <button onClick={() => navigator.share?.({ title: article.title, url: shareUrl })} className="p-3.5 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm">
+                            <Share2 className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* TOMBOL KEMBALI DI BAWAH */}
+                      <div className="w-full pt-2 flex justify-center">
+                        <Button 
+                          onClick={() => setSelectedSlug(null)}
+                          className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full px-10 h-12 font-black uppercase text-[11px] tracking-[0.2em] shadow-lg hover:scale-105 transition-transform gap-3"
+                        >
+                          <ArrowLeft className="w-4 h-4" /> KEMBALI KE BERANDA
+                        </Button>
                       </div>
                     </div>
                   </article>
@@ -183,7 +177,7 @@ export default function HomePage() {
               {/* GULUNGAN BAWAH BATIK CERAH */}
               <div className="w-full max-w-4xl h-16 bg-amber-500 dark:bg-amber-600 rounded-full shadow-2xl relative z-10 border-t-4 border-amber-700/30 flex items-center justify-center overflow-hidden mb-16">
                  <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-                 <div className="w-32 h-1.5 bg-white/30 rounded-full"></div>
+                 <div className="w-24 h-1 bg-white/30 rounded-full"></div>
               </div>
             </motion.div>
           )}
