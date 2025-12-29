@@ -1,19 +1,23 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
-import dynamic from "next/dynamic"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 import { Loader2, ImagePlus, Clock, Link as LinkIcon, X } from "lucide-react"
 
-// Import Quill secara dinamis untuk menghindari error SSR di Next.js
-const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
-import "react-quill/dist/quill.snow.css";
+// PAKAI REACT-QUILL-NEW SEPERTI DI HALAMAN BERITA
+import dynamic from 'next/dynamic'
+const ReactQuill = dynamic(() => import('react-quill-new'), { 
+  ssr: false,
+  loading: () => <div className="h-40 w-full bg-muted animate-pulse rounded-md" />
+})
+import 'react-quill-new/dist/quill.snow.css'
 
 export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
   const [loading, setLoading] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null) // State untuk preview
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   
   const [formData, setFormData] = useState({
     title: "",
@@ -24,15 +28,15 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     duration: ""
   })
 
-  // Pengaturan Toolbar Editor
+  // Toolbar editor disamakan dengan berita
   const modules = useMemo(() => ({
     toolbar: [
-      [{ header: [1, 2, false] }],
-      ["bold", "italic", "underline", "strike"],
-      [{ list: "ordered" }, { list: "bullet" }],
-      ["clean"],
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline'],
+      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+      ['link', 'clean']
     ],
-  }), []);
+  }), [])
 
   useEffect(() => {
     if (course) {
@@ -52,12 +56,11 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     setSelectedFile(null)
   }, [course, isOpen])
 
-  // Fungsi Preview Gambar
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      setPreviewUrl(URL.createObjectURL(file)) // Buat URL sementara untuk preview
+      setPreviewUrl(URL.createObjectURL(file))
     }
   }
 
@@ -71,7 +74,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     const data = new FormData()
     data.append("title", formData.title)
     data.append("slug", formData.slug)
-    data.append("description", formData.description) // Mengambil konten dari Quill
+    data.append("description", formData.description) 
     data.append("category_id", formData.category_id)
     data.append("price", formData.price)
     data.append("duration", formData.duration)
@@ -106,90 +109,71 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2.5rem] p-8 max-w-2xl border-none shadow-2xl overflow-y-auto max-h-[95vh] bg-white">
+      <DialogContent className="max-w-4xl p-8 bg-[#fffdfa] rounded-[2.5rem] shadow-2xl overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">
             {course ? "Update" : "Add"} <span className="text-amber-500">Course</span>
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6 mt-6 font-bold uppercase tracking-widest text-[10px]">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* SISI KIRI: INPUT TEKS */}
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-zinc-400 ml-2">Course Title</label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Course Title</Label>
                 <Input 
                   value={formData.title} 
                   onChange={(e) => setFormData({...formData, title: e.target.value, slug: createSlug(e.target.value)})}
-                  className="rounded-2xl h-12 border-zinc-100" required 
+                  className="rounded-2xl h-12 border-zinc-100 font-bold" required 
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="text-zinc-400 ml-2 flex items-center gap-1"><LinkIcon size={10}/> Slug</label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1"><LinkIcon size={10}/> Slug</Label>
                 <Input value={formData.slug} readOnly className="rounded-2xl h-12 bg-zinc-50 border-none text-zinc-400 italic" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-zinc-400 ml-2">Price (IDR)</label>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Price (IDR)</Label>
                   <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-2xl h-12" required />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-zinc-400 ml-2 flex items-center gap-1"><Clock size={10}/> Duration</label>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1"><Clock size={10}/> Duration</Label>
                   <Input placeholder="2 BULAN" value={formData.duration} onChange={(e) => setFormData({...formData, duration: e.target.value})} className="rounded-2xl h-12" required />
                 </div>
               </div>
             </div>
 
-            {/* SISI KANAN: PREVIEW UPLOAD */}
             <div className="space-y-2">
-              <label className="text-zinc-400 ml-2 flex items-center gap-1"><ImagePlus size={10}/> Thumbnail Preview</label>
-              <div className="relative group h-40 w-full rounded-[2rem] border-2 border-dashed border-zinc-200 flex items-center justify-center overflow-hidden bg-zinc-50 transition-all hover:border-amber-400">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1"><ImagePlus size={10}/> Thumbnail Preview</Label>
+              <div className="relative h-44 w-full rounded-[2rem] border-2 border-dashed border-zinc-200 flex items-center justify-center overflow-hidden bg-zinc-50 hover:border-amber-400 transition-all cursor-pointer">
                 {previewUrl ? (
-                  <>
-                    <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
-                    <button 
-                      type="button"
-                      onClick={() => {setPreviewUrl(null); setSelectedFile(null)}}
-                      className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={14} />
-                    </button>
-                  </>
+                  <img src={previewUrl} alt="Preview" className="h-full w-full object-cover" />
                 ) : (
-                  <div className="text-center p-4">
+                  <div className="text-center">
                     <ImagePlus className="mx-auto text-zinc-300 mb-2" size={32} />
-                    <p className="text-[8px] text-zinc-400">KLIK UNTUK UNGGAH GAMBAR<br/>(PNG, JPG MAX 2MB)</p>
+                    <p className="text-[9px] text-zinc-400">UPLOAD THUMBNAIL</p>
                   </div>
                 )}
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleFileChange} 
-                  className="absolute inset-0 opacity-0 cursor-pointer" 
-                />
+                <input type="file" accept="image/*" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
               </div>
             </div>
           </div>
 
-          {/* FULL WIDTH: EDITOR DESKRIPSI */}
           <div className="space-y-2">
-            <label className="text-zinc-400 ml-2">Description (Rich Text)</label>
-            <div className="rounded-[1.5rem] overflow-hidden border border-zinc-100 shadow-sm bg-zinc-50">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Course Description</Label>
+            <div className="rounded-2xl border border-zinc-100 overflow-hidden bg-white">
               <ReactQuill 
                 theme="snow" 
                 value={formData.description} 
-                onChange={(content) => setFormData({...formData, description: content})} 
+                onChange={(val) => setFormData({...formData, description: val})} 
                 modules={modules}
-                className="bg-white min-h-[150px]"
               />
             </div>
           </div>
 
-          <Button disabled={loading} className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl mt-4">
+          <Button disabled={loading} className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl">
             {loading ? <Loader2 className="animate-spin" /> : "Save Course Data"}
           </Button>
         </form>
