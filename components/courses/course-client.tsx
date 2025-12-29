@@ -18,7 +18,7 @@ export function CourseClient({ initialData }: { initialData: any[] }) {
   const [selectedCourse, setSelectedCourse] = useState<any>(null)
   const router = useRouter()
 
-  // 1. Fungsi Refresh Data (Mengambil dari Laravel)
+  // 1. Fungsi Ambil Data Terbaru
   const refreshData = async () => {
     setLoading(true)
     try {
@@ -26,51 +26,56 @@ export function CourseClient({ initialData }: { initialData: any[] }) {
         headers: { "Accept": "application/json" }
       })
       const data = await res.json()
-      
-      // Laravel biasanya mengembalikan array langsung atau di dalam { data: [] }
       const finalData = Array.isArray(data) ? data : data.data || []
       setCourses(finalData)
       router.refresh()
     } catch (error) {
-      console.error("Gagal mengambil data dari Laravel:", error)
+      console.error("Gagal sinkronisasi data:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  // 2. Fungsi Delete (Sesuai dengan route destroy di Laravel)
+  // 2. Fungsi Hapus dengan Token Keamanan
   const onDelete = async (id: number) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus kursus ini secara permanen dari database?")) return
+    if (!confirm("Hapus kursus ini secara permanen dari sistem Mejatika?")) return
     
+    // Mengambil token dari localStorage agar tidak 401
+    const token = localStorage.getItem("token");
+
     try {
       const res = await fetch(`${API_BASE_URL}/${id}`, { 
         method: "DELETE",
-        headers: { "Accept": "application/json" }
+        headers: { 
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}` // Wajib untuk rute terproteksi
+        }
       })
 
-      if (res.status === 204 || res.ok) {
+      if (res.ok) {
         refreshData()
       } else {
-        alert("Gagal menghapus: Server menolak permintaan.")
+        const errData = await res.json()
+        alert(`Gagal: ${errData.message || "Akses Ditolak"}`)
       }
     } catch (error) {
-      alert("Terjadi kesalahan jaringan.")
+      alert("Kesalahan jaringan saat mencoba menghapus data.")
     }
   }
 
   return (
     <div className="space-y-10">
-      {/* HEADER SECTION */}
+      {/* HEADER: Dashboard Admin Style */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white p-10 rounded-[3rem] shadow-sm border border-zinc-100">
         <div>
           <Badge className="bg-amber-100 text-amber-700 border-none mb-3 px-4 py-1 uppercase tracking-widest font-black text-[10px]">
-            Admin Dashboard
+            Admin Access Only
           </Badge>
           <h1 className="text-4xl font-black italic uppercase tracking-tighter text-zinc-900 leading-none">
             Course <span className="text-amber-500">Management</span>
           </h1>
           <p className="text-zinc-400 font-bold uppercase tracking-[0.2em] text-[10px] mt-3">
-            Total {courses.length} Program Pembelajaran Terdaftar
+            Total {courses.length} Program Aktif di Database
           </p>
         </div>
         
@@ -82,69 +87,68 @@ export function CourseClient({ initialData }: { initialData: any[] }) {
         </Button>
       </div>
 
-      {/* LOADING STATE */}
+      {/* FEEDBACK: Loading State */}
       {loading && (
-        <div className="flex items-center justify-center py-10 bg-white/50 backdrop-blur-sm rounded-[2rem]">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-500 mr-3" />
-          <span className="font-black uppercase tracking-widest text-xs">Syncing with Laravel...</span>
+        <div className="flex items-center justify-center py-6 bg-amber-50 rounded-[2rem] border border-amber-100">
+          <Loader2 className="w-6 h-6 animate-spin text-amber-600 mr-3" />
+          <span className="font-black uppercase tracking-widest text-[10px] text-amber-700">Updating Database Mejatika...</span>
         </div>
       )}
 
-      {/* GRID LIST */}
+      {/* LIST: Course Grid */}
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {courses.length > 0 ? (
           courses.map((course) => (
             <Card key={course.id} className="group overflow-hidden flex flex-col shadow-md hover:shadow-2xl transition-all duration-500 border-none bg-white rounded-[2.5rem]">
               <CardContent className="p-0 flex flex-col flex-grow">
-                {/* THUMBNAIL AREA */}
+                {/* Thumbnail dengan Overlay Kategori */}
                 <div className="px-6 pt-6">
-                  <div className="relative h-52 w-full bg-zinc-100 rounded-[2.2rem] overflow-hidden shadow-inner">
+                  <div className="relative h-52 w-full bg-zinc-100 rounded-[2.2rem] overflow-hidden shadow-inner border border-zinc-50">
                     <img 
                       src={course.thumbnail || "/placeholder.svg"} 
-                      className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" 
-                      alt={course.title} 
+                      className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                      alt="" 
                     />
                     <div className="absolute top-4 left-4">
-                      <Badge className="bg-white/90 backdrop-blur-md text-zinc-900 border-none font-black uppercase text-[9px] px-4 py-1.5 rounded-full shadow-sm">
-                        {course.category?.name || "Uncategorized"}
+                      <Badge className="bg-white/90 backdrop-blur-md text-zinc-900 border-none font-black uppercase text-[9px] px-4 py-1.5 rounded-full">
+                        {course.category?.name || "General"}
                       </Badge>
                     </div>
                   </div>
                 </div>
 
-                {/* CONTENT AREA */}
+                {/* Info Detail Kursus */}
                 <div className="p-8 flex flex-col flex-grow">
-                  <h3 className="text-2xl font-black italic uppercase text-zinc-900 mb-2 line-clamp-1 group-hover:text-amber-500 transition-colors duration-300">
+                  <h3 className="text-2xl font-black italic uppercase text-zinc-900 mb-1 line-clamp-1 group-hover:text-amber-500 transition-colors">
                     {course.title}
                   </h3>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">
-                    Slug: {course.slug}
+                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-6 italic">
+                    ID: {course.id} | Slug: {course.slug}
                   </p>
                   
-                  {/* DETAILS BOX */}
                   <div className="grid grid-cols-1 gap-3 mb-8 bg-zinc-50 p-5 rounded-[2rem] border border-zinc-100/50">
                     <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
                       <span className="text-zinc-400 flex items-center gap-2">
-                        <Clock className="w-3.5 h-3.5 text-amber-500" /> Duration
+                        <Clock className="w-3.5 h-3.5 text-amber-500" /> Durasi
                       </span>
                       <span className="text-zinc-800">{course.duration || "N/A"}</span>
                     </div>
                     <div className="flex justify-between text-[11px] font-black uppercase tracking-widest pt-2 border-t border-zinc-200/50">
                       <span className="text-zinc-400 flex items-center gap-2">
-                        <Tag className="w-3.5 h-3.5 text-amber-500" /> Price
+                        <Tag className="w-3.5 h-3.5 text-amber-500" /> Harga
                       </span>
                       <span className="text-amber-600">Rp {Number(course.price || 0).toLocaleString("id-ID")}</span>
                     </div>
                   </div>
 
-                  {/* ACTION BUTTONS */}
+                  {/* Actions: Edit & Delete */}
                   <div className="flex gap-3 mt-auto">
                     <Button 
                       variant="outline" 
                       onClick={() => { setSelectedCourse(course); setIsOpen(true); }}
                       className="flex-1 border-2 border-zinc-100 hover:border-amber-500 hover:bg-amber-50 rounded-2xl h-14 font-black uppercase text-[10px] tracking-widest transition-all"
                     >
-                      <Edit className="mr-2 h-4 w-4" /> Edit Data
+                      <Edit className="mr-2 h-4 w-4" /> Edit
                     </Button>
                     <Button 
                       variant="outline" 
@@ -160,15 +164,14 @@ export function CourseClient({ initialData }: { initialData: any[] }) {
           ))
         ) : (
           !loading && (
-            <div className="col-span-full py-20 text-center bg-zinc-50 rounded-[3rem] border-2 border-dashed border-zinc-200">
-              <AlertCircle className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
-              <p className="font-black uppercase tracking-widest text-zinc-400">Belum ada kursus di Database Laravel</p>
+            <div className="col-span-full py-24 text-center bg-zinc-50 rounded-[3rem] border-2 border-dashed border-zinc-200">
+              <AlertCircle className="w-16 h-16 text-zinc-200 mx-auto mb-4" />
+              <p className="font-black uppercase tracking-[0.3em] text-zinc-400 text-xs">Data Kosong</p>
             </div>
           )
         )}
       </div>
 
-      {/* MODAL COMPONENT */}
       <CourseModal 
         isOpen={isOpen} 
         onClose={() => setIsOpen(false)} 
