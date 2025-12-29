@@ -99,13 +99,11 @@ export default function KursusPage() {
         )}
       </main>
 
-      {/* MODAL DETAIL KURSUS - PERBAIKAN DI SINI */}
+      {/* MODAL DETAIL KURSUS - PERBAIKAN TOTAL DI SINI */}
       <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
-        {/* z-[9999] agar di atas navbar, max-h-[90vh] agar tidak bablas layar */}
         <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2rem] border-none bg-white shadow-2xl max-h-[90vh] flex flex-col z-[9999]">
           {selectedCourse && (
             <>
-              {/* Tombol Close Custom */}
               <button 
                 onClick={() => setSelectedCourse(null)}
                 className="absolute top-4 right-4 z-50 p-2 bg-white/80 hover:bg-white backdrop-blur rounded-full text-zinc-900 shadow-sm transition-all"
@@ -113,22 +111,20 @@ export default function KursusPage() {
                 <X size={20} />
               </button>
 
-              {/* Area Scrollable */}
-              <div className="overflow-y-auto custom-scrollbar flex-grow">
-                {/* Cover Image */}
+              {/* flex-grow dan overflow-y-auto memastikan scroll hanya di dalam modal */}
+              <div className="overflow-y-auto custom-scrollbar flex-grow bg-[#fcfcf9]">
                 <div className="relative h-64 md:h-80 w-full">
                   <img src={selectedCourse.thumbnail || "/placeholder.svg"} className="w-full h-full object-cover" alt="" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/20" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#fcfcf9] via-transparent to-black/20" />
                 </div>
 
-                {/* Konten Utama */}
-                <div className="px-6 md:px-10 pb-10 -mt-12 relative z-10">
-                  <div className="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-xl border border-zinc-50">
+                <div className="px-4 md:px-10 pb-10 -mt-12 relative z-10">
+                  <div className="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-xl border border-zinc-50 w-full overflow-hidden">
                     <Badge className="bg-amber-500 text-white mb-4 px-4 py-1 rounded-full uppercase font-black text-[10px] tracking-widest border-none">
                       {selectedCourse.category?.name || "Premium Course"}
                     </Badge>
                     
-                    <h2 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter text-zinc-900 mb-6 leading-tight">
+                    <h2 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter text-zinc-900 mb-6 leading-tight break-words">
                       {selectedCourse.title}
                     </h2>
 
@@ -143,17 +139,19 @@ export default function KursusPage() {
                       </div>
                     </div>
 
-                    <div className="prose-content mb-10">
+                    {/* Pembungkus Deskripsi: max-w-full dan overflow-hidden penting di sini */}
+                    <div className="prose-content mb-10 w-full max-w-full overflow-hidden">
                       <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-4 flex items-center gap-2">
                         <span className="w-6 h-[1px] bg-zinc-300"></span> Deskripsi Kurikulum
                       </h4>
+                      {/* break-words memaksa kata panjang (link/tabel) untuk patah baris */}
                       <div 
-                        className="text-zinc-600 leading-relaxed text-sm md:text-base"
+                        className="text-zinc-600 leading-relaxed text-sm md:text-base break-words overflow-x-auto"
                         dangerouslySetInnerHTML={{ __html: selectedCourse.description }}
                       />
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-4 sticky bottom-0 bg-white pt-4">
+                    <div className="flex flex-col md:flex-row gap-4 pt-4 border-t border-zinc-100">
                       <Button className="flex-1 bg-zinc-900 hover:bg-amber-600 text-white h-14 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg transition-all">
                         Daftar Sekarang
                       </Button>
