@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge"
 import { Clock, Tag, Loader2, Info, X } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 export default function KursusPage() {
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCourse, setSelectedCourse] = useState<any | null>(null) // Untuk detail
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null)
 
   const formatRupiah = (number: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -58,7 +58,7 @@ export default function KursusPage() {
               <Card 
                 key={course.id} 
                 className="group cursor-pointer border-none shadow-sm hover:shadow-2xl transition-all duration-500 bg-white rounded-[2.5rem] overflow-hidden flex flex-col"
-                onClick={() => setSelectedCourse(course)} // Klik kartu untuk buka detail
+                onClick={() => setSelectedCourse(course)}
               >
                 <CardContent className="p-0 flex flex-col h-full">
                   <div className="p-4">
@@ -99,64 +99,72 @@ export default function KursusPage() {
         )}
       </main>
 
-      {/* MODAL DETAIL KURSUS */}
+      {/* MODAL DETAIL KURSUS - PERBAIKAN DI SINI */}
       <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2.5rem] border-none bg-[#fcfcf9] max-h-[90vh] overflow-y-auto custom-scrollbar">
+        {/* z-[9999] agar di atas navbar, max-h-[90vh] agar tidak bablas layar */}
+        <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2rem] border-none bg-white shadow-2xl max-h-[90vh] flex flex-col z-[9999]">
           {selectedCourse && (
-            <div className="flex flex-col">
-              {/* Cover Image */}
-              <div className="relative h-72 md:h-96 w-full">
-                <img src={selectedCourse.thumbnail || "/placeholder.svg"} className="w-full h-full object-cover" alt="" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#fcfcf9] via-transparent to-black/20" />
-                <button 
-                  onClick={() => setSelectedCourse(null)}
-                  className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/40 backdrop-blur rounded-full text-white transition-all"
-                >
-                  <X size={20} />
-                </button>
-              </div>
+            <>
+              {/* Tombol Close Custom */}
+              <button 
+                onClick={() => setSelectedCourse(null)}
+                className="absolute top-4 right-4 z-50 p-2 bg-white/80 hover:bg-white backdrop-blur rounded-full text-zinc-900 shadow-sm transition-all"
+              >
+                <X size={20} />
+              </button>
 
-              {/* Content */}
-              <div className="px-8 md:px-12 pb-12 -mt-20 relative z-10">
-                <div className="bg-white rounded-[3rem] p-8 md:p-12 shadow-xl border border-zinc-100">
-                  <Badge className="bg-amber-500 text-white mb-6 px-6 py-1 rounded-full uppercase font-black text-[10px] tracking-widest border-none">
-                    {selectedCourse.category?.name || "Premium Course"}
-                  </Badge>
-                  
-                  <h2 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter text-zinc-900 mb-6 leading-tight">
-                    {selectedCourse.title}
-                  </h2>
+              {/* Area Scrollable */}
+              <div className="overflow-y-auto custom-scrollbar flex-grow">
+                {/* Cover Image */}
+                <div className="relative h-64 md:h-80 w-full">
+                  <img src={selectedCourse.thumbnail || "/placeholder.svg"} className="w-full h-full object-cover" alt="" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-black/20" />
+                </div>
 
-                  <div className="flex flex-wrap gap-6 mb-10 border-y border-zinc-100 py-6">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1">Durasi Belajar</span>
-                      <span className="font-bold text-zinc-900 flex items-center gap-2"><Clock size={16} className="text-amber-500" /> {selectedCourse.duration}</span>
+                {/* Konten Utama */}
+                <div className="px-6 md:px-10 pb-10 -mt-12 relative z-10">
+                  <div className="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-xl border border-zinc-50">
+                    <Badge className="bg-amber-500 text-white mb-4 px-4 py-1 rounded-full uppercase font-black text-[10px] tracking-widest border-none">
+                      {selectedCourse.category?.name || "Premium Course"}
+                    </Badge>
+                    
+                    <h2 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter text-zinc-900 mb-6 leading-tight">
+                      {selectedCourse.title}
+                    </h2>
+
+                    <div className="grid grid-cols-2 gap-4 mb-8 border-y border-zinc-100 py-6">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1">Durasi</span>
+                        <span className="font-bold text-zinc-900 flex items-center gap-2"><Clock size={16} className="text-amber-500" /> {selectedCourse.duration}</span>
+                      </div>
+                      <div className="flex flex-col text-right md:text-left">
+                        <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1">Investasi</span>
+                        <span className="font-bold text-amber-600 flex items-center gap-2 justify-end md:justify-start"><Tag size={16} /> {selectedCourse.price ? formatRupiah(Number(selectedCourse.price)) : "Gratis"}</span>
+                      </div>
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1">Biaya Investasi</span>
-                      <span className="font-bold text-amber-600 flex items-center gap-2"><Tag size={16} /> {selectedCourse.price ? formatRupiah(Number(selectedCourse.price)) : "Gratis"}</span>
+
+                    <div className="prose-content mb-10">
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-4 flex items-center gap-2">
+                        <span className="w-6 h-[1px] bg-zinc-300"></span> Deskripsi Kurikulum
+                      </h4>
+                      <div 
+                        className="text-zinc-600 leading-relaxed text-sm md:text-base"
+                        dangerouslySetInnerHTML={{ __html: selectedCourse.description }}
+                      />
                     </div>
-                  </div>
 
-                  <div className="prose prose-zinc max-w-none">
-                    <h4 className="text-[12px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-4">Deskripsi Kurikulum</h4>
-                    <div 
-                      className="text-zinc-600 leading-relaxed space-y-4 prose-table:border prose-table:rounded-xl overflow-hidden"
-                      dangerouslySetInnerHTML={{ __html: selectedCourse.description }}
-                    />
-                  </div>
-
-                  <div className="mt-12 flex flex-col md:flex-row gap-4">
-                    <Button className="flex-1 bg-amber-500 hover:bg-amber-600 text-white h-16 rounded-2xl font-black uppercase tracking-[0.2em] shadow-lg shadow-amber-200">
-                      Daftar Sekarang
-                    </Button>
-                    <Button variant="outline" onClick={() => setSelectedCourse(null)} className="flex-1 h-16 rounded-2xl border-2 border-zinc-100 font-black uppercase tracking-[0.2em] text-zinc-400">
-                      Kembali
-                    </Button>
+                    <div className="flex flex-col md:flex-row gap-4 sticky bottom-0 bg-white pt-4">
+                      <Button className="flex-1 bg-zinc-900 hover:bg-amber-600 text-white h-14 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg transition-all">
+                        Daftar Sekarang
+                      </Button>
+                      <Button variant="outline" onClick={() => setSelectedCourse(null)} className="flex-1 h-14 rounded-xl border-2 border-zinc-100 font-black uppercase tracking-[0.2em] text-zinc-400 hover:bg-zinc-50">
+                        Kembali
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
