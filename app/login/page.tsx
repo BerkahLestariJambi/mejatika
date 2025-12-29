@@ -9,11 +9,11 @@ import { Loader2, GraduationCap, LogOut, ArrowRight } from "lucide-react"
 export default function DashboardPage() {
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [userName, setUserName] = useState<string>("")
+  const [userName, setUserName] = useState<string>("Peserta")
   const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
-  // Pastikan komponen hanya me-render di browser
+  // 1. Inisialisasi awal
   useEffect(() => {
     setIsClient(true)
     
@@ -27,33 +27,33 @@ export default function DashboardPage() {
 
     try {
       const parsedUser = JSON.parse(userData)
-      // Paksa menjadi string murni
-      setUserName(String(parsedUser.name || "Peserta"))
+      // Pastikan merender string, bukan objek
+      setUserName(parsedUser.name ? String(parsedUser.name) : "Peserta")
     } catch (e) {
-      setUserName("Peserta")
+      console.error("Gagal membaca data user")
     }
+    
+    // Panggil fetch kursus hanya sekali
+    fetchCourses(token)
+  }, []) // Empty dependency array agar tidak loop
 
-    fetchCourses()
-  }, [router])
-
-  const fetchCourses = async () => {
+  const fetchCourses = async (token: string) => {
     try {
       const res = await fetch("https://backend.mejatika.com/api/courses", {
         headers: {
           "Accept": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
+          "Authorization": `Bearer ${token}`
         }
       })
-      const data = await res.json()
       
-      // Standarisasi data ke Array
-      if (Array.isArray(data)) {
-        setCourses(data)
-      } else if (data?.data && Array.isArray(data.data)) {
-        setCourses(data.data)
+      if (res.ok) {
+        const data = await res.json()
+        // Penanganan jika API membungkus data dalam properti .data
+        const finalData = Array.isArray(data) ? data : (data?.data || [])
+        setCourses(finalData)
       }
     } catch (err) {
-      console.error("Fetch error:", err)
+      console.error("Gagal memuat kursus:", err)
     } finally {
       setLoading(false)
     }
@@ -61,37 +61,43 @@ export default function DashboardPage() {
 
   const handleLogout = () => {
     localStorage.clear()
-    router.push("/login")
+    window.location.href = "/login" // Gunakan window.location agar refresh total
   }
 
-  // Jika sedang build di server, jangan render apapun
+  // Jangan render apapun selama build atau sebelum browser siap
   if (!isClient) return null
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-zinc-50">
-      <Loader2 className="animate-spin text-amber-500 h-10 w-10" />
-    </div>
-  )
+  if (loading) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-zinc-50">
+        <Loader2 className="animate-spin text-amber-500 h-10 w-10 mb-4" />
+        <p className="font-black uppercase italic text-zinc-400 text-xs tracking-widest">Menyiapkan Dashboard...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 pb-20 text-zinc-900">
-      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-10 flex justify-between items-center shadow-sm">
+      {/* NAVBAR */}
+      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-10 flex justify-between items-center">
         <div className="flex items-center gap-2 font-black italic tracking-tighter text-xl uppercase">
             MEJA<span className="text-amber-500">TIKA</span>
         </div>
-        <Button variant="ghost" onClick={handleLogout} className="text-red-500 font-bold">
+        <Button variant="ghost" onClick={handleLogout} className="text-red-500 font-bold hover:bg-red-50 rounded-xl">
           <LogOut size={18} className="mr-2" /> LOGOUT
         </Button>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 pt-10">
+        {/* HEADER */}
         <header className="mb-10 bg-zinc-900 rounded-[2rem] p-8 text-white shadow-xl">
           <h2 className="text-3xl font-black uppercase italic tracking-tighter">
             Hello, <span className="text-amber-500">{userName}</span>
           </h2>
-          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2">Member Area</p>
+          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2">Area Member Peserta</p>
         </header>
 
+        {/* LIST KURSUS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.length > 0 ? (
             courses.map((course: any) => (
@@ -101,20 +107,20 @@ export default function DashboardPage() {
                 </div>
                 <CardContent className="p-6">
                   <CardTitle className="font-black uppercase italic tracking-tighter text-lg mb-2">
-                    {String(course.title || "No Title")}
+                    {String(course.title || "Tanpa Judul")}
                   </CardTitle>
-                  <p className="text-zinc-500 text-xs mb-6 line-clamp-2">
-                    {String(course.description || "")}
+                  <p className="text-zinc-500 text-xs mb-6 line-clamp-2 font-medium">
+                    {String(course.description || "Tidak ada deskripsi tersedia.")}
                   </p>
-                  <Button className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-xl h-12 font-black uppercase">
+                  <Button className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-xl h-12 font-black uppercase tracking-widest transition-all">
                     Daftar Kursus <ArrowRight size={16} className="ml-2" />
                   </Button>
                 </CardContent>
               </Card>
             ))
           ) : (
-            <div className="col-span-full text-center py-10 text-zinc-400 font-bold uppercase italic">
-               Belum ada data kursus.
+            <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border-2 border-dashed">
+               <p className="font-black uppercase italic text-zinc-300 text-xl">Belum ada kursus tersedia</p>
             </div>
           )}
         </div>
