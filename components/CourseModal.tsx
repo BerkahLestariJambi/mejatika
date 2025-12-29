@@ -13,50 +13,64 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     slug: "",
     description: "",
     thumbnail: "",
-    category_id: "" // Pastikan ini sesuai dengan ID kategori di DB Laravel
+    category_id: "1",
+    price: "",
+    duration: ""
   })
 
   useEffect(() => {
-    if (course) setFormData({
-      title: course.title,
-      slug: course.slug,
-      description: course.description || "",
-      thumbnail: course.thumbnail || "",
-      category_id: course.category_id
-    })
+    if (course) {
+      setFormData({
+        title: course.title || "",
+        slug: course.slug || "",
+        description: course.description || "",
+        thumbnail: course.thumbnail || "",
+        category_id: course.category_id?.toString() || "1",
+        price: course.price?.toString() || "",
+        duration: course.duration || ""
+      })
+    }
   }, [course, isOpen])
 
-  // Fungsi otomatis buat slug dari judul
-  const generateSlug = (title: string) => {
-    return title.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "")
-  }
+  const createSlug = (text: string) => text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "")
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
 
-    const url = course 
-      ? `https://backend.mejatika.com/api/courses/${course.id}` 
-      : "https://backend.mejatika.com/api/courses"
-    
+    // AMBIL TOKEN DARI LOCAL STORAGE (Pastikan saat login Anda menyimpan token dengan nama 'token')
+    const token = localStorage.getItem("token") 
+
+    const API_URL = "https://backend.mejatika.com/api/courses"
+    const url = course ? `${API_URL}/${course.id}` : API_URL
     const method = course ? "PUT" : "POST"
 
     try {
       const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json", "Accept": "application/json" },
-        body: JSON.stringify(formData)
+        method: method,
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}` // 🔑 WAJIB UNTUK SOLUSI "Unauthenticated"
+        },
+        body: JSON.stringify({
+          ...formData,
+          price: Number(formData.price),
+          category_id: Number(formData.category_id)
+        })
       })
+
+      const result = await res.json()
 
       if (res.ok) {
         onSuccess()
         onClose()
       } else {
-        const err = await res.json()
-        alert("Validasi Gagal: " + JSON.stringify(err.errors))
+        // Menangani error "Route not found" atau "Unauthenticated" secara spesifik
+        alert("Gagal: " + (result.message || "Periksa koneksi atau hak akses Admin Anda."))
       }
     } catch (err) {
-      alert("Gagal koneksi ke Laravel")
+      alert("Terjadi kesalahan fatal pada koneksi API.")
     } finally {
       setLoading(false)
     }
@@ -64,51 +78,58 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2.5rem] p-8">
+      <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">
-            {course ? "Update" : "Create"} <span className="text-amber-500">Course</span>
+          <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter">
+            {course ? "Update" : "Add"} <span className="text-amber-500">Course</span>
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4 font-bold text-[11px] uppercase tracking-widest">
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-6 font-bold uppercase tracking-widest text-[10px]">
           <div className="space-y-1">
-            <label>Title</label>
+            <label className="text-zinc-400 ml-2">Course Title</label>
             <Input 
               value={formData.title} 
-              onChange={e => setFormData({...formData, title: e.target.value, slug: generateSlug(e.target.value)})} 
-              className="rounded-xl" required 
+              onChange={(e) => setFormData({...formData, title: e.target.value, slug: createSlug(e.target.value)})}
+              className="rounded-2xl h-12 border-zinc-100"
+              required 
             />
           </div>
-          <div className="space-y-1 text-zinc-400">
-            <label>Slug (Auto-generated)</label>
-            <Input value={formData.slug} disabled className="rounded-xl bg-zinc-50" />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-zinc-400 ml-2">Slug (Auto)</label>
+              <Input value={formData.slug} readOnly className="rounded-2xl h-12 bg-zinc-50 border-none italic" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-zinc-400 ml-2">Category ID</label>
+              <Input type="number" value={formData.category_id} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className="rounded-2xl h-12" required />
+            </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-zinc-400 ml-2">Price</label>
+              <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-2xl h-12" required />
+            </div>
+            <div className="space-y-1">
+              <label className="text-zinc-400 ml-2">Duration</label>
+              <Input value={formData.duration} onChange={(e) => setFormData({...formData, duration: e.target.value})} className="rounded-2xl h-12" />
+            </div>
+          </div>
+
           <div className="space-y-1">
-            <label>Category ID</label>
-            <Input 
-              type="number" value={formData.category_id} 
-              onChange={e => setFormData({...formData, category_id: e.target.value})} 
-              className="rounded-xl" required 
-            />
+            <label className="text-zinc-400 ml-2">Thumbnail URL</label>
+            <Input value={formData.thumbnail} onChange={(e) => setFormData({...formData, thumbnail: e.target.value})} className="rounded-2xl h-12" />
           </div>
+
           <div className="space-y-1">
-            <label>Description</label>
-            <Textarea 
-              value={formData.description} 
-              onChange={e => setFormData({...formData, description: e.target.value})} 
-              className="rounded-xl" 
-            />
+            <label className="text-zinc-400 ml-2">Description</label>
+            <Textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} className="rounded-2xl min-h-[80px]" />
           </div>
-          <div className="space-y-1">
-            <label>Thumbnail URL</label>
-            <Input 
-              value={formData.thumbnail} 
-              onChange={e => setFormData({...formData, thumbnail: e.target.value})} 
-              className="rounded-xl" 
-            />
-          </div>
-          <Button disabled={loading} className="w-full bg-amber-500 rounded-2xl py-6 font-black uppercase tracking-widest">
-            {loading ? <Loader2 className="animate-spin" /> : "Sync to Laravel DB"}
+
+          <Button disabled={loading} className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] mt-4">
+            {loading ? <Loader2 className="animate-spin" /> : "Save to Laravel Database"}
           </Button>
         </form>
       </DialogContent>
