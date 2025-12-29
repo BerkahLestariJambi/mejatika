@@ -2,24 +2,15 @@
 
 import { useEffect, useState, Suspense } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { 
-  Loader2, 
-  BookOpen, 
-  GraduationCap, 
-  Calendar, 
-  ArrowRight, 
-  LogOut
-} from "lucide-react"
+import { Loader2, GraduationCap, LogOut, ArrowRight } from "lucide-react"
 
-// Pisahkan komponen utama agar bisa dibungkus Suspense jika diperlukan
 function DashboardContent() {
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [registeringId, setRegisteringId] = useState<number | null>(null)
-  const [userName, setUserName] = useState("") // Gunakan string, jangan simpan objek user langsung untuk dirender
+  const [userName, setUserName] = useState<string>("") 
   const router = useRouter()
 
   useEffect(() => {
@@ -33,15 +24,10 @@ function DashboardContent() {
 
     try {
       const parsedUser = JSON.parse(userData)
-      // PASTIKAN HANYA STRING YANG DISIMPAN KE STATE UNTUK DIRENDER
-      setUserName(parsedUser.name || "Peserta")
-      
-      if (parsedUser.role !== "peserta") {
-        router.push("/login") 
-      }
+      // Mengambil nama dan memastikan tipenya string
+      setUserName(typeof parsedUser.name === 'string' ? parsedUser.name : "Peserta")
     } catch (e) {
-      localStorage.clear()
-      router.push("/login")
+      console.error("Error parsing user data")
     }
 
     fetchCourses()
@@ -56,42 +42,19 @@ function DashboardContent() {
         }
       })
       const data = await res.json()
-      // Pastikan data adalah array sebelum disimpan
+      
+      // LOGIKA ANTI-CRASH: Memastikan data yang masuk ke state adalah ARRAY
       if (Array.isArray(data)) {
         setCourses(data)
-      } else if (data.data && Array.isArray(data.data)) {
+      } else if (data && typeof data === 'object' && Array.isArray(data.data)) {
         setCourses(data.data)
+      } else {
+        setCourses([]) // Fallback jika format API tidak sesuai
       }
     } catch (err) {
-      console.error("Gagal memuat data kursus")
+      console.error("Fetch error:", err)
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleEnroll = async (courseId: number) => {
-    if (!confirm("Daftar kursus ini?")) return
-    setRegisteringId(courseId)
-    try {
-      const res = await fetch("https://backend.mejatika.com/api/registrations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: JSON.stringify({ course_id: courseId })
-      })
-      if (res.ok) {
-        alert("Berhasil mendaftar!")
-      } else {
-        const errData = await res.json()
-        alert(errData.message || "Gagal mendaftar.")
-      }
-    } catch (err) {
-      alert("Error koneksi.")
-    } finally {
-      setRegisteringId(null)
     }
   }
 
@@ -107,43 +70,54 @@ function DashboardContent() {
   )
 
   return (
-    <div className="min-h-screen bg-zinc-50 pb-20">
-      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-10 flex justify-between items-center">
-        <div className="flex items-center gap-2 font-black italic tracking-tighter">
+    <div className="min-h-screen bg-zinc-50 pb-20 text-zinc-900">
+      <nav className="bg-white border-b px-6 py-4 sticky top-0 z-10 flex justify-between items-center shadow-sm">
+        <div className="flex items-center gap-2 font-black italic tracking-tighter text-xl">
             MEJA<span className="text-amber-500">TIKA</span>
         </div>
-        <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500">
-          <LogOut size={20} />
+        <Button variant="ghost" onClick={handleLogout} className="text-red-500 font-bold hover:bg-red-50">
+          <LogOut size={18} className="mr-2" /> LOGOUT
         </Button>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 pt-10">
-        <section className="mb-12 bg-zinc-900 rounded-[2rem] p-8 text-white">
-          <h2 className="text-4xl font-black uppercase italic tracking-tighter">
+        <header className="mb-10 bg-zinc-900 rounded-[2rem] p-8 text-white shadow-xl">
+          <h2 className="text-3xl md:text-4xl font-black uppercase italic tracking-tighter">
             Hello, <span className="text-amber-500">{userName}</span>
           </h2>
-          <p className="text-zinc-400 font-bold text-xs uppercase tracking-widest mt-2">Dashboard Peserta</p>
-        </section>
+          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2">Peserta Member Area</p>
+        </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {courses.map((course) => (
-            <Card key={course.id} className="border-none shadow-xl rounded-[2rem] overflow-hidden">
-              <CardHeader className="bg-zinc-100 h-32 flex items-center justify-center">
-                <GraduationCap className="h-12 w-12 text-zinc-300" />
-              </CardHeader>
-              <CardContent className="pt-6">
-                <CardTitle className="font-black uppercase italic tracking-tighter mb-2">{course.title}</CardTitle>
-                <p className="text-zinc-500 text-sm mb-6 line-clamp-2">{course.description}</p>
-                <Button 
-                  onClick={() => handleEnroll(course.id)}
-                  disabled={registeringId === course.id}
-                  className="w-full bg-zinc-900 hover:bg-amber-500 rounded-xl font-black uppercase"
-                >
-                  {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar Kursus"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {courses.length > 0 ? (
+            courses.map((course) => (
+              <Card key={course.id?.toString()} className="border-none shadow-lg rounded-[2rem] overflow-hidden bg-white hover:shadow-2xl transition-all">
+                <div className="bg-zinc-100 h-24 flex items-center justify-center">
+                  <GraduationCap className="h-10 w-10 text-zinc-300" />
+                </div>
+                <CardContent className="p-6">
+                  {/* Pastikan title adalah string, bukan objek */}
+                  <CardTitle className="font-black uppercase italic tracking-tighter text-lg mb-2">
+                    {typeof course.title === 'string' ? course.title : "Untitled Course"}
+                  </CardTitle>
+                  
+                  <p className="text-zinc-500 text-xs mb-6 line-clamp-2 font-medium">
+                    {typeof course.description === 'string' ? course.description : "No description available."}
+                  </p>
+
+                  <Button 
+                    className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-xl h-12 font-black uppercase tracking-widest transition-colors"
+                  >
+                    Daftar Kursus <ArrowRight size={16} className="ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-zinc-200">
+               <p className="font-black uppercase italic text-zinc-300 text-xl">Belum ada kursus tersedia</p>
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -152,7 +126,7 @@ function DashboardContent() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<Loader2 className="animate-spin" />}>
+    <Suspense fallback={<div className="h-screen flex items-center justify-center"><Loader2 className="animate-spin text-amber-500" /></div>}>
       <DashboardContent />
     </Suspense>
   )
