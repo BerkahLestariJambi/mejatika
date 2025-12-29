@@ -4,15 +4,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2 } from "lucide-react"
+import { Loader2, ImagePlus, Clock, Link as LinkIcon } from "lucide-react"
 
 export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
   const [loading, setLoading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null) // Untuk file gambar fisik
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
     description: "",
-    thumbnail: "",
     category_id: "1",
     price: "",
     duration: ""
@@ -24,14 +24,14 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
         title: course.title || "",
         slug: course.slug || "",
         description: course.description || "",
-        thumbnail: course.thumbnail || "",
         category_id: course.category_id?.toString() || "1",
         price: course.price?.toString() || "",
         duration: course.duration || ""
       })
     } else {
-      setFormData({ title: "", slug: "", description: "", thumbnail: "", category_id: "1", price: "", duration: "" })
+      setFormData({ title: "", slug: "", description: "", category_id: "1", price: "", duration: "" })
     }
+    setSelectedFile(null)
   }, [course, isOpen])
 
   const createSlug = (text: string) => text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "")
@@ -40,26 +40,36 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     e.preventDefault()
     setLoading(true)
 
-    const token = localStorage.getItem("token"); // Ambil token auth
+    const token = localStorage.getItem("token")
     const API_URL = "https://backend.mejatika.com/api/courses"
-    
-    // Logika URL dan Method persis seperti CRUD Berita
     const url = course ? `${API_URL}/${course.id}` : API_URL
-    const method = course ? "PUT" : "POST"
+    
+    // MENGGUNAKAN FORMDATA UNTUK MENDUKUNG UPLOAD GAMBAR
+    const data = new FormData()
+    data.append("title", formData.title)
+    data.append("slug", formData.slug)
+    data.append("description", formData.description || "")
+    data.append("category_id", formData.category_id)
+    data.append("price", formData.price)
+    data.append("duration", formData.duration)
+    
+    if (selectedFile) {
+      data.append("thumbnail", selectedFile)
+    }
+
+    // Trik Laravel: Update dengan File harus pakai POST + _method PUT
+    if (course) {
+      data.append("_method", "PUT")
+    }
 
     try {
       const res = await fetch(url, {
-        method: method,
+        method: "POST", // Selalu POST jika mengirim FormData
         headers: { 
           "Accept": "application/json",
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}` // SOLUSI UNTUK ERROR Unauthenticated
+          "Authorization": `Bearer ${token}` // Atasi Unauthenticated
         },
-        body: JSON.stringify({
-          ...formData,
-          price: Number(formData.price),
-          category_id: Number(formData.category_id)
-        })
+        body: data
       })
 
       const result = await res.json()
@@ -68,11 +78,10 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
         onSuccess()
         onClose()
       } else {
-        // Tampilkan error validasi dari Laravel
-        alert("Gagal: " + (result.message || "Terjadi kesalahan validasi"));
+        alert("Gagal: " + (result.message || "Cek kembali data Anda"))
       }
     } catch (err) {
-      alert("Gagal terhubung ke API");
+      alert("Gagal terhubung ke API")
     } finally {
       setLoading(false)
     }
@@ -80,7 +89,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+      <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh] bg-white">
         <DialogHeader>
           <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">
             {course ? "Update" : "Add"} <span className="text-amber-500">Course</span>
@@ -88,7 +97,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-6 font-bold uppercase tracking-widest text-[10px]">
-          {/* Form input sama seperti sebelumnya, pastikan value terikat ke formData */}
+          
           <div className="space-y-1">
             <label className="text-zinc-400 ml-2">Course Title</label>
             <Input 
@@ -97,21 +106,41 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
               className="rounded-2xl h-12 border-zinc-100" required 
             />
           </div>
+
+          <div className="space-y-1">
+            <label className="text-zinc-400 ml-2 flex items-center gap-1"><LinkIcon size={10}/> Slug (URL)</label>
+            <Input 
+              value={formData.slug} 
+              onChange={(e) => setFormData({...formData, slug: e.target.value})} 
+              className="rounded-2xl h-12 bg-zinc-50 border-none italic text-zinc-400" 
+            />
+          </div>
           
+          <div className="grid grid-cols-2 gap-4">
+             <div className="space-y-1">
+                <label className="text-zinc-400 ml-2">Price (IDR)</label>
+                <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-2xl h-12" required />
+             </div>
+             <div className="space-y-1">
+                <label className="text-zinc-400 ml-2 flex items-center gap-1"><Clock size={10}/> Duration</label>
+                <Input placeholder="E.G. 2 BULAN" value={formData.duration} onChange={(e) => setFormData({...formData, duration: e.target.value})} className="rounded-2xl h-12" required />
+             </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
              <div className="space-y-1">
                 <label className="text-zinc-400 ml-2">Category ID</label>
                 <Input type="number" value={formData.category_id} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className="rounded-2xl h-12" required />
              </div>
              <div className="space-y-1">
-                <label className="text-zinc-400 ml-2">Price (IDR)</label>
-                <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} className="rounded-2xl h-12" required />
+                <label className="text-zinc-400 ml-2 flex items-center gap-1"><ImagePlus size={10}/> Thumbnail Image</label>
+                <Input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
+                  className="rounded-2xl h-12 border-dashed pt-2 cursor-pointer" 
+                />
              </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-zinc-400 ml-2">Thumbnail URL</label>
-            <Input value={formData.thumbnail} onChange={(e) => setFormData({...formData, thumbnail: e.target.value})} className="rounded-2xl h-12" />
           </div>
 
           <div className="space-y-1">
@@ -120,7 +149,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
           </div>
 
           <Button disabled={loading} className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl mt-4">
-            {loading ? <Loader2 className="animate-spin" /> : "Save to Laravel Database"}
+            {loading ? <Loader2 className="animate-spin" /> : "Save Course Data"}
           </Button>
         </form>
       </DialogContent>
