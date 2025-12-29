@@ -4,18 +4,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, DollarSign, Clock, ImagePlus } from "lucide-react"
+import { Loader2, DollarSign, Clock, ImagePlus, Globe } from "lucide-react"
 
 export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
   const [loading, setLoading] = useState(false)
-  const [selectedFile, setSelectedFile] = useState<File | null>(null) // State untuk file fisik
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
     description: "",
     category_id: "1",
     price: "",
-    duration: "" // State duration ditambahkan
+    duration: ""
   })
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     } else {
       setFormData({ title: "", slug: "", description: "", category_id: "1", price: "", duration: "" })
     }
-    setSelectedFile(null) // Reset file saat modal buka/tutup
+    setSelectedFile(null)
   }, [course, isOpen])
 
   const createSlug = (text: string) => text.toLowerCase().replace(/ /g, "-").replace(/[^\w-]+/g, "")
@@ -44,27 +44,25 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
     const API_URL = "https://backend.mejatika.com/api/courses"
     const url = course ? `${API_URL}/${course.id}` : API_URL
 
-    // MENGGUNAKAN FORMDATA UNTUK UPLOAD FILE
     const data = new FormData()
     data.append("title", formData.title)
     data.append("slug", formData.slug)
     data.append("description", formData.description || "")
     data.append("category_id", formData.category_id)
     data.append("price", formData.price)
-    data.append("duration", formData.duration) // Kirim data duration
+    data.append("duration", formData.duration) // <--- Memastikan duration terkirim
     
     if (selectedFile) {
-      data.append("thumbnail", selectedFile)
+      data.append("thumbnail", selectedFile) // <--- Memastikan file gambar terkirim
     }
 
-    // Laravel Spoofing: Jika update, tambahkan _method PUT
     if (course) {
       data.append("_method", "PUT")
     }
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Selalu POST jika mengirim FormData/File
+        method: "POST", 
         headers: { 
           "Accept": "application/json",
           "Authorization": `Bearer ${token}` 
@@ -77,7 +75,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
         onClose()
       } else {
         const result = await res.json()
-        alert("Gagal: " + (result.message || "Pastikan ukuran gambar < 2MB"))
+        alert("Gagal: " + (result.message || "Periksa kembali data Anda"))
       }
     } catch (err) {
       alert("Kesalahan koneksi ke server Laravel")
@@ -88,15 +86,16 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+      <DialogContent className="rounded-[2.5rem] p-8 max-w-lg border-none shadow-2xl overflow-y-auto max-h-[90vh] bg-white">
         <DialogHeader>
           <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">
             {course ? "Update" : "Add"} <span className="text-amber-500">Course</span>
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-6 font-bold uppercase tracking-widest text-[10px]">
+        <form onSubmit={handleSubmit} className="space-y-5 mt-6 font-bold uppercase tracking-widest text-[10px]">
           
+          {/* TITLE SECTION */}
           <div className="space-y-1">
             <label className="text-zinc-400 ml-2">Course Title</label>
             <Input 
@@ -108,7 +107,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
             />
           </div>
 
-          {/* GRID PRICE & DURATION */}
+          {/* PRICE & DURATION GRID */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-zinc-400 ml-2 flex items-center gap-1">
@@ -137,37 +136,50 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
             </div>
           </div>
 
+          {/* CATEGORY & SLUG GRID */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-zinc-400 ml-2">Category ID</label>
-              <Input type="number" value={formData.category_id} onChange={(e) => setFormData({...formData, category_id: e.target.value})} className="rounded-2xl h-12" required />
+              <Input 
+                type="number" 
+                value={formData.category_id} 
+                onChange={(e) => setFormData({...formData, category_id: e.target.value})} 
+                className="rounded-2xl h-12 border-zinc-100" 
+                required 
+              />
             </div>
             <div className="space-y-1">
-              <label className="text-zinc-400 ml-2 italic">Slug (Auto)</label>
-              <Input value={formData.slug} readOnly className="rounded-2xl h-12 bg-zinc-50 border-none" />
+              <label className="text-zinc-400 ml-2 flex items-center gap-1">
+                 <Globe className="w-3 h-3 text-amber-500" /> Slug (Auto)
+              </label>
+              <Input value={formData.slug} readOnly className="rounded-2xl h-12 bg-zinc-50 border-none italic text-zinc-500" />
             </div>
           </div>
 
-          {/* INPUT FILE THUMBNAIL */}
+          {/* FILE UPLOAD SECTION */}
           <div className="space-y-1">
             <label className="text-zinc-400 ml-2 flex items-center gap-1">
-              <ImagePlus className="w-3 h-3 text-amber-500" /> Thumbnail Image
+              <ImagePlus className="w-3 h-3 text-amber-500" /> Upload Thumbnail Image
             </label>
-            <Input 
-              type="file" 
-              accept="image/*"
-              onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-              className="rounded-2xl h-12 border-zinc-100 pt-2 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-amber-50 file:text-amber-700"
-            />
+            <div className="relative">
+              <Input 
+                type="file" 
+                accept="image/*"
+                onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                className="rounded-2xl h-14 border-zinc-100 pt-3 cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-[10px] file:font-black file:bg-amber-100 file:text-amber-700"
+              />
+            </div>
+            {selectedFile && <p className="text-[9px] text-amber-600 mt-1 ml-2">File terpilih: {selectedFile.name}</p>}
           </div>
 
+          {/* DESCRIPTION */}
           <div className="space-y-1">
             <label className="text-zinc-400 ml-2">Description</label>
             <Textarea 
-              placeholder="Tulis deskripsi kursus..."
+              placeholder="Deskripsi kursus..."
               value={formData.description} 
               onChange={(e) => setFormData({...formData, description: e.target.value})} 
-              className="rounded-2xl min-h-[100px] border-zinc-100" 
+              className="rounded-2xl min-h-[80px] border-zinc-100 focus:border-amber-500" 
             />
           </div>
 
@@ -175,7 +187,7 @@ export function CourseModal({ isOpen, onClose, course, onSuccess }: any) {
             disabled={loading} 
             className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl mt-4 transition-all"
           >
-            {loading ? <Loader2 className="animate-spin" /> : "Save Course to Laravel"}
+            {loading ? <Loader2 className="animate-spin" /> : "Save Data to Laravel"}
           </Button>
         </form>
       </DialogContent>
