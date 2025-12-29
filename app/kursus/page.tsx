@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, User, Tag, Loader2, AlertCircle } from "lucide-react"
+import { Clock, Tag, Loader2, AlertCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 
@@ -12,21 +12,26 @@ export default function KursusPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState({ text: "", type: "" })
 
+  // FUNGSI FORMAT RUPIAH (Rp. 200.000,00)
+  const formatRupiah = (number: number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 2,
+    }).format(number);
+  };
+
   useEffect(() => {
     const fetchCourses = async () => {
       setLoading(true)
       try {
-        // Mengambil data dari API backend Mejatika
         const res = await fetch("https://backend.mejatika.com/api/courses")
         if (!res.ok) throw new Error("Gagal mengambil data")
-        
         const data = await res.json()
-        
-        // Pastikan data yang diset adalah array
         setCourses(Array.isArray(data) ? data : data.data || [])
       } catch (err) {
         console.error(err)
-        setMessage({ text: "Gagal memuat daftar kursus. Cek koneksi Anda.", type: "error" })
+        setMessage({ text: "Gagal memuat daftar kursus.", type: "error" })
       } finally {
         setLoading(false)
       }
@@ -34,9 +39,8 @@ export default function KursusPage() {
     fetchCourses()
   }, [])
 
-  const handleRegister = async (courseId: number) => {
-    // Logika pendaftaran seperti sebelumnya
-    // ...
+  const handleRegister = (courseId: number) => {
+    // Logika pendaftaran
   }
 
   return (
@@ -52,27 +56,11 @@ export default function KursusPage() {
           <h1 className="text-4xl lg:text-6xl font-black italic uppercase tracking-tighter text-zinc-900 mb-6 leading-none">
             Program <span className="text-amber-500">Kursus</span>
           </h1>
-          <p className="text-lg text-zinc-500 font-medium max-w-xl leading-relaxed">
-            Tingkatkan keahlian digital Anda bersama instruktur profesional melalui kurikulum yang terukur.
-          </p>
         </div>
-
-        {/* FEEDBACK & LOADING */}
-        {message.text && (
-          <div className="mb-8 p-4 rounded-2xl flex items-center gap-3 bg-red-50 border border-red-200 text-red-700">
-            <AlertCircle className="w-5 h-5" />
-            <span className="font-bold text-sm uppercase tracking-wider">{message.text}</span>
-          </div>
-        )}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-12 h-12 animate-spin text-amber-500 mb-4" />
-            <p className="font-black text-xs uppercase tracking-[0.3em] text-zinc-400">Menghubungkan ke Server...</p>
-          </div>
-        ) : courses.length === 0 ? (
-          <div className="text-center py-20 bg-zinc-50 rounded-[2.5rem] border-2 border-dashed border-zinc-200">
-            <p className="text-zinc-400 font-bold uppercase tracking-widest">Belum ada kursus yang tersedia saat ini.</p>
           </div>
         ) : (
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
@@ -81,8 +69,9 @@ export default function KursusPage() {
                 <CardContent className="p-0 flex flex-col h-full">
                   <div className="p-4">
                     <div className="relative h-56 w-full rounded-[2rem] overflow-hidden bg-zinc-100">
+                      {/* PENYESUAIAN KEY GAMBAR (thumbnail) */}
                       <img 
-                        src={course.image || "/placeholder.svg"} 
+                        src={course.thumbnail || "/placeholder.svg"} 
                         alt={course.title} 
                         className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" 
                       />
@@ -90,26 +79,27 @@ export default function KursusPage() {
                   </div>
 
                   <div className="p-8 pt-2 flex flex-col flex-grow">
-                    <h3 className="text-2xl font-black italic uppercase leading-tight text-zinc-900 mb-3 group-hover:text-amber-600 transition-colors">
+                    <h3 className="text-2xl font-black italic uppercase text-zinc-900 mb-3">
                       {course.title}
                     </h3>
-                    <p className="text-zinc-500 text-sm leading-relaxed mb-6 line-clamp-2">
-                      {course.description}
-                    </p>
-
+                    
                     <div className="bg-zinc-50 rounded-3xl p-5 space-y-3 mb-8 border border-zinc-100/50">
-                      <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-zinc-400">
-                        <span className="flex items-center gap-2"><Clock className="w-3.5 h-3.5 text-amber-500" /> Durasi</span>
-                        <span className="text-zinc-800">{course.duration}</span>
+                      <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest">
+                        <span className="flex items-center gap-2 text-zinc-400"><Clock size={14} className="text-amber-500" /> Durasi</span>
+                        <span className="text-zinc-800">{course.duration || "N/A"}</span>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-zinc-400">
-                        <span className="flex items-center gap-2"><Tag className="w-3.5 h-3.5 text-amber-500" /> Investasi</span>
-                        <span className="text-amber-600 font-black">Rp {course.price?.toLocaleString("id-ID")}</span>
+                      
+                      {/* FORMAT RUPIAH DI SINI */}
+                      <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest">
+                        <span className="flex items-center gap-2 text-zinc-400"><Tag size={14} className="text-amber-500" /> Investasi</span>
+                        <span className="text-amber-600">
+                          {course.price ? formatRupiah(Number(course.price)) : "Free"}
+                        </span>
                       </div>
                     </div>
 
                     <Button
-                      className="mt-auto w-full bg-zinc-900 hover:bg-amber-600 text-white rounded-2xl h-14 font-black uppercase text-xs tracking-[0.2em] shadow-xl transition-all"
+                      className="mt-auto w-full bg-zinc-900 hover:bg-amber-600 text-white rounded-2xl h-14 font-black uppercase text-xs tracking-[0.2em]"
                       onClick={() => handleRegister(course.id)}
                     >
                       Daftar Sekarang
@@ -121,7 +111,6 @@ export default function KursusPage() {
           </div>
         )}
       </main>
-      
       <Footer />
     </div>
   )
