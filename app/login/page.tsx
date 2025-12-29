@@ -1,18 +1,22 @@
 "use client"
 
-import { useEffect, useState, Suspense } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, GraduationCap, LogOut, ArrowRight } from "lucide-react"
 
-function DashboardContent() {
+export default function DashboardPage() {
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [userName, setUserName] = useState<string>("") 
+  const [userName, setUserName] = useState<string>("")
+  const [isClient, setIsClient] = useState(false)
   const router = useRouter()
 
+  // Pastikan komponen hanya me-render di browser
   useEffect(() => {
+    setIsClient(true)
+    
     const token = localStorage.getItem("token")
     const userData = localStorage.getItem("user")
 
@@ -23,15 +27,8 @@ function DashboardContent() {
 
     try {
       const parsedUser = JSON.parse(userData)
-      // Debug: cek di console browser
-      console.log("User Data:", parsedUser)
-      
-      // Jika parsedUser.name adalah objek, ambil properti didalamnya atau ubah ke string
-      const name = typeof parsedUser.name === 'object' 
-        ? JSON.stringify(parsedUser.name) 
-        : String(parsedUser.name || "Peserta")
-      
-      setUserName(name)
+      // Paksa menjadi string murni
+      setUserName(String(parsedUser.name || "Peserta"))
     } catch (e) {
       setUserName("Peserta")
     }
@@ -48,11 +45,11 @@ function DashboardContent() {
         }
       })
       const data = await res.json()
-      console.log("Courses Data API:", data) // Lihat struktur asli di console
-
+      
+      // Standarisasi data ke Array
       if (Array.isArray(data)) {
         setCourses(data)
-      } else if (data && typeof data === 'object' && Array.isArray(data.data)) {
+      } else if (data?.data && Array.isArray(data.data)) {
         setCourses(data.data)
       }
     } catch (err) {
@@ -62,22 +59,13 @@ function DashboardContent() {
     }
   }
 
-  // Fungsi helper untuk merender teks dengan aman
-  const renderSafeText = (value: any) => {
-    if (typeof value === 'string' || typeof value === 'number') {
-      return value;
-    }
-    if (typeof value === 'object' && value !== null) {
-      // Jika objek, coba ambil properti 'name' atau 'title' atau ubah jadi JSON string
-      return value.name || value.title || JSON.stringify(value);
-    }
-    return "";
-  }
-
   const handleLogout = () => {
     localStorage.clear()
     router.push("/login")
   }
+
+  // Jika sedang build di server, jangan render apapun
+  if (!isClient) return null
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-zinc-50">
@@ -91,7 +79,7 @@ function DashboardContent() {
         <div className="flex items-center gap-2 font-black italic tracking-tighter text-xl uppercase">
             MEJA<span className="text-amber-500">TIKA</span>
         </div>
-        <Button variant="ghost" onClick={handleLogout} className="text-red-500 font-bold hover:bg-red-50">
+        <Button variant="ghost" onClick={handleLogout} className="text-red-500 font-bold">
           <LogOut size={18} className="mr-2" /> LOGOUT
         </Button>
       </nav>
@@ -99,48 +87,38 @@ function DashboardContent() {
       <main className="max-w-7xl mx-auto px-6 pt-10">
         <header className="mb-10 bg-zinc-900 rounded-[2rem] p-8 text-white shadow-xl">
           <h2 className="text-3xl font-black uppercase italic tracking-tighter">
-            Hello, <span className="text-amber-500">{renderSafeText(userName)}</span>
+            Hello, <span className="text-amber-500">{userName}</span>
           </h2>
-          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2">Area Peserta</p>
+          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2">Member Area</p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {courses.length > 0 ? (
-            courses.map((course, index) => (
-              <Card key={course.id || index} className="border-none shadow-lg rounded-[2rem] overflow-hidden bg-white">
+            courses.map((course: any) => (
+              <Card key={course.id?.toString() || Math.random()} className="border-none shadow-lg rounded-[2rem] overflow-hidden bg-white">
                 <div className="bg-zinc-100 h-24 flex items-center justify-center">
                   <GraduationCap className="h-10 w-10 text-zinc-300" />
                 </div>
                 <CardContent className="p-6">
                   <CardTitle className="font-black uppercase italic tracking-tighter text-lg mb-2">
-                    {renderSafeText(course.title)}
+                    {String(course.title || "No Title")}
                   </CardTitle>
-                  
-                  <div className="text-zinc-500 text-xs mb-6 line-clamp-2 font-medium">
-                    {renderSafeText(course.description)}
-                  </div>
-
-                  <Button className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-xl h-12 font-black uppercase tracking-widest transition-colors shadow-lg active:scale-95">
+                  <p className="text-zinc-500 text-xs mb-6 line-clamp-2">
+                    {String(course.description || "")}
+                  </p>
+                  <Button className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-xl h-12 font-black uppercase">
                     Daftar Kursus <ArrowRight size={16} className="ml-2" />
                   </Button>
                 </CardContent>
               </Card>
             ))
           ) : (
-            <div className="col-span-full text-center py-20">
-               <p className="font-black uppercase italic text-zinc-300 text-xl tracking-tighter">Tidak ada data kursus</p>
+            <div className="col-span-full text-center py-10 text-zinc-400 font-bold uppercase italic">
+               Belum ada data kursus.
             </div>
           )}
         </div>
       </main>
     </div>
-  )
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense fallback={null}>
-      <DashboardContent />
-    </Suspense>
   )
 }
