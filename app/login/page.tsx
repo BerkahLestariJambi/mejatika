@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link" // Import Link untuk navigasi internal
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -16,6 +16,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Memastikan komponen hanya berinteraksi dengan browser sebelum akses localStorage
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,27 +41,38 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || data.message || "Login gagal")
+        // Menangani error jika response bukan 200 OK
+        setError(data.error || data.message || "Email atau password salah")
+        setLoading(false)
         return
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user))
-      localStorage.setItem("token", data.token)
+      // Simpan ke localStorage dengan aman
+      if (typeof window !== "undefined") {
+        localStorage.setItem("user", JSON.stringify(data.user))
+        localStorage.setItem("token", data.token)
+      }
 
-      // Redirect berdasarkan role
-      if (data.user.role === "admin") {
+      // Logic Redirect
+      const role = data.user.role
+      if (role === "admin") {
         router.push("/admin")
-      } else if (data.user.role === "kontributor") {
+      } else if (role === "kontributor") {
         router.push("/kontributor")
       } else {
         router.push("/dashboard")
       }
-    } catch {
-      setError("Terjadi kesalahan koneksi. Silakan coba lagi.")
+      
+    } catch (err) {
+      setError("Gagal terhubung ke server. Periksa koneksi internet Anda.")
     } finally {
-      setLoading(false)
+      // Jangan set loading false di sini jika redirect berhasil agar transisi halus
+      if (error) setLoading(false)
     }
   }
+
+  // Mencegah Hydration Error
+  if (!mounted) return null
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4">
@@ -74,7 +91,7 @@ export default function LoginPage() {
         <CardContent className="p-8 pt-0">
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
-              <Alert className="bg-red-50 border-red-100 text-red-600 rounded-xl">
+              <Alert className="bg-red-50 border-red-100 text-red-600 rounded-xl py-3">
                 <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider">
                     {error}
                 </AlertDescription>
@@ -113,7 +130,7 @@ export default function LoginPage() {
 
             <Button 
                 type="submit" 
-                className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase tracking-[0.1em] transition-all mt-4 shadow-lg" 
+                className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase tracking-[0.1em] transition-all mt-4 shadow-lg active:scale-95 disabled:opacity-70" 
                 disabled={loading}
             >
               {loading ? (
@@ -126,7 +143,7 @@ export default function LoginPage() {
             <div className="mt-8 text-center">
               <p className="text-xs font-bold text-zinc-400 uppercase tracking-tighter">
                 Belum punya akun?{" "}
-                <Link href="/register" className="text-amber-600 hover:text-zinc-900 underline underline-offset-4">
+                <Link href="/register" className="text-amber-600 hover:text-zinc-900 underline underline-offset-4 decoration-2">
                   Daftar di sini
                 </Link>
               </p>
