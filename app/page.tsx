@@ -33,7 +33,6 @@ export default function HomePage() {
     if (selectedSlug) {
       setLoadingDetail(true)
       setCurrentPage(1)
-      // Smooth scroll ke atas saat buka berita
       window.scrollTo({ top: 0, behavior: 'smooth' });
       
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
@@ -46,17 +45,23 @@ export default function HomePage() {
     }
   }, [selectedSlug])
 
-  // Fungsi pembagi konten agar pas di frame halaman
+  // Membersihkan HTML dan membagi teks agar pas di frame halaman
   const getPagedContent = (htmlContent: string) => {
     if (!htmlContent) return ["", "", ""];
-    const cleanText = htmlContent.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
     
-    const part1 = cleanText.match(/[\s\S]{1,750}(?=\s|$)/g) || [cleanText];
+    // Menghapus tag HTML agar teks bersih
+    const cleanText = htmlContent.replace(/<[^>]*>/g, ' ')
+                                .replace(/&nbsp;/g, ' ')
+                                .replace(/\s+/g, ' ')
+                                .trim();
+
+    // Limit karakter agar pas di box (Page 1: 700, Page 2: 850, Sisanya di Page 4)
+    const part1 = cleanText.match(/[\s\S]{1,700}(?=\s|$)/g) || [cleanText];
     const remaining = cleanText.substring(part1[0].length);
-    const otherParts = remaining.match(/[\s\S]{1,900}(?=\s|$)/g) || ["", ""];
+    const otherParts = remaining.match(/[\s\S]{1,850}(?=\s|$)/g) || ["", ""];
     
     return [part1[0] || "", otherParts[0] || "", otherParts[1] || ""];
-  };
+  }
 
   if (showSplash) return <Splash />
 
@@ -70,13 +75,12 @@ export default function HomePage() {
 
         <AnimatePresence mode="wait">
           {!selectedSlug ? (
-            /* --- SECTION 1: LIST BERITA --- */
+            /* --- SECTION: LIST BERITA --- */
             <motion.div 
               key="list"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, x: -100 }}
-              transition={{ duration: 0.5 }}
               className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6"
             >
               <div className="lg:col-span-2 space-y-8">
@@ -88,126 +92,138 @@ export default function HomePage() {
               </div>
             </motion.div>
           ) : (
-            /* --- SECTION 2: DETAIL BERITA (FULL PAGE DESIGN) --- */
+            /* --- SECTION: MAGAZINE DETAIL PAGE --- */
             <motion.div 
               key="detail"
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ type: "spring", damping: 25, stiffness: 120 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", damping: 20 }}
               className="mt-6 flex flex-col gap-6"
             >
-              {/* Header Back Button */}
-              <div className="flex justify-between items-center">
+              {/* Top Navigation Bar */}
+              <div className="flex justify-between items-center px-2">
                 <Button 
                   onClick={() => setSelectedSlug(null)}
                   variant="ghost" 
-                  className="group gap-2 hover:bg-primary/10 font-bold uppercase text-[10px] tracking-[0.2em]"
+                  className="group gap-2 hover:bg-primary/10 font-black uppercase text-[10px] tracking-[0.2em]"
                 >
-                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" /> Kembali
+                  <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-1" /> KEMBALI KE BERANDA
                 </Button>
-                <Badge variant="outline" className="opacity-40 uppercase text-[9px] tracking-widest font-black">
-                  Mejatika Magazine Edition
+                <Badge variant="outline" className="opacity-30 uppercase text-[9px] tracking-widest font-black hidden sm:block">
+                  MEJATIKA DIGITAL EDITION
                 </Badge>
               </div>
 
               {/* Magazine Container */}
-              <div className="w-full min-h-[80vh] flex flex-col lg:flex-row bg-white dark:bg-zinc-950 rounded-[2.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden border border-black/5 relative">
+              <div className="w-full min-h-[85vh] flex flex-col lg:flex-row bg-white dark:bg-zinc-950 rounded-[3rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.2)] overflow-hidden border border-black/5 relative">
                 
                 {loadingDetail ? (
                   <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-4">
                     <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Membuka Halaman...</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Memuat Halaman...</p>
                   </div>
                 ) : article && (
                   <>
-                    {/* HALAMAN KIRI */}
-                    <motion.div 
-                      key={`left-${currentPage}`}
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="flex-1 h-full flex flex-col border-r border-black/5 relative bg-white dark:bg-zinc-950"
-                    >
+                    {/* --- HALAMAN KIRI --- */}
+                    <div className="flex-1 h-full flex flex-col border-r border-black/5 relative">
                       <div className="flex-grow p-8 lg:p-16">
-                        {currentPage === 1 ? (
-                          <div className="space-y-8">
-                            <Badge className="bg-primary text-white border-none uppercase tracking-[0.2em] font-black text-[9px] px-3 py-1.5">
-                              {article.category?.name}
-                            </Badge>
-                            <h1 className="text-3xl lg:text-5xl font-black uppercase leading-tight italic tracking-tighter text-zinc-900 dark:text-white">
-                              {article.title}
-                            </h1>
-                            <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl ring-8 ring-zinc-50 dark:ring-zinc-900">
-                              <img src={article.image} className="w-full h-full object-cover" alt="cover" />
-                            </div>
-                            <div className="flex items-center gap-6 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-t border-black/5 pt-8">
-                              <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
-                              <span className="flex items-center gap-2"><User className="w-4 h-4 text-primary" /> {article.user?.name}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-lg text-justify leading-relaxed text-zinc-700 dark:text-zinc-300 first-letter:text-6xl first-letter:font-black first-letter:text-primary first-letter:mr-3 first-letter:float-left">
-                            {getPagedContent(article.content)[1]}
-                          </div>
-                        )}
+                        <AnimatePresence mode="wait">
+                          {currentPage === 1 ? (
+                            <motion.div 
+                              key="page1"
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              className="space-y-8"
+                            >
+                              <Badge className="bg-primary text-white border-none uppercase tracking-[0.2em] font-black text-[9px] px-3 py-1.5">
+                                {article.category?.name}
+                              </Badge>
+                              <h1 className="text-3xl lg:text-5xl font-black uppercase leading-[1.1] italic tracking-tighter text-zinc-900 dark:text-white">
+                                {article.title}
+                              </h1>
+                              <div className="relative w-full aspect-video rounded-3xl overflow-hidden shadow-2xl ring-4 ring-zinc-50 dark:ring-zinc-900">
+                                <img src={article.image} className="w-full h-full object-cover" alt="cover" />
+                              </div>
+                              <div className="flex items-center gap-6 text-[10px] font-black uppercase text-muted-foreground tracking-widest border-t border-black/5 pt-8">
+                                <span className="flex items-center gap-2"><Calendar className="w-4 h-4 text-primary" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
+                                <span className="flex items-center gap-2"><User className="w-4 h-4 text-primary" /> {article.user?.name}</span>
+                              </div>
+                            </motion.div>
+                          ) : (
+                            <motion.div 
+                              key="page3"
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              className="text-lg text-justify leading-relaxed text-zinc-700 dark:text-zinc-300 first-letter:text-7xl first-letter:font-black first-letter:text-primary first-letter:mr-3 first-letter:float-left first-letter:leading-[0.8]"
+                            >
+                              {getPagedContent(article.content)[1]}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
-                      <div className="h-20 px-16 border-t border-black/5 flex items-center justify-between text-[10px] font-black opacity-20 tracking-[0.4em]">
+
+                      {/* Footer Kiri: Sejajar */}
+                      <div className="h-24 px-16 border-t border-black/5 flex items-center justify-between text-[10px] font-black opacity-30 tracking-[0.4em]">
                          <span>MEJATIKA DIGITAL</span>
                          <span>P. {currentPage === 1 ? "01" : "03"}</span>
                       </div>
-                    </motion.div>
-
-                    {/* SPINE */}
-                    <div className="hidden lg:block w-[1px] h-full bg-black/5 relative z-10">
-                       <div className="absolute inset-0 -left-10 w-20 bg-gradient-to-r from-black/[0.03] via-transparent to-black/[0.03] pointer-events-none" />
                     </div>
 
-                    {/* HALAMAN KANAN */}
-                    <motion.div 
-                      key={`right-${currentPage}`}
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                      className="flex-1 h-full flex flex-col bg-zinc-50/40 dark:bg-zinc-900/10"
-                    >
+                    {/* SPINE (Garis Tengah) */}
+                    <div className="hidden lg:block w-[1px] h-full bg-black/5 relative z-10">
+                       <div className="absolute inset-0 -left-10 w-20 bg-gradient-to-r from-black/[0.04] via-transparent to-black/[0.04] pointer-events-none" />
+                    </div>
+
+                    {/* --- HALAMAN KANAN --- */}
+                    <div className="flex-1 h-full flex flex-col bg-zinc-50/40 dark:bg-zinc-900/10">
                       <div className="flex-grow p-8 lg:p-16">
-                        <div className="text-lg text-justify leading-relaxed text-zinc-700 dark:text-zinc-300">
+                        <AnimatePresence mode="wait">
                           {currentPage === 1 ? (
-                            <div>{getPagedContent(article.content)[0]}</div>
+                            <motion.div 
+                              key="page2"
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              className="text-lg text-justify leading-relaxed text-zinc-700 dark:text-zinc-300 first-letter:text-7xl first-letter:font-black first-letter:text-primary first-letter:mr-3 first-letter:float-left first-letter:leading-[0.8]"
+                            >
+                              {getPagedContent(article.content)[0]}
+                            </motion.div>
                           ) : (
-                            <div className="space-y-10">
-                              <p>{getPagedContent(article.content)[2]}</p>
+                            <motion.div 
+                              key="page4"
+                              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                              className="space-y-10"
+                            >
+                              <div className="text-lg text-justify leading-relaxed text-zinc-700 dark:text-zinc-300">
+                                {getPagedContent(article.content)[2]}
+                              </div>
                               
-                              {/* DISPLAY QUOTE */}
+                              {/* --- QUOTE DISPLAY --- */}
                               {article.quote && (
-                                <motion.div 
-                                  initial={{ scale: 0.9, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  className="relative py-10 px-12 border-l-8 border-primary bg-white dark:bg-zinc-900 rounded-r-[3rem] shadow-xl italic"
-                                >
-                                  <Quote className="absolute top-6 right-8 w-16 h-16 opacity-5 text-primary" />
-                                  <p className="text-xl font-black leading-snug text-zinc-800 dark:text-zinc-100 uppercase tracking-tighter">
+                                <div className="relative py-10 px-12 border-l-[12px] border-primary bg-white dark:bg-zinc-900 rounded-r-[3rem] shadow-xl italic overflow-hidden">
+                                  <Quote className="absolute -top-2 -right-2 w-24 h-24 opacity-5 text-primary rotate-12" />
+                                  <p className="text-xl font-black leading-tight text-zinc-800 dark:text-zinc-100 uppercase tracking-tighter">
                                     "{article.quote}"
                                   </p>
                                   <div className="mt-4 flex items-center gap-2">
-                                    <div className="h-1 w-8 bg-primary rounded-full" />
-                                    <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">Editor's Note</span>
+                                    <div className="h-0.5 w-8 bg-primary" />
+                                    <span className="text-[9px] font-black uppercase tracking-[0.3em] opacity-40">EDITORIAL QUOTE</span>
                                   </div>
-                                </motion.div>
+                                </div>
                               )}
                               
-                              <div className="flex flex-col items-center gap-4 pt-10 opacity-30">
-                                <span className="text-[10px] font-black uppercase tracking-[0.5em]">Finish Reading</span>
-                                <div className="flex gap-4">
-                                  <Share2 className="w-4 h-4" />
-                                  <div className="h-[1px] w-20 bg-current my-auto" />
+                              <div className="flex flex-col items-center gap-4 pt-6 opacity-30">
+                                <span className="text-[10px] font-black uppercase tracking-[0.5em]">FINISH READING</span>
+                                <div className="flex items-center gap-4">
+                                   <Share2 className="w-4 h-4" />
+                                   <div className="h-[1px] w-24 bg-current" />
                                 </div>
                               </div>
-                            </div>
+                            </motion.div>
                           )}
-                        </div>
+                        </AnimatePresence>
                       </div>
 
-                      {/* NAVIGASI NEXT PAGE */}
-                      <div className="h-24 px-16 border-t border-black/5 flex items-center justify-between bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl">
-                        <span className="text-[10px] font-black opacity-20 tracking-[0.4em]">P. {currentPage === 1 ? "02" : "04"}</span>
+                      {/* Footer Kanan: Sejajar dengan Halaman Kiri */}
+                      <div className="h-24 px-16 border-t border-black/5 flex items-center justify-between bg-white/50 dark:bg-zinc-950/50 backdrop-blur-xl">
+                        <span className="text-[10px] font-black opacity-30 tracking-[0.4em]">P. {currentPage === 1 ? "02" : "04"}</span>
                         
                         <div className="flex gap-4">
                           {currentPage === 1 ? (
@@ -216,9 +232,9 @@ export default function HomePage() {
                                 setCurrentPage(2);
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                               }} 
-                              className="rounded-full h-12 px-10 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 hover:scale-105 transition-all font-black text-[10px] tracking-[0.2em] uppercase"
+                              className="rounded-full h-12 px-10 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black text-[10px] tracking-[0.2em] uppercase hover:scale-105 transition-transform"
                             >
-                              Halaman Berikutnya <ChevronRight className="w-5 h-5 ml-2" />
+                              HALAMAN BERIKUTNYA <ChevronRight className="w-5 h-5 ml-2" />
                             </Button>
                           ) : (
                             <Button 
@@ -227,14 +243,14 @@ export default function HomePage() {
                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                               }} 
                               variant="outline"
-                              className="rounded-full h-12 px-10 border-2 font-black text-[10px] tracking-[0.2em] uppercase"
+                              className="rounded-full h-12 px-10 border-2 font-black text-[10px] tracking-[0.2em] uppercase hover:bg-zinc-100 dark:hover:bg-zinc-800"
                             >
-                              <ChevronLeft className="w-5 h-5 mr-2" /> Kembali
+                              <ChevronLeft className="w-5 h-5 mr-2" /> KEMBALI
                             </Button>
                           )}
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   </>
                 )}
               </div>
