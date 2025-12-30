@@ -4,7 +4,7 @@ export async function PUT(request: Request) {
   try {
     const authHeader = request.headers.get("Authorization")
     const body = await request.json()
-    
+  
     // 1. Pastikan ID dan Status ada
     const { id, status } = body 
 
