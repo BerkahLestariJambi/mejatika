@@ -1,4 +1,5 @@
 "use client"
+
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,13 +25,14 @@ interface Course {
 export default function ParticipantDashboard() {
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
-  const [mounted, setMounted] = useState(false) // Solusi agar tidak stuck/error #31
+  const [mounted, setMounted] = useState(false) // Mencegah error #31
   const [registeringId, setRegisteringId] = useState<number | null>(null)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<{name: string, role: string} | null>(null)
   const router = useRouter()
 
   useEffect(() => {
-    setMounted(true) // Menandakan aplikasi sudah berjalan di browser
+    // Pastikan ini berjalan di client side saja
+    setMounted(true)
     
     const token = localStorage.getItem("token")
     const userData = localStorage.getItem("user")
@@ -42,14 +44,17 @@ export default function ParticipantDashboard() {
 
     try {
       const parsedUser = JSON.parse(userData)
+      // Simpan hanya string name untuk mencegah error render objek
       setUser(parsedUser)
 
       if (parsedUser.role !== "peserta") {
         router.push("/" + parsedUser.role) 
+        return
       }
       
       fetchCourses(token)
     } catch (e) {
+      console.error("Auth Error")
       localStorage.clear()
       router.push("/login")
     }
@@ -64,19 +69,18 @@ export default function ParticipantDashboard() {
         }
       })
       const data = await res.json()
-      // Mengatasi jika data dari Laravel dibungkus object 'data'
+      // Laravel kadang membungkus data dalam key 'data'
       const finalData = Array.isArray(data) ? data : (data.data || [])
       setCourses(finalData)
     } catch (err) {
-      console.error("Gagal memuat data kursus")
+      console.error("Gagal load data")
     } finally {
       setLoading(false)
     }
   }
 
   const handleEnroll = async (courseId: number) => {
-    if (!confirm("Apakah Anda yakin ingin mendaftar kursus ini?")) return
-    
+    if (!confirm("Konfirmasi pendaftaran?")) return
     setRegisteringId(courseId)
     try {
       const res = await fetch("https://backend.mejatika.com/api/registrations", {
@@ -88,16 +92,10 @@ export default function ParticipantDashboard() {
         },
         body: JSON.stringify({ course_id: courseId })
       })
-
-      const result = await res.json()
-
-      if (res.ok) {
-        alert("Pendaftaran Berhasil! Admin akan memverifikasi akun Anda.")
-      } else {
-        alert(result.message || "Gagal mendaftar.")
-      }
+      if (res.ok) alert("Pendaftaran Berhasil!")
+      else alert("Gagal mendaftar.")
     } catch (err) {
-      alert("Terjadi kesalahan koneksi.")
+      alert("Error koneksi.")
     } finally {
       setRegisteringId(null)
     }
@@ -108,14 +106,14 @@ export default function ParticipantDashboard() {
     window.location.href = "/login"
   }
 
-  // JANGAN merender apapun sebelum mounted (mencegah error Client-side exception)
+  // JANGAN RENDERING SEBELUM MOUNTED UNTUK FIX ERROR #31
   if (!mounted) return null
 
   if (loading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center bg-zinc-50">
-        <Loader2 className="animate-spin text-amber-500 h-12 w-12 mb-4" />
-        <p className="font-black uppercase italic text-zinc-400 tracking-widest text-xs">Menyiapkan Data...</p>
+        <Loader2 className="animate-spin text-amber-500 h-10 w-10 mb-4" />
+        <p className="font-black uppercase italic text-zinc-400 tracking-tighter">Memproses Data...</p>
       </div>
     )
   }
@@ -132,84 +130,57 @@ export default function ParticipantDashboard() {
               MEJA<span className="text-amber-500">TIKA</span>
             </span>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="hidden md:block text-right">
-              <p className="text-[10px] font-black uppercase text-zinc-400 leading-none">Logged in as</p>
-              <p className="text-sm font-bold text-zinc-900 uppercase italic">{user?.name}</p>
-            </div>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500 hover:bg-red-50 rounded-full">
-              <LogOut size={20} />
-            </Button>
-          </div>
+          <Button variant="ghost" size="icon" onClick={handleLogout} className="text-red-500">
+            <LogOut size={20} />
+          </Button>
         </div>
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 pt-10">
-        <section className="mb-12 bg-zinc-900 rounded-[2.5rem] p-8 md:p-12 text-white relative overflow-hidden shadow-2xl border-4 border-white">
+        <section className="mb-12 bg-zinc-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
           <div className="relative z-10">
-            <Badge className="bg-amber-500 text-zinc-900 font-black mb-4 uppercase italic">Student Dashboard</Badge>
-            <h2 className="text-4xl md:text-5xl font-black uppercase italic tracking-tighter mb-2">
-              Hello, <span className="text-amber-500">{user?.name?.split(' ')[0]}!</span>
+            <h2 className="text-4xl font-black uppercase italic tracking-tighter mb-2">
+              Hello, <span className="text-amber-500">{user?.name?.split(' ')[0]}</span>
             </h2>
-            <p className="text-zinc-400 font-bold text-sm uppercase tracking-widest">Ayo mulai belajar hari ini.</p>
+            <p className="text-zinc-500 font-bold text-xs uppercase tracking-widest">Student Dashboard</p>
           </div>
-          <BookOpen className="absolute right-[-20px] bottom-[-20px] h-64 w-64 text-white/5 rotate-12" />
+          <BookOpen className="absolute right-[-20px] bottom-[-20px] h-48 w-48 text-white/5" />
         </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {courses.length > 0 ? (
-            courses.map((course) => (
-              <Card key={course.id} className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2">
-                <div className="h-44 bg-zinc-100 flex items-center justify-center relative">
-                   <GraduationCap className="h-20 w-20 text-zinc-200 group-hover:text-amber-500/20 transition-all duration-700" />
-                   <Badge className="absolute top-4 right-4 bg-amber-500 text-zinc-900 font-black border-none text-[10px] uppercase italic">
-                      {course.category || "Online Course"}
-                   </Badge>
-                </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {courses.map((course) => (
+            <Card key={course.id} className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
+              <div className="h-40 bg-zinc-100 flex items-center justify-center relative">
+                 <GraduationCap className="h-16 w-16 text-zinc-200" />
+              </div>
+              <CardContent className="p-8">
+                <CardTitle className="font-black uppercase italic text-xl mb-3 tracking-tighter">
+                  {course.title}
+                </CardTitle>
                 
-                <CardHeader className="pt-6 px-8">
-                  <CardTitle className="font-black uppercase italic text-xl tracking-tighter leading-tight group-hover:text-amber-600 transition-colors">
-                    {course.title}
-                  </CardTitle>
-                </CardHeader>
+                {/* FIX: MENGHILANGKAN TAG HTML DENGAN dangerouslySetInnerHTML */}
+                <div 
+                  className="text-zinc-500 text-sm line-clamp-3 mb-6 prose prose-sm"
+                  dangerouslySetInnerHTML={{ __html: course.description }}
+                />
 
-                <CardContent className="px-8 pb-8">
-                  {/* FIX: Menggunakan dangerouslySetInnerHTML agar HTML dirender sempurna */}
-                  <div 
-                    className="text-zinc-500 text-sm mb-6 line-clamp-3 prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: course.description || "No description available." }}
-                  />
+                <div className="flex items-center justify-between mb-6 bg-zinc-50 p-4 rounded-2xl">
+                    <span className="text-lg font-black text-zinc-900">
+                      {course.price === 0 ? "GRATIS" : `Rp ${Number(course.price).toLocaleString('id-ID')}`}
+                    </span>
+                    <Calendar className="text-amber-500 h-5 w-5" />
+                </div>
 
-                  <div className="flex items-center justify-between mb-6 bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Biaya</span>
-                      <span className="text-lg font-black text-zinc-900 italic">
-                        {course.price === 0 ? "GRATIS" : `Rp ${Number(course.price).toLocaleString('id-ID')}`}
-                      </span>
-                    </div>
-                    <Calendar className="text-amber-600 h-5 w-5" />
-                  </div>
-
-                  <Button 
-                    onClick={() => handleEnroll(course.id)}
-                    disabled={registeringId === course.id}
-                    className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase tracking-[0.1em] transition-all active:scale-95"
-                  >
-                    {registeringId === course.id ? (
-                      <Loader2 className="animate-spin h-5 w-5" />
-                    ) : (
-                      <span className="flex items-center gap-2">Ambil Kursus <ArrowRight size={18} /></span>
-                    )}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))
-          ) : (
-            <div className="col-span-full py-20 text-center bg-white rounded-[2.5rem] border-2 border-dashed">
-              <p className="font-black uppercase italic text-zinc-300 text-2xl tracking-tighter">Belum ada kursus</p>
-            </div>
-          )}
+                <Button 
+                  className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-14 rounded-2xl font-black uppercase italic"
+                  onClick={() => handleEnroll(course.id)}
+                  disabled={registeringId === course.id}
+                >
+                  {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar Kursus"}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </main>
     </div>
