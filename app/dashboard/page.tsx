@@ -29,7 +29,6 @@ export default function StudentDashboard() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  // State Flow Materi & Latihan
   const [selectedCourse, setSelectedCourse] = useState<any>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
   const [completedMaterials, setCompletedMaterials] = useState<number[]>([]) 
@@ -94,7 +93,7 @@ export default function StudentDashboard() {
   return (
     <div className="flex min-h-screen bg-[#F8F9FB]">
       
-      {/* SIDEBAR FIXED */}
+      {/* SIDEBAR */}
       <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
         <div className="p-8">
           <div className="flex items-center gap-3">
@@ -142,16 +141,12 @@ export default function StudentDashboard() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <main className="flex-1 ml-72 p-10">
         
-        {/* 1. DASHBOARD CONTENT */}
+        {/* DASHBOARD */}
         {activeMenu === "dashboard" && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div>
-              <h2 className="text-4xl font-black italic uppercase tracking-tighter text-zinc-900">Welcome Back!</h2>
-              <p className="text-zinc-400 font-medium text-sm">Lanjutkan progres belajar Anda hari ini.</p>
-            </div>
+          <div className="space-y-8">
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter text-zinc-900">Welcome Back!</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="border-none shadow-sm rounded-[2.5rem] p-8 bg-white border-b-4 border-amber-500">
                 <p className="text-[10px] font-black uppercase text-zinc-400 mb-1">Kursus Aktif</p>
@@ -161,41 +156,24 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* 2. DAFTAR KURSUS (GRID 3 KOLOM) */}
+        {/* COURSES (3 CARDS PER ROW) */}
         {activeMenu === "courses" && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            <div>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">My Enrolled Courses</h2>
-              <p className="text-zinc-400 text-sm font-medium">Klik tombol untuk membuka materi pembelajaran.</p>
-            </div>
-            
+          <div className="space-y-8">
+            <h2 className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">My Enrolled Courses</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {registrations.map((reg) => (
-                <Card key={reg.id} className="group border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                  <div className="h-28 bg-zinc-100 flex items-center justify-center relative group-hover:bg-amber-50 transition-colors">
-                    <BookOpen size={40} className="text-zinc-300 group-hover:text-amber-500/30 transition-colors" />
-                    <div className="absolute bottom-4 right-6">
-                       <Badge className="bg-emerald-50 text-emerald-600 border-none uppercase font-black italic text-[8px] px-3">
-                        {reg.status}
-                      </Badge>
-                    </div>
+                <Card key={reg.id} className="group border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white hover:shadow-xl transition-all duration-300">
+                  <div className="h-28 bg-zinc-100 flex items-center justify-center group-hover:bg-amber-50 transition-colors">
+                    <BookOpen size={40} className="text-zinc-300 group-hover:text-amber-500/30" />
                   </div>
                   <CardContent className="p-6">
-                    <h4 className="text-lg font-black uppercase italic text-zinc-900 leading-tight mb-6 line-clamp-2 min-h-[3.5rem]">
-                      {reg.course?.title}
-                    </h4>
-                    
-                    <div className="space-y-4">
-                      <div className="w-full h-1.5 bg-zinc-100 rounded-full overflow-hidden">
-                        <div className="w-[15%] h-full bg-amber-500 rounded-full" />
-                      </div>
-                      <Button 
-                        onClick={() => { setSelectedCourse(reg.course); setActiveMenu("materials"); }} 
-                        className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 hover:bg-amber-500 hover:text-zinc-950 transition-all shadow-lg shadow-zinc-200"
-                      >
-                        Buka Materi <ChevronRight size={14} className="ml-1" />
-                      </Button>
-                    </div>
+                    <h4 className="text-lg font-black uppercase italic text-zinc-900 mb-6 line-clamp-2 min-h-[3.5rem]">{reg.course?.title}</h4>
+                    <Button 
+                      onClick={() => { setSelectedCourse(reg.course); setActiveMenu("materials"); }} 
+                      className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 hover:bg-amber-500 hover:text-zinc-950 transition-all"
+                    >
+                      Buka Materi
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -203,149 +181,75 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* 3. MATERI KURSUS (FIXED FRAME) */}
+        {/* MATERIALS SECTION */}
         {activeMenu === "materials" && (
-          <div className="grid grid-cols-12 gap-8 animate-in fade-in duration-500">
-            {/* List Materi Samping */}
+          <div className="grid grid-cols-12 gap-8">
             <div className="col-span-4 space-y-4">
               <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-6">Modul Belajar</h2>
-              {selectedCourse ? (
-                <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
-                  {selectedCourse.materials?.map((m: any, index: number) => (
-                    <button 
-                      key={m.id}
-                      onClick={() => setActiveMaterial(m)}
-                      className={`w-full p-5 rounded-3xl text-left transition-all border-2 flex items-center justify-between ${
-                        activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-xl shadow-amber-500/10' : 'border-transparent bg-white shadow-sm hover:border-zinc-200'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4 overflow-hidden">
-                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black italic shrink-0 ${activeMaterial?.id === m.id ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-100 text-zinc-400'}`}>
-                          {index + 1}
-                        </div>
-                        <div className="overflow-hidden">
-                          <p className="text-[9px] font-black uppercase text-zinc-400 mb-0.5">Materi</p>
-                          <h5 className="font-bold text-zinc-900 text-sm truncate">{m.title}</h5>
-                        </div>
+              <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-200">
+                {selectedCourse?.materials?.map((m: any, index: number) => (
+                  <button 
+                    key={m.id}
+                    onClick={() => setActiveMaterial(m)}
+                    className={`w-full p-5 rounded-3xl text-left transition-all border-2 flex items-center justify-between ${
+                      activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-xl shadow-amber-500/10' : 'border-transparent bg-white shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4 overflow-hidden">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black italic shrink-0 ${activeMaterial?.id === m.id ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-100 text-zinc-400'}`}>
+                        {index + 1}
                       </div>
-                      {completedMaterials.includes(m.id) && <CheckCircle2 className="text-emerald-500 shrink-0" size={20} />}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-10 text-center bg-zinc-100 rounded-[2.5rem] italic text-zinc-400 border-2 border-dashed">
-                  Silakan pilih kursus terlebih dahulu.
-                </div>
-              )}
+                      <h5 className="font-bold text-zinc-900 text-sm truncate">{m.title}</h5>
+                    </div>
+                    {completedMaterials.includes(m.id) && <CheckCircle2 className="text-emerald-500 shrink-0" size={20} />}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Viewer Materi (FRAME FIX) */}
-            <div className="col-span-8 overflow-hidden">
+            <div className="col-span-8 space-y-6">
               {activeMaterial ? (
-                <div className="space-y-6">
-                  {/* Player Frame */}
-                  <div className="bg-zinc-950 rounded-[2.5rem] overflow-hidden shadow-2xl p-4">
-                    <div className="flex justify-between items-center mb-4 px-4 pt-2">
+                <>
+                  <div className="bg-zinc-950 rounded-[2.5rem] overflow-hidden shadow-2xl p-6">
+                    <div className="flex justify-between items-center mb-4 px-2">
                        <span className="text-[10px] font-black uppercase italic text-amber-500">Studying: {activeMaterial.title}</span>
-                       <Button size="sm" variant="ghost" className="text-zinc-500 hover:text-white rounded-xl" onClick={() => window.open(activeMaterial.file, "_blank")}>
-                          <Download size={16} className="mr-2" /> <span className="text-[10px]">Unduh</span>
+                       <Button size="sm" variant="ghost" className="text-zinc-500 hover:text-white" onClick={() => window.open(activeMaterial.file, "_blank")}>
+                          <Download size={16} />
                        </Button>
                     </div>
                     {renderPreview(activeMaterial.file)}
                   </div>
 
-                  {/* Deskripsi Materi (OVERFLOW FIX) */}
-                  <Card className="border-none shadow-sm rounded-[2.5rem] p-8 md:p-10 bg-white overflow-hidden">
-                    <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8">
-                      <div className="max-w-full overflow-hidden">
-                        <h3 className="text-2xl md:text-3xl font-black italic uppercase leading-tight break-words text-zinc-900">
-                          {activeMaterial.title}
-                        </h3>
-                      </div>
+                  <Card className="border-none shadow-sm rounded-[2.5rem] p-10 bg-white">
+                    <div className="flex justify-between items-start gap-4 mb-8">
+                      <h3 className="text-3xl font-black italic uppercase break-words leading-tight">{activeMaterial.title}</h3>
                       {!completedMaterials.includes(activeMaterial.id) && (
                         <Button 
                           onClick={() => setCompletedMaterials([...completedMaterials, activeMaterial.id])}
-                          className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8 shrink-0 shadow-lg"
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8 shrink-0"
                         >
                           Tandai Selesai
                         </Button>
                       )}
                     </div>
-
-                    {/* Content Area dengan Break Words */}
-                    <div className="relative w-full overflow-hidden">
-                      <div 
-                        className="prose prose-zinc max-w-none 
-                                   prose-p:text-zinc-600 prose-p:leading-relaxed
-                                   prose-headings:italic prose-headings:font-black
-                                   break-words overflow-wrap-anywhere" 
-                        dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
-                      />
-                    </div>
+                    {/* FIXED: No multiline strings in className */}
+                    <div 
+                      className="prose prose-zinc max-w-none break-words overflow-hidden prose-p:text-zinc-600 prose-headings:italic prose-headings:font-black [&_img]:rounded-3xl" 
+                      dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
+                    />
                   </Card>
-
-                  {/* LATIHAN SECTION */}
-                  {completedMaterials.includes(activeMaterial.id) && (
-                    <Card className="border-none shadow-xl rounded-[2.5rem] p-8 bg-amber-50/50 border border-amber-100 animate-in slide-in-from-bottom-4 duration-500">
-                      <div className="flex items-center gap-3 mb-6 text-amber-600">
-                         <FileCheck size={24} />
-                         <h4 className="text-lg font-black italic uppercase">Latihan Praktik</h4>
-                      </div>
-                      <div className="space-y-4">
-                        <textarea 
-                          value={submissionText}
-                          onChange={(e) => setSubmissionText(e.target.value)}
-                          placeholder="Kirim link tugas atau catatan di sini..."
-                          className="w-full h-40 rounded-3xl p-6 bg-white border-none shadow-inner text-sm focus:ring-2 focus:ring-amber-500 transition-all"
-                        />
-                        <div className="flex items-center gap-4">
-                          <label className="flex-1 flex items-center justify-center gap-3 h-14 bg-white border-2 border-dashed border-amber-200 rounded-2xl cursor-pointer hover:bg-amber-100/50 transition-all text-[11px] font-black uppercase italic text-amber-600">
-                             <Upload size={18} /> Unggah Hasil
-                             <input type="file" className="hidden" />
-                          </label>
-                          <Button className="h-14 px-10 bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[11px] shadow-lg hover:bg-amber-500 hover:text-zinc-950 transition-all">
-                             <Send size={18} className="mr-3" /> Kirim
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                </div>
+                </>
               ) : (
-                <div className="h-full flex flex-col items-center justify-center text-zinc-300 py-20">
-                   <PlayCircle size={80} strokeWidth={1} className="mb-4 opacity-10" />
-                   <p className="font-black italic uppercase text-[10px] tracking-[0.3em]">Pilih materi untuk memulai</p>
+                <div className="h-[50vh] flex flex-col items-center justify-center text-zinc-300">
+                  <PlayCircle size={80} strokeWidth={1} className="mb-4 opacity-10" />
+                  <p className="font-black italic uppercase text-xs tracking-widest">Pilih materi untuk memulai</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* 4. SERTIFIKAT */}
-        {activeMenu === "certificates" && (
-          <div className="max-w-4xl space-y-8 animate-in fade-in duration-500">
-            <h2 className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">My Certificates</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-               <Card className="border-none shadow-sm rounded-[2.5rem] p-10 bg-white opacity-40 grayscale border-2 border-dashed">
-                  <Award size={40} className="text-amber-500 mb-4" />
-                  <h4 className="text-lg font-black italic uppercase mb-2">Belum Tersedia</h4>
-                  <p className="text-xs text-zinc-400 font-medium italic">Selesaikan kursus Anda untuk mendapatkan sertifikat.</p>
-               </Card>
-            </div>
-          </div>
-        )}
-
       </main>
-
-      {/* Global CSS for breaks & scrollbar */}
-      <style jsx global>{`
-        .break-words { overflow-wrap: break-word; word-wrap: break-word; }
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
-        .prose img { max-width: 100%; height: auto; border-radius: 1.5rem; }
-      `}</style>
-
     </div>
   )
 }
