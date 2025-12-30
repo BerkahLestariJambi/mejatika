@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import dynamic from "next/dynamic"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -14,7 +15,8 @@ import {
   BookOpen,
   Save,
   Search,
-  ExternalLink
+  ExternalLink,
+  X
 } from "lucide-react"
 import {
   Dialog,
@@ -32,13 +34,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import Swal from 'sweetalert2'
 
-// Import React Quill secara Dynamic dengan Loading state
-const ReactQuill = dynamic(() => import("react-quill"), { 
+// IMPORT DINAMIS (Sama dengan News Management)
+const ReactQuill = dynamic(() => import("react-quill-new"), { 
   ssr: false,
-  loading: () => <div className="h-[200px] w-full bg-zinc-50 animate-pulse rounded-xl" />
+  loading: () => <div className="h-40 w-full bg-zinc-50 animate-pulse rounded-xl" />
 })
-import "react-quill/dist/quill.snow.css"
+import "react-quill-new/dist/quill.snow.css"
 
 export default function MaterialsPage() {
   const [materials, setMaterials] = useState<any[]>([])
@@ -49,7 +52,14 @@ export default function MaterialsPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
 
-  // State Form
+  const Toast = Swal.mixin({
+    toast: true,
+    position: 'top-end',
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+  })
+
   const [formData, setFormData] = useState({
     title: "",
     course_id: "",
@@ -60,10 +70,9 @@ export default function MaterialsPage() {
   const quillModules = useMemo(() => ({
     toolbar: [
       [{ header: [1, 2, 3, false] }],
-      ["bold", "italic", "underline", "strike"],
+      ["bold", "italic", "underline"],
       [{ list: "ordered" }, { list: "bullet" }],
-      ["link", "blockquote", "code-block"],
-      ["clean"],
+      ["link", "clean"],
     ],
   }), [])
 
@@ -92,11 +101,12 @@ export default function MaterialsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Filter materi berdasarkan search
-  const filteredMaterials = materials.filter(m => 
-    m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    m.course?.title?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredMaterials = useMemo(() => {
+    return materials.filter(m => 
+        m.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.course?.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [materials, searchQuery])
 
   const handleEdit = (item: any) => {
     setEditingId(item.id)
@@ -117,9 +127,8 @@ export default function MaterialsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.file || !formData.course_id) return alert("Lengkapi data materi!")
-
     setIsSubmitting(true)
+    
     const token = localStorage.getItem("token")
     const url = editingId 
       ? `https://backend.mejatika.com/api/materials/${editingId}`
@@ -138,236 +147,214 @@ export default function MaterialsPage() {
       })
 
       if (res.ok) {
+        Toast.fire({ icon: 'success', title: editingId ? 'Materi diperbarui' : 'Materi berhasil diterbitkan' });
         resetForm()
         fetchData()
       } else {
-        const errorData = await res.json()
-        alert(errorData.message || "Gagal menyimpan materi.")
+        Toast.fire({ icon: 'error', title: 'Gagal menyimpan materi' });
       }
     } catch (err) {
-      alert("Terjadi kesalahan koneksi.")
+      Toast.fire({ icon: 'error', title: 'Kesalahan koneksi' });
     } finally {
       setIsSubmitting(false)
     }
   }
 
   const deleteMaterial = async (id: number) => {
-    if (!confirm("Hapus materi ini secara permanen?")) return
-    const token = localStorage.getItem("token")
-    try {
-      const res = await fetch(`https://backend.mejatika.com/api/materials/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` }
-      })
-      if (res.ok) setMaterials(materials.filter(m => m.id !== id))
-    } catch (err) {
-      alert("Gagal menghapus.")
-    }
+    Swal.fire({
+      title: 'Hapus materi ini?',
+      text: "Data yang dihapus tidak dapat dikembalikan!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#f59e0b',
+      cancelButtonColor: '#ef4444',
+      confirmButtonText: 'Ya, Hapus!',
+      cancelButtonText: 'Batal'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        const token = localStorage.getItem("token")
+        try {
+          const res = await fetch(`https://backend.mejatika.com/api/materials/${id}`, {
+            method: "DELETE",
+            headers: { "Authorization": `Bearer ${token}` }
+          })
+          if (res.ok) {
+            setMaterials(materials.filter(m => m.id !== id))
+            Toast.fire({ icon: 'success', title: 'Materi terhapus' })
+          }
+        } catch (err) {
+          Toast.fire({ icon: 'error', title: 'Gagal menghapus' })
+        }
+      }
+    })
   }
 
   return (
-    <div className="space-y-6 p-6 bg-zinc-50/50 min-h-screen">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto min-h-screen">
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-black italic uppercase tracking-tighter text-zinc-900 leading-none">
-            Course <span className="text-amber-500">Materials</span>
-          </h1>
-          <p className="text-zinc-500 font-medium italic mt-2">Manage cloud-based learning resources.</p>
-        </div>
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+          <h1 className="text-3xl font-black tracking-tight uppercase italic text-amber-600">MANAGEMENT MATERI</h1>
+          <p className="text-muted-foreground">Pusat Pembelajaran Digital Mejatika</p>
+        </motion.div>
 
         <Button 
           onClick={() => { resetForm(); setOpen(true); }}
-          className="bg-zinc-900 hover:bg-zinc-800 rounded-2xl h-12 px-6 shadow-lg shadow-zinc-200 transition-all active:scale-95"
+          size="lg" 
+          className="bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg transition-transform active:scale-95"
         >
-          <Plus className="mr-2 h-5 w-5 text-amber-500" />
-          Add New Material
+          <Plus className="mr-2 h-5 w-5" /> Tambah Materi
         </Button>
       </div>
 
       {/* SEARCH BAR */}
       <div className="relative max-w-md">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
         <Input 
           placeholder="Cari materi atau kursus..." 
-          className="pl-11 rounded-2xl border-none shadow-sm bg-white h-12"
+          className="pl-10 rounded-full border-amber-100 bg-white shadow-sm focus:ring-amber-500"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      {/* MODAL FORM */}
+      {/* MODAL FORM (PREMIUM SCROLL DESIGN) */}
       <Dialog open={open} onOpenChange={(v) => { if(!v) resetForm(); }}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto rounded-[2.5rem] border-none shadow-2xl p-8">
-          <DialogHeader>
-            <DialogTitle className="text-3xl font-black uppercase italic tracking-tighter">
-              {editingId ? "Edit Content" : "Create Content"}
-            </DialogTitle>
-            <DialogDescription>Link video YouTube atau dokumen Drive akan di-preview otomatis di dashboard peserta.</DialogDescription>
-          </DialogHeader>
-          
-          <form onSubmit={handleSubmit} className="space-y-6 pt-6">
-            <div className="grid md:grid-cols-2 gap-6">
+        <DialogContent className="max-w-4xl p-0 bg-transparent border-none shadow-none overflow-visible">
+          {/* GULUNGAN ATAS (Sama dengan News) */}
+          <div className="relative z-50 w-[95%] mx-auto">
+            <div className="w-full h-14 bg-amber-500 rounded-full shadow-xl flex items-center justify-between px-10 relative overflow-hidden border-b-4 border-amber-700/30">
+              <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
+              <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] z-10">EDITOR MATERI</span>
+              <span className="text-[10px] font-black text-amber-900/50 uppercase tracking-[0.4em] z-10 italic">MEJATIKA</span>
+            </div>
+          </div>
+
+          {/* BODY FORM (KERTAS GULUNG) */}
+          <div className="bg-[#fffdfa] dark:bg-zinc-950 -mt-6 pt-12 pb-10 px-8 md:px-12 rounded-b-xl shadow-2xl relative border-x border-black/5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Judul Materi</Label>
+                  <Input 
+                    value={formData.title} 
+                    onChange={(e) => setFormData({...formData, title: e.target.value})} 
+                    required 
+                    placeholder="Contoh: Pengenalan Dasar" 
+                    className="border-amber-200 focus:ring-amber-500 rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Pilih Kursus</Label>
+                  <Select 
+                    value={formData.course_id}
+                    onValueChange={(val) => setFormData({...formData, course_id: val})}
+                  >
+                    <SelectTrigger className="border-amber-200 rounded-xl">
+                      <SelectValue placeholder="Pilih Kursus" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courses.map((c) => (
+                        <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label className="font-bold uppercase text-[10px] tracking-[0.2em] text-zinc-400 ml-1">Judul Materi</Label>
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-2">
+                  <Globe className="w-3 h-3" /> URL Sumber (YT/Drive/Link)
+                </Label>
                 <Input 
-                  placeholder="Misal: Modul 1 - Fundamental" 
-                  className="rounded-xl border-zinc-100 bg-zinc-50 h-12 focus:ring-amber-500"
-                  value={formData.title}
-                  onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  required
+                  value={formData.file} 
+                  onChange={(e) => setFormData({...formData, file: e.target.value})} 
+                  required 
+                  placeholder="https://www.youtube.com/watch?v=..." 
+                  className="border-amber-200 rounded-xl"
                 />
               </div>
+
               <div className="space-y-2">
-                <Label className="font-bold uppercase text-[10px] tracking-[0.2em] text-zinc-400 ml-1">Kursus Terkait</Label>
-                <Select 
-                  value={formData.course_id}
-                  onValueChange={(val) => setFormData({...formData, course_id: val})}
-                >
-                  <SelectTrigger className="rounded-xl border-zinc-100 bg-zinc-50 h-12">
-                    <SelectValue placeholder="Pilih Kursus" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-none shadow-xl">
-                    {courses.map((c) => (
-                      <SelectItem key={c.id} value={c.id.toString()}>{c.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Isi / Deskripsi Materi</Label>
+                <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-inner">
+                  <ReactQuill 
+                    theme="snow" 
+                    value={formData.content} 
+                    onChange={(val) => setFormData(prev => ({ ...prev, content: val }))} 
+                    modules={quillModules} 
+                  />
+                </div>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label className="font-bold uppercase text-[10px] tracking-[0.2em] text-zinc-400 ml-1">Cloud Link (YT/Drive/OneDrive)</Label>
-              <div className="relative">
-                <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                <Input 
-                  placeholder="https://..." 
-                  className="rounded-xl border-zinc-100 bg-zinc-50 pl-12 h-12 focus:ring-amber-500"
-                  value={formData.file}
-                  onChange={(e) => setFormData({...formData, file: e.target.value})}
-                  required
-                />
+              <div className="flex gap-3 pt-4">
+                 <Button type="button" variant="ghost" onClick={resetForm} className="flex-1 rounded-xl font-bold uppercase italic text-zinc-400">
+                    Batal
+                 </Button>
+                 <Button type="submit" disabled={isSubmitting} className="flex-[2] bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest h-12 rounded-xl">
+                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : editingId ? "SIMPAN PERUBAHAN" : "TERBITKAN MATERI"}
+                 </Button>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="font-bold uppercase text-[10px] tracking-[0.2em] text-zinc-400 ml-1">Deskripsi Tambahan</Label>
-              <div className="rounded-2xl overflow-hidden border border-zinc-100 shadow-sm">
-                <ReactQuill 
-                  theme="snow"
-                  modules={quillModules}
-                  value={formData.content}
-                  onChange={(val) => setFormData(prev => ({ ...prev, content: val }))}
-                  className="bg-white min-h-[200px]"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-4">
-               <Button type="button" variant="ghost" onClick={resetForm} className="flex-1 rounded-2xl h-14 font-bold uppercase italic text-zinc-400 hover:text-zinc-900 transition-all">
-                  Discard
-               </Button>
-               <Button type="submit" disabled={isSubmitting} className="flex-[2] bg-zinc-900 hover:bg-zinc-800 rounded-2xl h-14 font-black uppercase italic tracking-widest shadow-xl shadow-zinc-200">
-                  {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : <Save className="mr-2 h-5 w-5 text-amber-500" />}
-                  {editingId ? "Save Changes" : "Publish Content"}
-               </Button>
-            </div>
-          </form>
+            </form>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* MATERIALS TABLE */}
-      <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white">
-        <CardHeader className="p-8 border-b border-zinc-50 flex flex-row items-center justify-between bg-white">
-          <div>
-            <CardTitle className="text-2xl font-black uppercase italic tracking-tighter flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-xl">
-                <BookOpen className="text-amber-600 h-6 w-6" />
-              </div>
-              Materials Library
-            </CardTitle>
-            <CardDescription className="font-medium">Total {filteredMaterials.length} materi ditemukan</CardDescription>
-          </div>
-          <Badge className="bg-zinc-900 text-amber-500 rounded-full px-5 py-2 border-none text-[10px] font-black italic uppercase tracking-widest">
-             Active Database
-          </Badge>
-        </CardHeader>
+      <Card className="border-none shadow-xl bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden">
         <CardContent className="p-0">
-          {loading ? (
-            <div className="flex justify-center py-32"><Loader2 className="animate-spin text-amber-500 h-12 w-12" /></div>
-          ) : filteredMaterials.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-32 text-center">
-              <div className="h-24 w-24 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
-                <FileText className="h-12 w-12 text-zinc-200" />
-              </div>
-              <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-sm">No materials available</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-zinc-50/50">
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-zinc-400 border-b border-zinc-100">Info Materi</th>
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-zinc-400 border-b border-zinc-100">Resource Link</th>
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-zinc-400 border-b border-zinc-100 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-50">
-                  {filteredMaterials.map((item) => (
-                    <tr key={item.id} className="hover:bg-zinc-50/30 transition-all group">
-                      <td className="p-6">
-                        <div className="font-black text-zinc-900 group-hover:text-amber-600 transition-colors text-lg leading-tight mb-1">{item.title}</div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black uppercase italic text-zinc-400 border border-zinc-200 px-2 py-0.5 rounded-md">
-                            Course: {item.course?.title || 'General'}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-6">
-                         <a 
-                          href={item.file} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-[11px] text-zinc-500 font-bold hover:text-amber-600 transition-all truncate max-w-[250px]"
-                         >
-                           <ExternalLink size={12} className="text-amber-500 shrink-0" />
-                           {item.file}
-                         </a>
-                      </td>
-                      <td className="p-6 text-right">
-                        <div className="flex justify-end gap-3">
-                          <Button 
-                            onClick={() => handleEdit(item)}
-                            variant="ghost" size="icon" 
-                            className="h-11 w-11 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 rounded-2xl transition-all"
-                          >
-                            <Edit3 size={20} />
-                          </Button>
-                          <Button 
-                            onClick={() => deleteMaterial(item.id)}
-                            variant="ghost" size="icon" 
-                            className="h-11 w-11 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all"
-                          >
-                            <Trash2 size={20} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <table className="w-full">
+            <thead>
+              <tr className="bg-amber-50/50 border-b border-amber-100 text-[10px] font-black uppercase tracking-widest text-amber-700">
+                <th className="px-6 py-4 text-left">Info Materi</th>
+                <th className="px-6 py-4 text-left">Sumber Link</th>
+                <th className="px-6 py-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={3} className="py-20 text-center"><Loader2 className="animate-spin inline-block text-amber-500" /></td></tr>
+              ) : filteredMaterials.length === 0 ? (
+                <tr><td colSpan={3} className="py-20 text-center text-zinc-400 italic">Tidak ada materi ditemukan</td></tr>
+              ) : (
+                filteredMaterials.map((item) => (
+                  <motion.tr 
+                    initial={{ opacity: 0 }} 
+                    animate={{ opacity: 1 }}
+                    key={item.id} 
+                    className="border-b border-zinc-50 hover:bg-amber-50/30 transition-colors group"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-sm text-zinc-800 group-hover:text-amber-600 transition-colors">{item.title}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[9px] font-black uppercase italic text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                           {item.course?.title || 'Umum'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                       <a href={item.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-amber-600 transition-all">
+                         <ExternalLink size={12} className="shrink-0" />
+                         <span className="truncate max-w-[150px]">{item.file}</span>
+                       </a>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-500 hover:bg-amber-50" onClick={() => handleEdit(item)}>
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => deleteMaterial(item.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-function Badge({ children, className }: { children: React.ReactNode, className?: string }) {
-  return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-bold ${className}`}>
-      {children}
-    </span>
   )
 }
