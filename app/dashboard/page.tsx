@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   User, PlayCircle, CheckCircle2, Send, Download, 
-  ChevronRight, ChevronDown, ExternalLink, Box
+  ChevronDown, Box, ExternalLink 
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -17,7 +17,7 @@ export default function StudentDashboard() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  // State untuk Kontrol Materi
+  // State Materi & Flow
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
   const [completedMaterials, setCompletedMaterials] = useState<number[]>([]) 
@@ -27,7 +27,6 @@ export default function StudentDashboard() {
     fetchData()
   }, [])
 
-  // Mengambil data registrasi yang sukses
   const fetchData = async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
@@ -42,8 +41,6 @@ export default function StudentDashboard() {
       ])
       const dataReg = await resReg.json()
       const dataUser = await resUser.json()
-      
-      // Filter hanya yang statusnya sukses/aktif (sesuaikan dengan key dari API Anda)
       const regList = Array.isArray(dataReg) ? dataReg : dataReg.data || []
       setRegistrations(regList)
       setUser(dataUser)
@@ -68,7 +65,7 @@ export default function StudentDashboard() {
   return (
     <div className="flex min-h-screen bg-[#F8F9FB]">
       
-      {/* SIDEBAR */}
+      {/* SIDEBAR - SEMUA MENU LENGKAP */}
       <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
         <div className="p-8">
           <div className="flex items-center gap-3 font-black italic">
@@ -82,6 +79,7 @@ export default function StudentDashboard() {
             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
             { id: "courses", label: "Daftar Kursus", icon: BookOpen },
             { id: "materials", label: "Materi Kursus", icon: FileCheck },
+            { id: "certificates", label: "Sertifikat", icon: Award }, // MENU SERTIFIKAT KEMBALI
           ].map((item) => (
             <button
               key={item.id}
@@ -105,28 +103,25 @@ export default function StudentDashboard() {
 
       <main className="flex-1 ml-72 p-10">
         
+        {/* VIEW: MATERI KURSUS (ACCORDION & FLOW) */}
         {activeMenu === "materials" && (
           <div className="grid grid-cols-12 gap-8 animate-in fade-in">
-            {/* KIRI: DAFTAR SEMUA KURSUS & MODUL */}
             <div className="col-span-4 space-y-6">
               <h2 className="text-2xl font-black italic uppercase tracking-tighter">Materi Belajar</h2>
-              
               <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
                 {registrations.map((reg) => (
                   <div key={reg.id} className="space-y-3">
-                    {/* Header Kursus (Accordion Style) */}
                     <button 
                       onClick={() => setExpandedCourse(expandedCourse === reg.id ? null : reg.id)}
                       className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all ${expandedCourse === reg.id ? 'bg-zinc-900 text-white' : 'bg-white shadow-sm hover:bg-zinc-50'}`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 text-left">
                         <Box size={18} className={expandedCourse === reg.id ? 'text-amber-500' : 'text-zinc-400'} />
-                        <span className="text-[11px] font-black uppercase italic truncate w-40 text-left">{reg.course?.title}</span>
+                        <span className="text-[11px] font-black uppercase italic truncate w-40">{reg.course?.title}</span>
                       </div>
                       <ChevronDown size={16} className={`transition-transform ${expandedCourse === reg.id ? 'rotate-180' : ''}`} />
                     </button>
 
-                    {/* Daftar Modul di dalam Kursus tersebut */}
                     {expandedCourse === reg.id && (
                       <div className="ml-4 space-y-3 animate-in slide-in-from-top-2">
                         {reg.course?.materials?.map((m: any, idx: number) => {
@@ -145,7 +140,6 @@ export default function StudentDashboard() {
                                 <span className="text-xs font-bold text-zinc-800 truncate">{m.title}</span>
                               </button>
 
-                              {/* FLOW SISTEM (Hanya tampil untuk materi yang sedang dibuka) */}
                               {isActive && (
                                 <div className="ml-8 pl-6 border-l-2 border-dashed border-amber-200 py-3 space-y-4">
                                   <div className="relative flex items-center gap-3">
@@ -172,7 +166,6 @@ export default function StudentDashboard() {
               </div>
             </div>
 
-            {/* KANAN: VIEWER KONTEN */}
             <div className="col-span-8 space-y-6">
               {activeMaterial ? (
                 <>
@@ -183,53 +176,59 @@ export default function StudentDashboard() {
                     </div>
                     {renderPreview(activeMaterial.file)}
                   </div>
-
                   <Card className="border-none shadow-sm rounded-[2.5rem] p-10 bg-white">
                     <div className="flex justify-between items-start mb-8">
                       <h3 className="text-3xl font-black italic uppercase leading-tight max-w-lg">{activeMaterial.title}</h3>
-                      <Button 
-                        onClick={() => setCompletedMaterials([...completedMaterials, activeMaterial.id])}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8"
-                      >
-                        Selesai Materi
-                      </Button>
+                      <Button onClick={() => setCompletedMaterials([...completedMaterials, activeMaterial.id])} className="bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8">Selesai Materi</Button>
                     </div>
-                    <div className="prose prose-zinc max-w-none prose-headings:italic prose-headings:font-black" 
-                         dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                    <div className="prose prose-zinc max-w-none" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                   </Card>
-
-                  {completedMaterials.includes(activeMaterial.id) && (
-                    <Card className="border-none shadow-xl rounded-[2.5rem] p-8 bg-white border animate-in slide-in-from-bottom-4">
-                      <h4 className="text-lg font-black italic uppercase mb-4">Latihan Praktik</h4>
-                      <textarea 
-                        value={submissionText}
-                        onChange={(e) => setSubmissionText(e.target.value)}
-                        placeholder="Tempelkan link tugas Anda di sini..."
-                        className="w-full h-32 rounded-3xl p-6 bg-zinc-50 border-none mb-4 text-sm"
-                      />
-                      <Button className="h-12 w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px]">Kirim Jawaban</Button>
-                    </Card>
-                  )}
                 </>
               ) : (
                 <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-300 border-2 border-dashed border-zinc-200 rounded-[3rem]">
                    <PlayCircle size={60} strokeWidth={1} className="mb-4 opacity-20" />
-                   <p className="font-black italic uppercase text-[10px] tracking-[0.3em]">Pilih salah satu kursus dan materi</p>
+                   <p className="font-black italic uppercase text-[10px] tracking-[0.3em]">Pilih kursus dan modul belajar</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Dashboard & Course List tetap seperti sebelumnya namun disesuaikan */}
+        {/* VIEW: SERTIFIKAT */}
+        {activeMenu === "certificates" && (
+          <div className="space-y-8 animate-in fade-in">
+            <h2 className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">Sertifikat Saya</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {registrations.map((reg) => (
+                <Card key={reg.id} className="border-none shadow-sm rounded-[2.5rem] p-8 bg-white flex items-center justify-between">
+                  <div className="flex items-center gap-6">
+                    <div className="h-16 w-16 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500"><Award size={32} /></div>
+                    <div>
+                      <h4 className="font-black italic uppercase text-sm">{reg.course?.title}</h4>
+                      <p className="text-[10px] text-zinc-400 font-bold uppercase">Status: Siap Diunduh</p>
+                    </div>
+                  </div>
+                  <Button variant="outline" className="rounded-xl font-black italic uppercase text-[10px] border-zinc-200">
+                    <Download size={16} className="mr-2" /> Download
+                  </Button>
+                </Card>
+              ))}
+              {registrations.length === 0 && (
+                <div className="col-span-2 p-20 text-center border-2 border-dashed border-zinc-200 rounded-[3rem] text-zinc-400 italic font-black uppercase text-xs">Belum ada sertifikat tersedia</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* VIEW: DASHBOARD */}
         {activeMenu === "dashboard" && (
-           <div className="space-y-8">
-              <h2 className="text-4xl font-black italic uppercase tracking-tighter">Dashboard</h2>
-              <div className="bg-amber-500 p-10 rounded-[3rem] text-zinc-950">
-                 <p className="font-black italic uppercase text-xs mb-2">Total Kursus Terdaftar</p>
-                 <h3 className="text-6xl font-black italic">{registrations.length}</h3>
-              </div>
-           </div>
+          <div className="space-y-8 animate-in fade-in">
+             <h2 className="text-4xl font-black italic uppercase tracking-tighter text-zinc-900">Halo, {user?.name}!</h2>
+             <div className="bg-amber-500 p-10 rounded-[3rem] text-zinc-950 inline-block min-w-[300px]">
+                <p className="font-black italic uppercase text-[10px] mb-2">Total Kursus Aktif</p>
+                <h3 className="text-6xl font-black italic">{registrations.length}</h3>
+             </div>
+          </div>
         )}
 
       </main>
