@@ -151,7 +151,7 @@ export default function ParticipantDashboard() {
           {courses.map((course) => (
             <Card key={course.id} className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
               <div className="h-40 bg-zinc-100 flex items-center justify-center relative">
-                 <GraduationCap className="h-16 w-16 text-zinc-200" />
+                
                    <img src={course.thumbnail || "/placeholder.svg"} alt={course.title} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" />
                   
               </div>
