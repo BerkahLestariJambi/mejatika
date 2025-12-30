@@ -19,7 +19,8 @@ import {
   MessageSquare, 
   ExternalLink,
   ChevronRight,
-  Download
+  Download,
+  Circle
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -170,9 +171,9 @@ export default function StudentDashboard() {
                     <h4 className="text-lg font-black uppercase italic text-zinc-900 mb-6 line-clamp-2 min-h-[3.5rem]">{reg.course?.title}</h4>
                     <Button 
                       onClick={() => { setSelectedCourse(reg.course); setActiveMenu("materials"); }} 
-                      className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 hover:bg-amber-500 hover:text-zinc-950 transition-all"
+                      className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 hover:bg-amber-500 hover:text-zinc-950 transition-all shadow-lg"
                     >
-                      Buka Materi
+                      Buka Materi <ChevronRight size={14} className="ml-1" />
                     </Button>
                   </CardContent>
                 </Card>
@@ -181,38 +182,76 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* MATERIALS SECTION */}
+        {/* MATERIALS SECTION WITH FLOW STEPS */}
         {activeMenu === "materials" && (
           <div className="grid grid-cols-12 gap-8">
+            {/* SIDEBAR MODUL */}
             <div className="col-span-4 space-y-4">
               <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-6">Modul Belajar</h2>
-              <div className="space-y-3 max-h-[75vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-200">
-                {selectedCourse?.materials?.map((m: any, index: number) => (
-                  <button 
-                    key={m.id}
-                    onClick={() => setActiveMaterial(m)}
-                    className={`w-full p-5 rounded-3xl text-left transition-all border-2 flex items-center justify-between ${
-                      activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-xl shadow-amber-500/10' : 'border-transparent bg-white shadow-sm'
-                    }`}
-                  >
-                    <div className="flex items-center gap-4 overflow-hidden">
-                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black italic shrink-0 ${activeMaterial?.id === m.id ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-100 text-zinc-400'}`}>
-                        {index + 1}
-                      </div>
-                      <h5 className="font-bold text-zinc-900 text-sm truncate">{m.title}</h5>
+              <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-200">
+                {selectedCourse?.materials?.map((m: any, index: number) => {
+                  const isActive = activeMaterial?.id === m.id;
+                  const isDone = completedMaterials.includes(m.id);
+                  const isTaskDone = submissionText.length > 5;
+
+                  return (
+                    <div key={m.id} className="space-y-2">
+                      <button 
+                        onClick={() => setActiveMaterial(m)}
+                        className={`w-full p-5 rounded-3xl text-left transition-all border-2 flex items-center justify-between ${
+                          isActive ? 'border-amber-500 bg-white shadow-xl shadow-amber-500/10' : 'border-transparent bg-white shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center gap-4 overflow-hidden">
+                          <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black italic shrink-0 ${isActive ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-100 text-zinc-400'}`}>
+                            {index + 1}
+                          </div>
+                          <h5 className="font-bold text-zinc-900 text-sm truncate">{m.title}</h5>
+                        </div>
+                        {isDone && isTaskDone && <CheckCircle2 className="text-emerald-500 shrink-0" size={20} />}
+                      </button>
+
+                      {/* FLOW STEPS (Bulat & Garis Alir) */}
+                      {isActive && (
+                        <div className="ml-10 pl-6 border-l-2 border-dashed border-amber-200 py-3 space-y-5 animate-in slide-in-from-top-2 duration-300">
+                          {/* Step 1: Materi */}
+                          <div className="relative flex items-center gap-3">
+                            <div className={`absolute -left-[31px] w-4 h-4 rounded-full border-4 border-[#F8F9FB] shadow-sm transition-colors ${isDone ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                            <div className={`flex items-center gap-2 text-[10px] font-black uppercase italic ${isDone ? 'text-zinc-500' : 'text-zinc-900'}`}>
+                               <BookOpen size={14} className={isDone ? 'text-emerald-500' : 'text-amber-500'} /> Baca Materi {isDone && '✓'}
+                            </div>
+                          </div>
+
+                          {/* Step 2: Latihan */}
+                          <div className="relative flex items-center gap-3">
+                            <div className={`absolute -left-[31px] w-4 h-4 rounded-full border-4 border-[#F8F9FB] shadow-sm transition-colors ${isTaskDone ? 'bg-emerald-500' : isDone ? 'bg-amber-500' : 'bg-zinc-200'}`} />
+                            <div className={`flex items-center gap-2 text-[10px] font-black uppercase italic ${isTaskDone ? 'text-zinc-500' : isDone ? 'text-zinc-900' : 'text-zinc-300'}`}>
+                               <FileCheck size={14} className={isTaskDone ? 'text-emerald-500' : isDone ? 'text-amber-500' : 'text-zinc-300'} /> Latihan Praktik {isTaskDone && '✓'}
+                            </div>
+                          </div>
+
+                          {/* Step 3: Feedback */}
+                          <div className="relative flex items-center gap-3">
+                            <div className={`absolute -left-[31px] w-4 h-4 rounded-full border-4 border-[#F8F9FB] shadow-sm transition-colors ${isTaskDone ? 'bg-amber-500' : 'bg-zinc-200'}`} />
+                            <div className={`flex items-center gap-2 text-[10px] font-black uppercase italic ${isTaskDone ? 'text-zinc-900' : 'text-zinc-300'}`}>
+                               <MessageSquare size={14} className={isTaskDone ? 'text-amber-500' : 'text-zinc-300'} /> Feedback Mentor
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {completedMaterials.includes(m.id) && <CheckCircle2 className="text-emerald-500 shrink-0" size={20} />}
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
+            {/* VIEWER KONTEN */}
             <div className="col-span-8 space-y-6">
               {activeMaterial ? (
                 <>
                   <div className="bg-zinc-950 rounded-[2.5rem] overflow-hidden shadow-2xl p-6">
-                    <div className="flex justify-between items-center mb-4 px-2">
-                       <span className="text-[10px] font-black uppercase italic text-amber-500">Studying: {activeMaterial.title}</span>
+                    <div className="flex justify-between items-center mb-4 px-2 text-[10px] font-black uppercase italic text-amber-500">
+                       <span>Playing: {activeMaterial.title}</span>
                        <Button size="sm" variant="ghost" className="text-zinc-500 hover:text-white" onClick={() => window.open(activeMaterial.file, "_blank")}>
                           <Download size={16} />
                        </Button>
@@ -222,27 +261,52 @@ export default function StudentDashboard() {
 
                   <Card className="border-none shadow-sm rounded-[2.5rem] p-10 bg-white">
                     <div className="flex justify-between items-start gap-4 mb-8">
-                      <h3 className="text-3xl font-black italic uppercase break-words leading-tight">{activeMaterial.title}</h3>
+                      <h3 className="text-3xl font-black italic uppercase leading-tight">{activeMaterial.title}</h3>
                       {!completedMaterials.includes(activeMaterial.id) && (
                         <Button 
                           onClick={() => setCompletedMaterials([...completedMaterials, activeMaterial.id])}
                           className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8 shrink-0"
                         >
-                          Tandai Selesai
+                          Selesai & Lanjut Latihan
                         </Button>
                       )}
                     </div>
-                    {/* FIXED: No multiline strings in className */}
                     <div 
                       className="prose prose-zinc max-w-none break-words overflow-hidden prose-p:text-zinc-600 prose-headings:italic prose-headings:font-black [&_img]:rounded-3xl" 
                       dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
                     />
                   </Card>
+
+                  {/* BAGIAN LATIHAN */}
+                  {completedMaterials.includes(activeMaterial.id) && (
+                    <Card className="border-none shadow-xl rounded-[2.5rem] p-8 bg-zinc-50 border border-zinc-100 animate-in slide-in-from-bottom-4">
+                      <h4 className="text-lg font-black italic uppercase mb-6 flex items-center gap-2">
+                        <FileCheck className="text-amber-500" /> Tugas & Latihan Praktik
+                      </h4>
+                      <div className="space-y-4">
+                        <textarea 
+                          value={submissionText}
+                          onChange={(e) => setSubmissionText(e.target.value)}
+                          placeholder="Masukkan link tugas atau jawaban tertulis Anda di sini..."
+                          className="w-full h-40 rounded-3xl p-6 bg-white border-none shadow-inner text-sm focus:ring-2 focus:ring-amber-500 transition-all"
+                        />
+                        <div className="flex gap-4">
+                          <label className="flex-1 flex items-center justify-center gap-3 h-14 bg-white border-2 border-dashed border-zinc-200 rounded-2xl cursor-pointer hover:bg-zinc-100 transition-all text-[11px] font-black uppercase italic text-zinc-400">
+                             <Upload size={18} /> Unggah Gambar (Opsional)
+                             <input type="file" className="hidden" />
+                          </label>
+                          <Button className="h-14 px-10 bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[11px] shadow-lg hover:bg-amber-500 hover:text-zinc-950 transition-all">
+                             <Send size={18} className="mr-3" /> Kirim Jawaban
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
                 </>
               ) : (
-                <div className="h-[50vh] flex flex-col items-center justify-center text-zinc-300">
+                <div className="h-[60vh] flex flex-col items-center justify-center text-zinc-300">
                   <PlayCircle size={80} strokeWidth={1} className="mb-4 opacity-10" />
-                  <p className="font-black italic uppercase text-xs tracking-widest">Pilih materi untuk memulai</p>
+                  <p className="font-black italic uppercase text-[10px] tracking-[0.3em]">Pilih modul untuk memulai alur belajar</p>
                 </div>
               )}
             </div>
