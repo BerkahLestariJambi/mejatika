@@ -6,30 +6,39 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
+  LayoutDashboard, 
   BookOpen, 
-  Download, 
-  PlayCircle, 
-  FileText, 
-  User, 
+  FileCheck, 
+  Award, 
   LogOut, 
+  User, 
+  PlayCircle, 
+  CheckCircle2, 
+  Send, 
+  Upload, 
+  MessageSquare, 
   X,
-  Mail,
-  Calendar,
-  ShieldCheck,
-  ExternalLink
+  ExternalLink,
+  ChevronRight,
+  Download
 } from "lucide-react"
 
 export default function StudentDashboard() {
   const router = useRouter()
+  const [activeMenu, setActiveMenu] = useState("dashboard")
   const [registrations, setRegistrations] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
-  const [activeTab, setActiveTab] = useState<"courses" | "profile">("courses")
 
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [previewTitle, setPreviewTitle] = useState<string | null>(null)
-  const [previewContent, setPreviewContent] = useState<string | null>(null)
+  // State Flow Materi & Latihan
+  const [selectedCourse, setSelectedCourse] = useState<any>(null)
+  const [activeMaterial, setActiveMaterial] = useState<any>(null)
+  const [completedMaterials, setCompletedMaterials] = useState<number[]>([]) // Simpan ID materi yang selesai
+  const [submissionText, setSubmissionText] = useState("")
+
+  useEffect(() => {
+    fetchData()
+  }, [])
 
   const fetchData = async () => {
     const token = localStorage.getItem("token")
@@ -63,256 +72,250 @@ export default function StudentDashboard() {
     router.push("/login")
   }
 
-  useEffect(() => { fetchData() }, [])
-
-  // FUNGSI LOGIKA PREVIEW YANG DIPERBAIKI
+  // --- LOGIKA RENDER PREVIEW DRIVE/YT ---
   const renderPreview = (url: string) => {
-    if (!url) return null;
-
-    // 1. Logika YouTube
+    if (url.includes("drive.google.com")) {
+      const embedUrl = url.split('/view')[0] + '/preview';
+      return <iframe src={embedUrl} className="w-full h-[500px] rounded-2xl bg-black" allow="autoplay" />
+    }
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
       const videoId = url.split("v=")[1]?.split("&")[0] || url.split("/").pop();
-      return (
-        <iframe 
-          src={`https://www.youtube.com/embed/${videoId}`} 
-          className="w-full aspect-video rounded-xl shadow-lg" 
-          allowFullScreen 
-        />
-      );
+      return <iframe src={`https://www.youtube.com/embed/${videoId}`} className="w-full aspect-video rounded-2xl" allowFullScreen />
     }
-
-    // 2. Logika Google Drive (Perbaikan Utama untuk Error 403)
-    if (url.includes("drive.google.com")) {
-      // Membersihkan link agar murni menggunakan /preview
-      let embedUrl = url.split('/view')[0] + '/preview';
-      
-      return (
-        <div className="relative w-full h-[600px]">
-           <iframe 
-            src={embedUrl} 
-            className="w-full h-full rounded-xl border-none shadow-lg bg-zinc-900" 
-            allow="autoplay"
-            title="Google Drive Preview"
-          />
-        </div>
-      )
-    }
-
-    // 3. Logika PDF umum
-    if (url.toLowerCase().endsWith(".pdf")) {
-      return <iframe src={`${url}#toolbar=0`} className="w-full h-[600px] rounded-xl shadow-lg" />
-    }
-
-    // Fallback
     return (
-      <div className="flex flex-col items-center justify-center p-20 bg-zinc-50 rounded-2xl border-2 border-dashed border-zinc-200">
-        <ExternalLink size={40} className="text-zinc-300 mb-4" />
-        <p className="text-zinc-500 font-bold italic uppercase text-xs mb-4">Preview tidak didukung untuk format ini</p>
-        <Button onClick={() => window.open(url, "_blank")} className="bg-amber-500 hover:bg-amber-600 rounded-full font-black uppercase italic text-[10px] h-10 px-8">
-           Buka di Tab Baru
-        </Button>
+      <div className="p-10 text-center bg-zinc-100 rounded-2xl">
+        <ExternalLink className="mx-auto mb-2 text-zinc-400" />
+        <Button onClick={() => window.open(url, "_blank")} size="sm">Buka Materi di Tab Baru</Button>
       </div>
     )
   }
 
-  if (loading) return (
-    <div className="flex h-screen items-center justify-center bg-white">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-amber-500"></div>
-    </div>
-  )
+  if (loading) return <div className="h-screen flex items-center justify-center">Loading...</div>
 
   return (
-    <div className="min-h-screen bg-zinc-50/50 p-4 md:p-8 pb-24 lg:pb-8">
-      <div className="max-w-6xl mx-auto space-y-8">
-        
-        {/* HEADER SECTION */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-[2rem] shadow-sm border border-zinc-100">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 bg-zinc-900 rounded-full flex items-center justify-center text-amber-500 shadow-xl">
-              <User size={30} />
-            </div>
-            <div>
-              <p className="text-zinc-400 text-[10px] font-black uppercase tracking-widest italic">Dashboard Peserta</p>
-              <h2 className="text-2xl font-black italic uppercase tracking-tighter text-zinc-900 leading-none">
-                {user?.name || "Student"}
-              </h2>
-            </div>
-          </div>
-          
-          <div className="flex bg-zinc-100 p-1 rounded-2xl w-full md:w-auto">
-            <button 
-              onClick={() => setActiveTab("courses")}
-              className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase italic transition-all ${activeTab === 'courses' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-400'}`}
-            >
-              My Courses
-            </button>
-            <button 
-              onClick={() => setActiveTab("profile")}
-              className={`flex-1 md:flex-none px-6 py-2.5 rounded-xl text-[10px] font-black uppercase italic transition-all ${activeTab === 'profile' ? 'bg-white shadow-sm text-zinc-900' : 'text-zinc-400'}`}
-            >
-              Profile
-            </button>
-            <button onClick={handleLogout} className="px-4 py-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors">
-              <LogOut size={18} />
-            </button>
+    <div className="flex min-h-screen bg-[#F8F9FB]">
+      
+      {/* SIDEBAR FIXED */}
+      <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
+        <div className="p-8">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 font-black italic">M</div>
+            <h1 className="text-xl font-black italic uppercase tracking-tighter">Mejatika<span className="text-amber-500">.</span></h1>
           </div>
         </div>
 
-        {activeTab === "courses" && (
-          <div className="grid gap-6">
-            {registrations.length === 0 ? (
-              <Card className="border-none shadow-xl rounded-[2.5rem] p-16 text-center bg-white">
-                <BookOpen className="mx-auto h-16 w-16 text-zinc-100 mb-6" />
-                <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-xs">Belum ada kursus terdaftar</p>
+        <nav className="flex-1 px-4 space-y-2 mt-4">
+          {[
+            { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+            { id: "courses", label: "Daftar Kursus", icon: BookOpen },
+            { id: "materials", label: "Materi Kursus", icon: FileCheck },
+            { id: "certificates", label: "Sertifikat", icon: Award },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                setActiveMenu(item.id);
+                if(item.id !== "materials") setActiveMaterial(null);
+              }}
+              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-black italic uppercase text-[11px] transition-all ${
+                activeMenu === item.id ? 'bg-amber-500 text-zinc-950 shadow-lg shadow-amber-500/20' : 'text-zinc-500 hover:bg-zinc-900'
+              }`}
+            >
+              <item.icon size={20} />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        <div className="p-6 border-t border-zinc-900">
+          <div className="bg-zinc-900/50 p-4 rounded-2xl mb-4 flex items-center gap-3">
+            <div className="h-10 w-10 bg-zinc-800 rounded-full flex items-center justify-center text-amber-500">
+              <User size={20} />
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-[10px] font-black uppercase text-zinc-500 truncate">{user?.name}</p>
+              <p className="text-[9px] text-zinc-600 truncate">{user?.email}</p>
+            </div>
+          </div>
+          <button onClick={handleLogout} className="w-full flex items-center gap-4 px-5 py-4 text-rose-500 hover:bg-rose-500/10 rounded-2xl font-black italic uppercase text-[11px] transition-all">
+            <LogOut size={20} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <main className="flex-1 ml-72 p-10">
+        
+        {/* 1. MENU: DASHBOARD */}
+        {activeMenu === "dashboard" && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-4xl font-black italic uppercase tracking-tighter text-zinc-900">Welcome Back!</h2>
+              <p className="text-zinc-400 font-medium">Lanjutkan progres belajar Anda hari ini.</p>
+            </div>
+            <div className="grid grid-cols-3 gap-6">
+              <Card className="border-none shadow-sm rounded-3xl p-6 bg-white">
+                <p className="text-[10px] font-black uppercase text-zinc-400 mb-1">Kursus Aktif</p>
+                <h3 className="text-3xl font-black italic">{registrations.length}</h3>
               </Card>
-            ) : (
-              registrations.map((reg) => (
-                <Card key={reg.id} className="border-none shadow-xl rounded-[2.5rem] overflow-hidden bg-white">
-                  <CardContent className="p-0">
-                    <div className="p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-14 w-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center shadow-inner">
-                          <BookOpen size={24} />
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-black uppercase italic tracking-tight text-zinc-900 leading-none mb-1">
-                            {reg.course?.title}
-                          </h3>
-                          <Badge className={`rounded-full px-3 py-0.5 text-[9px] font-black uppercase border-none ${
-                            reg.status === 'success' || reg.status === 'aktif' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-amber-500/10 text-amber-600'
-                          }`}>
-                            {reg.status}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <Button 
-                        onClick={() => setExpandedCourse(expandedCourse === reg.id ? null : reg.id)}
-                        className="w-full md:w-auto rounded-xl bg-zinc-900 hover:bg-zinc-800 font-bold uppercase italic text-[10px] h-12 px-8 shadow-lg shadow-zinc-200"
-                      >
-                        {expandedCourse === reg.id ? <X className="mr-2 h-4 w-4 text-rose-500" /> : <PlayCircle className="mr-2 h-4 w-4 text-amber-500" />}
-                        {expandedCourse === reg.id ? "Tutup Materi" : "Buka Modul Belajar"}
-                      </Button>
-                    </div>
-
-                    {expandedCourse === reg.id && (
-                      <div className="bg-zinc-50/80 border-t border-zinc-100 p-6 space-y-4">
-                        <h4 className="font-black uppercase italic text-[10px] tracking-[0.2em] text-zinc-400">Daftar Materi</h4>
-                        
-                        <div className="grid gap-3">
-                          {reg.course?.materials?.length > 0 ? (
-                            reg.course.materials.map((material: any) => (
-                              <div key={material.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-white rounded-2xl border border-zinc-100 shadow-sm hover:border-amber-200 transition-all gap-4">
-                                <div className="flex items-center gap-3">
-                                  <div className="h-10 w-10 bg-zinc-100 text-zinc-400 rounded-xl flex items-center justify-center">
-                                    <FileText size={18} />
-                                  </div>
-                                  <span className="font-bold text-zinc-800 text-sm">{material.title}</span>
-                                </div>
-                                
-                                <div className="flex items-center gap-2 w-full sm:w-auto">
-                                  <Button 
-                                    size="sm" variant="outline" 
-                                    onClick={() => {
-                                      setPreviewUrl(material.file);
-                                      setPreviewTitle(material.title);
-                                      setPreviewContent(material.content);
-                                    }}
-                                    className="flex-1 sm:flex-none rounded-xl text-[10px] font-black uppercase italic h-10 px-5 border-zinc-200 hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200"
-                                  >
-                                    <PlayCircle size={14} className="mr-2" /> Play/Preview
-                                  </Button>
-                                  <a href={material.file} target="_blank" rel="noopener noreferrer" className="h-10 w-10 bg-zinc-100 flex items-center justify-center rounded-xl hover:bg-zinc-900 hover:text-white transition-all shadow-sm">
-                                    <Download size={16} />
-                                  </a>
-                                </div>
-                              </div>
-                            ))
-                          ) : (
-                            <div className="py-10 text-center opacity-50 italic text-sm text-zinc-500">
-                              Materi belum tersedia untuk kursus ini.
-                            </div>
-                          )}
-                        </div>
-
-                        {previewUrl && (
-                          <div className="mt-8 rounded-[2rem] overflow-hidden bg-white shadow-2xl border border-zinc-200 animate-in fade-in zoom-in-95 duration-500">
-                            <div className="bg-zinc-900 p-5 flex justify-between items-center text-white">
-                              <div>
-                                <span className="text-[10px] font-black uppercase italic text-amber-500 tracking-[0.3em] block mb-1">Learning Player</span>
-                                <h5 className="font-black italic uppercase tracking-tighter text-lg">{previewTitle}</h5>
-                              </div>
-                              <Button variant="ghost" size="icon" onClick={() => { setPreviewUrl(null); setPreviewContent(null); }} className="text-zinc-400 hover:text-white hover:bg-rose-500 rounded-full transition-all">
-                                <X size={20} />
-                              </Button>
-                            </div>
-                            
-                            <div className="p-4 bg-zinc-950">
-                               {renderPreview(previewUrl)}
-                            </div>
-
-                            {previewContent && (
-                               <div className="p-8 bg-white prose prose-amber max-w-none">
-                                  <h6 className="text-[10px] font-black uppercase italic tracking-widest text-zinc-400 mb-4 border-b pb-2 text-left">Deskripsi Materi</h6>
-                                  <div 
-                                    className="text-zinc-600 leading-relaxed text-left"
-                                    dangerouslySetInnerHTML={{ __html: previewContent }} 
-                                  />
-                                </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))
-            )}
+              {/* Tambahkan statistik lain di sini */}
+            </div>
           </div>
         )}
 
-        {activeTab === "profile" && (
-           <div className="max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-300">
-             <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
-               <CardHeader className="bg-zinc-900 text-white p-10 text-center relative overflow-hidden">
-                 <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/batik-fractal.png')]"></div>
-                 <div className="relative z-10">
-                   <div className="h-20 w-20 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-zinc-800 shadow-xl">
-                      <User size={40} />
-                   </div>
-                   <CardTitle className="text-3xl font-black uppercase italic tracking-tighter mb-1">{user?.name}</CardTitle>
-                   <CardDescription className="text-amber-500 font-bold uppercase italic text-[10px] tracking-widest">Active Member since {user?.created_at ? new Date(user.created_at).getFullYear() : '2024'}</CardDescription>
-                 </div>
-               </CardHeader>
-               <CardContent className="p-8 space-y-4">
-                  {[
-                    { label: "Email Address", value: user?.email, icon: Mail },
-                    { label: "Account Role", value: user?.role || "Peserta", icon: ShieldCheck, badge: true },
-                    { label: "Joined Date", value: user?.created_at ? new Date(user.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '-', icon: Calendar }
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-4 p-5 rounded-2xl bg-zinc-50 border border-zinc-100 hover:bg-white hover:shadow-md transition-all">
-                      <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center text-amber-500 shadow-sm border border-zinc-100">
-                        <item.icon size={20} />
+        {/* 2. MENU: DAFTAR KURSUS */}
+        {activeMenu === "courses" && (
+          <div className="space-y-6">
+             <h2 className="text-3xl font-black italic uppercase tracking-tighter">My Enrolled Courses</h2>
+             <div className="grid gap-4">
+                {registrations.map((reg) => (
+                  <Card key={reg.id} className="border-none shadow-sm rounded-3xl overflow-hidden bg-white hover:shadow-md transition-all">
+                    <CardContent className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-6">
+                        <div className="h-16 w-16 bg-zinc-100 rounded-2xl flex items-center justify-center text-zinc-400">
+                          <BookOpen size={30} />
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-black uppercase italic text-zinc-900">{reg.course?.title}</h4>
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-none uppercase font-black italic text-[9px]">{reg.status}</Badge>
+                        </div>
                       </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-[10px] font-black uppercase italic text-zinc-400 leading-none mb-1 tracking-widest">{item.label}</p>
-                        {item.badge ? (
-                           <Badge className="bg-amber-100 text-amber-700 border-none font-black uppercase italic text-[9px]">{item.value}</Badge>
-                        ) : (
-                          <p className="font-bold text-zinc-900">{item.value}</p>
-                        )}
+                      <Button onClick={() => { setSelectedCourse(reg.course); setActiveMenu("materials"); }} className="bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 px-8">
+                        Buka Materi <ChevronRight size={16} className="ml-2" />
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+             </div>
+          </div>
+        )}
+
+        {/* 3. MENU: MATERI KURSUS (FLOW UTAMA) */}
+        {activeMenu === "materials" && (
+          <div className="grid grid-cols-12 gap-8">
+            {/* List Materi Samping */}
+            <div className="col-span-4 space-y-4">
+              <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-6">Modul Belajar</h2>
+              {selectedCourse ? (
+                selectedCourse.materials?.map((m: any, index: number) => (
+                  <button 
+                    key={m.id}
+                    onClick={() => setActiveMaterial(m)}
+                    className={`w-full p-5 rounded-3xl text-left transition-all border-2 flex items-center justify-between ${
+                      activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-xl shadow-amber-500/10' : 'border-transparent bg-white shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center font-black italic ${activeMaterial?.id === m.id ? 'bg-amber-500 text-zinc-900' : 'bg-zinc-100 text-zinc-400'}`}>
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-zinc-400 leading-none mb-1">Materi</p>
+                        <h5 className="font-bold text-zinc-900 text-sm">{m.title}</h5>
                       </div>
                     </div>
-                  ))}
+                    {completedMaterials.includes(m.id) && <CheckCircle2 className="text-emerald-500" size={20} />}
+                  </button>
+                ))
+              ) : (
+                <div className="p-8 text-center bg-zinc-100 rounded-3xl italic text-zinc-400">Silakan pilih kursus terlebih dahulu di menu Daftar Kursus.</div>
+              )}
+            </div>
 
-                  <Button onClick={handleLogout} variant="destructive" className="w-full h-14 rounded-2xl font-black uppercase italic tracking-tighter mt-6 shadow-lg shadow-rose-100 transition-all">
-                    <LogOut className="mr-2 h-5 w-5" /> Sign Out from Account
-                  </Button>
-               </CardContent>
-             </Card>
-           </div>
+            {/* Viewer Materi & Latihan */}
+            <div className="col-span-8">
+              {activeMaterial ? (
+                <div className="space-y-6">
+                  {/* Player */}
+                  <div className="bg-zinc-950 rounded-[2.5rem] overflow-hidden shadow-2xl p-4">
+                    <div className="flex justify-between items-center mb-4 px-4 pt-2">
+                       <span className="text-[10px] font-black uppercase italic text-amber-500">Sekarang Belajar: {activeMaterial.title}</span>
+                       <Button size="sm" variant="ghost" className="text-zinc-500 hover:text-white" onClick={() => window.open(activeMaterial.file, "_blank")}>
+                          <Download size={16} />
+                       </Button>
+                    </div>
+                    {renderPreview(activeMaterial.file)}
+                  </div>
+
+                  {/* Deskripsi & Tombol Selesai */}
+                  <Card className="border-none shadow-sm rounded-[2.5rem] p-8 bg-white">
+                    <div className="flex justify-between items-start mb-6">
+                      <h3 className="text-2xl font-black italic uppercase">{activeMaterial.title}</h3>
+                      {!completedMaterials.includes(activeMaterial.id) && (
+                        <Button 
+                          onClick={() => setCompletedMaterials([...completedMaterials, activeMaterial.id])}
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8"
+                        >
+                          Tandai Selesai & Lanjut Latihan
+                        </Button>
+                      )}
+                    </div>
+                    <div className="prose prose-zinc max-w-none" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                  </Card>
+
+                  {/* BAGIAN LATIHAN (HANYA MUNCUL JIKA SUDAH CENTANG) */}
+                  {completedMaterials.includes(activeMaterial.id) && (
+                    <Card className="border-none shadow-xl rounded-[2.5rem] p-8 bg-amber-50/50 border border-amber-100 animate-in slide-in-from-bottom-4 duration-500">
+                      <div className="flex items-center gap-3 mb-6 text-amber-600">
+                         <FileCheck size={24} />
+                         <h4 className="text-lg font-black italic uppercase">Latihan & Tugas Praktik</h4>
+                      </div>
+                      <div className="space-y-4">
+                        <textarea 
+                          value={submissionText}
+                          onChange={(e) => setSubmissionText(e.target.value)}
+                          placeholder="Tuliskan jawaban atau link tugas Anda di sini..."
+                          className="w-full h-40 rounded-3xl p-6 bg-white border-none shadow-inner text-sm focus:ring-2 focus:ring-amber-500 transition-all"
+                        />
+                        <div className="flex items-center gap-4">
+                          <label className="flex-1 flex items-center justify-center gap-3 h-14 bg-white border-2 border-dashed border-amber-200 rounded-2xl cursor-pointer hover:bg-amber-100/50 transition-all text-[11px] font-black uppercase italic text-amber-600">
+                             <Upload size={18} /> Unggah Gambar Hasil (.jpg, .png)
+                             <input type="file" className="hidden" />
+                          </label>
+                          <Button className="h-14 px-10 bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[11px] shadow-lg">
+                             <Send size={18} className="mr-3" /> Kirim Jawaban
+                          </Button>
+                        </div>
+
+                        {/* Feedback (Dummy) */}
+                        <div className="mt-8 p-6 bg-white rounded-3xl border border-emerald-100 flex gap-4">
+                           <div className="h-10 w-10 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                              <MessageSquare size={20} />
+                           </div>
+                           <div>
+                              <p className="text-[10px] font-black uppercase text-emerald-600 mb-1">Feedback Mentor</p>
+                              <p className="text-sm italic text-zinc-600">"Tugas belum diperiksa. Harap tunggu evaluasi dari tim instruktur."</p>
+                           </div>
+                        </div>
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-zinc-300">
+                   <PlayCircle size={80} strokeWidth={1} className="mb-4 opacity-20" />
+                   <p className="font-black italic uppercase text-xs tracking-widest">Pilih materi untuk memulai</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
-      </div>
+
+        {/* 4. MENU: SERTIFIKAT */}
+        {activeMenu === "certificates" && (
+          <div className="max-w-4xl space-y-8">
+            <h2 className="text-3xl font-black italic uppercase tracking-tighter">My Certificates</h2>
+            <div className="grid grid-cols-2 gap-6">
+               <Card className="border-none shadow-sm rounded-[2.5rem] p-8 bg-white opacity-50 grayscale">
+                  <Award size={40} className="text-amber-500 mb-4" />
+                  <h4 className="text-lg font-black italic uppercase mb-2">Sertifikat Belum Tersedia</h4>
+                  <p className="text-xs text-zinc-400 font-medium">Selesaikan semua materi dan tugas untuk mendapatkan sertifikat resmi.</p>
+               </Card>
+            </div>
+          </div>
+        )}
+
+      </main>
     </div>
   )
 }
