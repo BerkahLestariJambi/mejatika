@@ -24,15 +24,19 @@ export default function RegistrationsPage() {
     setLoading(true)
     const token = localStorage.getItem("token")
     try {
-      // Pastikan endpoint ini mengarah ke rute admin yang bisa melihat semua data
-      const res = await fetch("https://backend.mejatika.com/api/registrations", {
+      // PERBAIKAN: Gunakan rute admin agar Laravel memberikan SEMUA data pendaftaran
+      const res = await fetch("https://backend.mejatika.com/api/admin/registrations", {
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}`
         }
       })
+      
       const data = await res.json()
-      setRegistrations(Array.isArray(data) ? data : data.data || [])
+      
+      // Jika Laravel mengembalikan { data: [...] }, ambil data-nya saja
+      const finalData = Array.isArray(data) ? data : data.data || []
+      setRegistrations(finalData)
     } catch (err) {
       console.error("Error fetching registrations:", err)
     } finally {
@@ -40,7 +44,6 @@ export default function RegistrationsPage() {
     }
   }
 
-  // FUNGSI UNTUK AKTIVASI KURSUS
   const updateStatus = async (id: number, newStatus: string) => {
     if (!confirm(`Ubah status pendaftaran menjadi ${newStatus}?`)) return
     
@@ -58,12 +61,11 @@ export default function RegistrationsPage() {
       })
 
       if (res.ok) {
-        // Update data lokal tanpa reload halaman
         setRegistrations(prev => prev.map(reg => 
           reg.id === id ? { ...reg, status: newStatus } : reg
         ))
       } else {
-        alert("Gagal memperbarui status.")
+        alert("Gagal memperbarui status. Pastikan role Anda Admin.")
       }
     } catch (err) {
       alert("Terjadi kesalahan koneksi.")
@@ -83,7 +85,7 @@ export default function RegistrationsPage() {
 
   return (
     <div className="space-y-8 p-6">
-      {/* Header */}
+      {/* ... (Header dan Input Search tetap sama seperti kode Anda) ... */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black italic uppercase tracking-tighter text-zinc-900">
@@ -138,11 +140,11 @@ export default function RegistrationsPage() {
                   {filteredData.map((reg) => (
                     <tr key={reg.id} className="hover:bg-zinc-50/50 transition-colors">
                       <td className="p-6">
-                        <div className="font-bold text-zinc-900">{reg.user?.name}</div>
+                        <div className="font-bold text-zinc-900">{reg.user?.name || "No Name"}</div>
                         <div className="text-xs text-zinc-400">{reg.user?.email}</div>
                       </td>
                       <td className="p-6">
-                        <div className="font-black text-xs uppercase italic text-amber-600">{reg.course?.title}</div>
+                        <div className="font-black text-xs uppercase italic text-amber-600">{reg.course?.title || "No Course"}</div>
                         <div className="text-[10px] text-zinc-400 uppercase font-bold">Daftar: {new Date(reg.created_at).toLocaleDateString('id-ID')}</div>
                       </td>
                       <td className="p-6 text-center">
@@ -163,8 +165,7 @@ export default function RegistrationsPage() {
                                 size="sm" 
                                 className="bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold uppercase text-[10px]"
                               >
-                                {updatingId === reg.id ? <Loader2 className="animate-spin h-3 w-3" /> : <CheckCircle2 className="mr-1 h-3 w-3" />}
-                                Terima
+                                {updatingId === reg.id ? <Loader2 className="animate-spin h-3 w-3" /> : "Terima"}
                               </Button>
                               <Button 
                                 onClick={() => updateStatus(reg.id, 'failed')}
@@ -173,7 +174,7 @@ export default function RegistrationsPage() {
                                 variant="destructive"
                                 className="rounded-xl font-bold uppercase text-[10px]"
                               >
-                                <XCircle className="mr-1 h-3 w-3" /> Tolak
+                                Tolak
                               </Button>
                             </>
                           )}
