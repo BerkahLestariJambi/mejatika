@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server"
-
 export async function GET(request: Request) {
   try {
     // Ambil token dari header request yang dikirim oleh client (Next.js frontend)
