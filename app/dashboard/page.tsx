@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, PlusCircle, ChevronDown, Clock, 
-  ShieldCheck, Send, FileText, Box
+  ShieldCheck, Send, FileText, Box, Loader2 
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -17,6 +17,7 @@ export default function StudentDashboard() {
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [registeringId, setRegisteringId] = useState<number | null>(null) // State baru buat loading daftar
 
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
@@ -48,6 +49,35 @@ export default function StudentDashboard() {
       console.error(err) 
     } finally { 
       setLoading(false) 
+    }
+  }
+
+  // FUNGSI DAFTAR YANG LO MINTA
+  const handleEnroll = async (courseId: number) => {
+    if (!confirm("Konfirmasi pendaftaran?")) return
+    setRegisteringId(courseId)
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch("https://backend.mejatika.com/api/registrations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ course_id: courseId })
+      })
+      
+      if (res.ok) {
+        alert("Pendaftaran Berhasil! Menunggu aktivasi admin.")
+        fetchData() // Refresh biar status pendaftaran update
+      } else {
+        alert("Gagal mendaftar.")
+      }
+    } catch (err) {
+      alert("Error koneksi.")
+    } finally {
+      setRegisteringId(null)
     }
   }
 
@@ -140,13 +170,17 @@ export default function StudentDashboard() {
                           <h4 className="text-sm font-black uppercase italic mb-6 line-clamp-2 min-h-[3rem]">{course.title}</h4>
                           {status === 'success' ? (
                             <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12">Buka Materi</Button>
-                          ) : status === 'WAITING_PAYMENT' ? (
-                            <div className="w-full bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl p-4 text-center">
-                              <p className="text-[9px] font-black uppercase italic leading-tight">Selesaikan pembayaran dalam 3 hari</p>
-                            </div>
+                          ) : (status === 'WAITING_PAYMENT' || status === 'pending') ? (
+                            <Button disabled className="w-full bg-zinc-100 text-zinc-400 h-14 rounded-2xl font-black uppercase italic gap-2 text-[10px]">
+                              <Clock size={16} /> Menunggu Verifikasi
+                            </Button>
                           ) : (
-                            <Button onClick={() => window.open(`https://mejatika.com/course/${course.id}`, "_blank")} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 shadow-lg">
-                              Daftar Sekarang <PlusCircle size={14} className="ml-2" />
+                            <Button 
+                              onClick={() => handleEnroll(course.id)} 
+                              disabled={registeringId === course.id}
+                              className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 shadow-lg"
+                            >
+                              {registeringId === course.id ? <Loader2 className="animate-spin" /> : <>Daftar Sekarang <PlusCircle size={14} className="ml-2" /></>}
                             </Button>
                           )}
                         </CardContent>
@@ -173,7 +207,6 @@ export default function StudentDashboard() {
                           <div className="relative ml-4 pl-6 border-l-2 border-zinc-200 space-y-4 py-2">
                             {reg.course?.materials?.map((m: any, idx: number) => (
                               <div key={m.id} className="relative">
-                                {/* Dot on the Line */}
                                 <div className={`absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] ${activeMaterial?.id === m.id ? 'bg-amber-500 scale-125' : 'bg-zinc-300'}`} />
                                 <button onClick={() => setActiveMaterial(m)} className={`w-full p-4 rounded-2xl text-left border-2 flex items-center gap-3 transition-all ${activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-md' : 'border-transparent bg-white shadow-sm hover:border-zinc-200'}`}>
                                   <span className="text-xs font-bold truncate">{m.title}</span>
