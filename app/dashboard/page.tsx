@@ -14,11 +14,10 @@ export default function StudentDashboard() {
   const router = useRouter()
   const [activeMenu, setActiveMenu] = useState("dashboard")
   const [registrations, setRegistrations] = useState<any[]>([])
-  const [availableCourses, setAvailableCourses] = useState<any[]>([]) // Semua kursus di sistem
+  const [availableCourses, setAvailableCourses] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  // State Progres & Materi
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
   const [completedStatus, setCompletedStatus] = useState<Record<number, boolean>>({}) 
@@ -32,6 +31,7 @@ export default function StudentDashboard() {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
     try {
+      // Kita panggil semua data: Pendaftaran User, Profil, dan SEMUA Kursus
       const [resReg, resUser, resAll] = await Promise.all([
         fetch("https://backend.mejatika.com/api/registrations", { headers: { "Authorization": `Bearer ${token}` } }),
         fetch("https://backend.mejatika.com/api/me", { headers: { "Authorization": `Bearer ${token}` } }),
@@ -44,25 +44,27 @@ export default function StudentDashboard() {
 
       setRegistrations(Array.isArray(dataReg) ? dataReg : dataReg.data || [])
       setUser(dataUser)
+      // Simpan semua daftar kursus yang tersedia di database
       setAvailableCourses(Array.isArray(dataAll) ? dataAll : dataAll.data || [])
     } catch (err) { console.error(err) }
     finally { setLoading(false) }
   }
 
-  // LOGIKA STATUS & EXPRIY 3 HARI
+  // LOGIKA UTAMA: CEK STATUS KURSUS BERDASARKAN SEMUA KURSUS YANG ADA
   const getEnrollmentStatus = (courseId: number) => {
     const reg = registrations.find(r => r.course_id === courseId || r.course?.id === courseId);
     
+    // 1. Jika tidak ditemukan di tabel pendaftaran, berarti BELUM DAFTAR
     if (!reg) return "NOT_ENROLLED";
 
+    // 2. Jika status 'pending', cek masa berlaku 3 hari
     if (reg.status === 'pending') {
       const createdAt = new Date(reg.created_at).getTime();
       const now = new Date().getTime();
       const threeDaysInMs = 3 * 24 * 60 * 60 * 1000;
 
-      if (now - createdAt > threeDaysInMs) {
-        return "NOT_ENROLLED"; // Otomatis reset jadi tombol daftar lagi
-      }
+      // Jika lebih dari 3 hari, anggap belum daftar agar tombol muncul lagi
+      if (now - createdAt > threeDaysInMs) return "NOT_ENROLLED"; 
       return "WAITING_PAYMENT"; 
     }
 
@@ -113,154 +115,136 @@ export default function StudentDashboard() {
           </div>
         </aside>
 
-        <main className="flex-1 ml-72 p-10 max-w-7xl">
-          
-          {/* 1. DASHBOARD */}
-          {activeMenu === "dashboard" && (
-             <div className="space-y-10 animate-in fade-in">
-                <div className="relative overflow-hidden bg-zinc-900 rounded-[3.5rem] p-12 text-white shadow-2xl">
-                   <div className="relative z-10">
-                      <h2 className="text-5xl font-black italic uppercase tracking-tighter mb-4">Halo, {user?.name}!</h2>
-                      <p className="text-zinc-400 font-bold uppercase text-xs tracking-widest max-w-md">Lanjutkan progres belajarmu hari ini.</p>
-                   </div>
-                   <div className="absolute -right-20 -bottom-20 h-80 w-80 bg-amber-500 rounded-full blur-[100px] opacity-20" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <Card className="border-none shadow-sm rounded-[2.5rem] p-8 bg-white border-b-4 border-amber-500">
-                      <p className="text-[10px] font-black uppercase text-zinc-400 mb-1">Kursus Aktif</p>
-                      <h3 className="text-4xl font-black italic">{registrations.filter(r => r.status === 'success').length}</h3>
-                   </Card>
-                </div>
-             </div>
-          )}
-
-          {/* 2. DAFTAR KURSUS (LOGIKA TOMBOL & LIST SEMUA) */}
-          {activeMenu === "courses" && (
-            <div className="space-y-8 animate-in fade-in">
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter">Pilihan Kursus</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {availableCourses.map((course) => {
-                  const status = getEnrollmentStatus(course.id);
-                  return (
-                    <Card key={course.id} className="group border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white hover:shadow-2xl transition-all">
-                      <div className={`h-32 flex items-center justify-center ${status === 'success' ? 'bg-emerald-50' : 'bg-zinc-100'}`}>
-                        {status === 'success' ? <CheckCircle2 size={40} className="text-emerald-500" /> : <BookOpen size={40} className="text-zinc-300" />}
-                      </div>
-                      <CardContent className="p-8">
-                        <h4 className="text-sm font-black uppercase italic mb-6 line-clamp-2 min-h-[3rem]">{course.title}</h4>
-                        
-                        {status === 'success' ? (
-                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12">Buka Materi</Button>
-                        ) : status === 'WAITING_PAYMENT' ? (
-                          <div className="w-full bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl p-4 text-center">
-                            <p className="text-[9px] font-black uppercase italic leading-tight">Silakan lakukan pembayaran dalam waktu 3 hari</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <p className="text-[10px] font-black text-zinc-400 uppercase italic text-center leading-tight">
-                              {status === 'rejected' ? 'Verifikasi Gagal, Silakan Daftar Ulang' : 'Anda belum melakukan daftar'}
-                            </p>
-                            <Button onClick={() => window.open(`https://mejatika.com/course/${course.id}`, "_blank")} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12">
-                              Daftar Sekarang <PlusCircle size={14} className="ml-2" />
-                            </Button>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+        <main className="flex-1 ml-72 p-10 max-w-7xl flex flex-col">
+          <div className="flex-1">
+            {/* 1. DASHBOARD */}
+            {activeMenu === "dashboard" && (
+              <div className="space-y-10 animate-in fade-in">
+                  <div className="relative overflow-hidden bg-zinc-900 rounded-[3.5rem] p-12 text-white shadow-2xl">
+                    <div className="relative z-10">
+                        <h2 className="text-5xl font-black italic uppercase tracking-tighter mb-4">Halo, {user?.name}!</h2>
+                        <p className="text-zinc-400 font-bold uppercase text-xs tracking-widest">Semoga harimu produktif di Mejatika.</p>
+                    </div>
+                    <div className="absolute -right-20 -bottom-20 h-80 w-80 bg-amber-500 rounded-full blur-[100px] opacity-20" />
+                  </div>
+                  <Card className="border-none shadow-sm rounded-[2.5rem] p-8 bg-white border-b-4 border-amber-500 w-fit min-w-[300px]">
+                    <p className="text-[10px] font-black uppercase text-zinc-400 mb-1">Kursus Anda yang Aktif</p>
+                    <h3 className="text-4xl font-black italic">{registrations.filter(r => r.status === 'success').length}</h3>
+                  </Card>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* 3. MATERI KURSUS */}
-          {activeMenu === "materials" && (
-            <div className="grid grid-cols-12 gap-8 animate-in fade-in">
-              <div className="col-span-4 space-y-6">
-                <h2 className="text-2xl font-black italic uppercase tracking-tighter">Materi Belajar</h2>
-                <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-                  {registrations.filter(r => r.status === 'success').map((reg) => (
-                    <div key={reg.id} className="space-y-3">
-                      <button onClick={() => setExpandedCourse(expandedCourse === reg.id ? null : reg.id)} className={`w-full p-4 rounded-2xl flex items-center justify-between ${expandedCourse === reg.id ? 'bg-zinc-900 text-white shadow-lg' : 'bg-white shadow-sm'}`}>
-                        <span className="text-[11px] font-black uppercase italic truncate w-40 text-left">{reg.course?.title}</span>
-                        <ChevronDown size={16} className={expandedCourse === reg.id ? 'rotate-180' : ''} />
-                      </button>
-                      {expandedCourse === reg.id && reg.course?.materials?.map((m: any, idx: number) => (
-                        <div key={m.id}>
-                          <button onClick={() => setActiveMaterial(m)} className={`w-full p-4 rounded-2xl text-left border-2 flex items-center gap-3 ${activeMaterial?.id === m.id ? 'border-amber-500 bg-white' : 'border-transparent bg-white shadow-sm'}`}>
-                            <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-black ${activeMaterial?.id === m.id ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-100'}`}>{idx+1}</div>
-                            <span className="text-xs font-bold truncate">{m.title}</span>
-                          </button>
-                          {activeMaterial?.id === m.id && (
-                             <div className="ml-8 pl-6 border-l-2 border-dashed border-amber-200 py-4 space-y-4">
-                               <div className="flex items-center gap-3"><div className={`w-3 h-3 rounded-full ${completedStatus[m.id] ? 'bg-emerald-500' : 'bg-amber-500'}`} /><span className="text-[9px] font-black uppercase italic">Materi</span></div>
-                               <div className="flex items-center gap-3"><div className={`w-3 h-3 rounded-full ${submittedTasks[m.id] ? 'bg-emerald-500' : 'bg-zinc-200'}`} /><span className="text-[9px] font-black uppercase italic">Latihan</span></div>
-                             </div>
+            {/* 2. DAFTAR KURSUS (LOGIKA FIXED: MAPPING SEMUA KURSUS) */}
+            {activeMenu === "courses" && (
+              <div className="space-y-8 animate-in fade-in">
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter">Daftar Semua Kursus</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {availableCourses.map((course) => {
+                    const status = getEnrollmentStatus(course.id);
+                    return (
+                      <Card key={course.id} className="group border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white hover:shadow-2xl transition-all">
+                        <div className={`h-32 flex items-center justify-center ${status === 'success' ? 'bg-emerald-50' : 'bg-zinc-100'}`}>
+                          {status === 'success' ? <CheckCircle2 size={40} className="text-emerald-500" /> : <BookOpen size={40} className="text-zinc-300" />}
+                        </div>
+                        <CardContent className="p-8">
+                          <h4 className="text-sm font-black uppercase italic mb-6 line-clamp-2 min-h-[3rem]">{course.title}</h4>
+                          
+                          {status === 'success' ? (
+                            <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12">Buka Materi</Button>
+                          ) : status === 'WAITING_PAYMENT' ? (
+                            <div className="w-full bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl p-4 text-center">
+                              <p className="text-[9px] font-black uppercase italic leading-tight">Silakan lakukan pembayaran dalam waktu 3 hari</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-black text-zinc-400 uppercase italic text-center">Anda belum melakukan daftar</p>
+                              <Button onClick={() => window.open(`https://mejatika.com/course/${course.id}`, "_blank")} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12">
+                                Daftar Sekarang <PlusCircle size={14} className="ml-2" />
+                              </Button>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 3. MATERI KURSUS */}
+            {activeMenu === "materials" && (
+              <div className="grid grid-cols-12 gap-8 animate-in fade-in">
+                <div className="col-span-4 space-y-6">
+                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">Materi Belajar</h2>
+                  <div className="space-y-4 max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {registrations.filter(r => r.status === 'success').map((reg) => (
+                      <div key={reg.id} className="space-y-3">
+                        <button onClick={() => setExpandedCourse(expandedCourse === reg.id ? null : reg.id)} className={`w-full p-4 rounded-2xl flex items-center justify-between ${expandedCourse === reg.id ? 'bg-zinc-900 text-white shadow-lg' : 'bg-white shadow-sm'}`}>
+                          <span className="text-[11px] font-black uppercase italic truncate w-40 text-left">{reg.course?.title}</span>
+                          <ChevronDown size={16} className={expandedCourse === reg.id ? 'rotate-180' : ''} />
+                        </button>
+                        {expandedCourse === reg.id && reg.course?.materials?.map((m: any, idx: number) => (
+                          <div key={m.id}>
+                            <button onClick={() => setActiveMaterial(m)} className={`w-full p-4 rounded-2xl text-left border-2 flex items-center gap-3 ${activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-lg' : 'border-transparent bg-white shadow-sm'}`}>
+                              <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-black ${activeMaterial?.id === m.id ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-100'}`}>{idx+1}</div>
+                              <span className="text-xs font-bold truncate">{m.title}</span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="col-span-8">
+                  {activeMaterial ? (
+                    <div className="animate-in fade-in space-y-6">
+                      <div className="bg-zinc-950 rounded-[2.5rem] p-6 shadow-2xl">{renderPreview(activeMaterial.file)}</div>
+                      <Card className="p-10 bg-white rounded-[2.5rem] border-none shadow-sm">
+                        <div className="flex justify-between items-start mb-8 border-b pb-8">
+                          <h3 className="text-3xl font-black italic uppercase leading-tight max-w-xl break-words">{activeMaterial.title}</h3>
+                          {!completedStatus[activeMaterial.id] && (
+                            <Button onClick={() => setCompletedStatus({...completedStatus, [activeMaterial.id]: true})} className="bg-emerald-500 text-white rounded-2xl font-black h-12 px-10">Selesai Materi</Button>
                           )}
                         </div>
-                      ))}
+                        <div className="prose prose-zinc max-w-none text-zinc-600" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                      </Card>
+                      {completedStatus[activeMaterial.id] && (
+                        <Card className="p-8 bg-white border-2 border-amber-100 rounded-[2.5rem] mt-8 shadow-xl">
+                          <h4 className="text-xl font-black italic uppercase mb-6">Tugas Latihan</h4>
+                          {submittedTasks[activeMaterial.id] ? (
+                            <div className="p-6 bg-emerald-50 rounded-3xl text-sm italic font-bold text-emerald-700">Terkirim: {submittedTasks[activeMaterial.id]}</div>
+                          ) : (
+                            <div className="space-y-4">
+                              <textarea id="taskInput" placeholder="Ketik link drive tugas anda..." className="w-full h-32 rounded-3xl p-6 bg-zinc-50 outline-none border border-zinc-100" />
+                              <Button onClick={() => { const val = (document.getElementById('taskInput') as HTMLTextAreaElement).value; if(val) setSubmittedTasks({...submittedTasks, [activeMaterial.id]: val}); }} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black h-14 uppercase italic text-[10px]">Kirim Tugas</Button>
+                            </div>
+                          )}
+                        </Card>
+                      )}
                     </div>
-                  ))}
+                  ) : (
+                    <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[4rem]">
+                       <PlayCircle size={80} className="mb-6 opacity-10 animate-pulse" />
+                       <p className="font-black italic uppercase text-[11px] tracking-[0.4em]">Pilih Modul</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="col-span-8">
-                {activeMaterial ? (
-                  <div className="animate-in fade-in space-y-6">
-                    <div className="bg-zinc-950 rounded-[2.5rem] p-6 shadow-2xl">{renderPreview(activeMaterial.file)}</div>
-                    <Card className="p-10 bg-white rounded-[2.5rem] border-none shadow-sm">
-                      <div className="flex justify-between items-start mb-8 border-b pb-8">
-                        <h3 className="text-3xl font-black italic uppercase leading-tight max-w-xl">{activeMaterial.title}</h3>
-                        {!completedStatus[activeMaterial.id] && (
-                          <Button onClick={() => setCompletedStatus({...completedStatus, [activeMaterial.id]: true})} className="bg-emerald-500 text-white rounded-2xl font-black h-12 px-10">Selesai Materi</Button>
-                        )}
-                      </div>
-                      <div className="prose prose-zinc max-w-none text-zinc-600" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
-                    </Card>
-                    {completedStatus[activeMaterial.id] && (
-                      <Card className="p-8 bg-white border-2 border-amber-100 rounded-[2.5rem] mt-8 shadow-xl">
-                        <h4 className="text-xl font-black italic uppercase mb-6">Tugas Latihan</h4>
-                        {submittedTasks[activeMaterial.id] ? (
-                          <div className="p-6 bg-emerald-50 rounded-3xl text-sm italic font-bold text-emerald-700">Terkirim: {submittedTasks[activeMaterial.id]}</div>
-                        ) : (
-                          <div className="space-y-4">
-                            <textarea id="taskInput" placeholder="Ketik link drive tugas anda..." className="w-full h-32 rounded-3xl p-6 bg-zinc-50 outline-none border border-zinc-100" />
-                            <Button onClick={() => { const val = (document.getElementById('taskInput') as HTMLTextAreaElement).value; if(val) setSubmittedTasks({...submittedTasks, [activeMaterial.id]: val}); }} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black h-14">Kirim Tugas</Button>
-                          </div>
-                        )}
-                      </Card>
-                    )}
-                  </div>
-                ) : (
-                  <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[4rem]">
-                     <PlayCircle size={80} className="mb-6 opacity-10 animate-pulse" />
-                     <p className="font-black italic uppercase text-[11px] tracking-[0.4em]">Pilih Modul</p>
-                  </div>
-                )}
+            )}
+          </div>
+
+          {/* FOOTER */}
+          <footer className="py-10 border-t border-zinc-100 bg-white mt-auto">
+            <div className="flex justify-between items-center text-[10px] font-black uppercase italic text-zinc-400 tracking-widest">
+              <span>© {new Date().getFullYear()} Mejatika.com | Mabar Developer</span>
+              <div className="flex gap-6">
+                <a href="#" className="hover:text-zinc-900 transition-colors">Terms</a>
+                <a href="#" className="hover:text-zinc-900 transition-colors">Privacy</a>
               </div>
             </div>
-          )}
-
-          {/* 4. SERTIFIKAT */}
-          {activeMenu === "certificates" && (
-            <div className="h-[60vh] flex flex-col items-center justify-center text-center animate-in zoom-in-95">
-              <div className="h-32 w-32 bg-amber-50 rounded-full flex items-center justify-center mb-8"><Award size={64} className="text-amber-500" /></div>
-              <h2 className="text-4xl font-black italic uppercase mb-4 tracking-tighter">Sertifikat Belum Tersedia</h2>
-              <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest max-w-md">Selesaikan materi dan tugas untuk mendapatkan sertifikat.</p>
-            </div>
-          )}
+          </footer>
         </main>
       </div>
-
-      {/* FOOTER TETAP DISINI */}
-      <footer className="ml-72 py-10 px-10 border-t border-zinc-100 bg-white">
-        <div className="flex justify-between items-center text-[10px] font-black uppercase italic text-zinc-400 tracking-widest">
-          <span>© {new Date().getFullYear()} Mejatika.com | Mabar Developer Community</span>
-          <div className="flex gap-6">
-            <a href="#" className="hover:text-zinc-900 transition-colors">Terms</a>
-            <a href="#" className="hover:text-zinc-900 transition-colors">Privacy</a>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
