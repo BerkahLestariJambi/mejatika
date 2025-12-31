@@ -18,7 +18,7 @@ export default function StudentDashboard() {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
-  // State Progres & Materi
+  // --- FITUR MATERI & PROGRESS (YANG TADI HILANG) ---
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
   const [completedStatus, setCompletedStatus] = useState<Record<number, boolean>>({}) 
@@ -49,11 +49,11 @@ export default function StudentDashboard() {
     finally { setLoading(false) }
   }
 
-  // --- LOGIKA CEK STATUS PENDAFTARAN ---
+  // --- LOGIKA STATUS ---
   const getEnrollmentStatus = (courseId: number) => {
     const reg = registrations.find(r => r.course_id === courseId || r.course?.id === courseId);
     if (!reg) return "NOT_ENROLLED";
-    return reg.status; // Mengembalikan 'pending', 'success', atau 'rejected'
+    return reg.status; 
   }
 
   const totalCompleted = Object.keys(completedStatus).length
@@ -110,13 +110,13 @@ export default function StudentDashboard() {
 
         <main className="flex-1 ml-72 p-10 max-w-7xl">
           
-          {/* 1. DASHBOARD VIEW */}
+          {/* 1. DASHBOARD */}
           {activeMenu === "dashboard" && (
              <div className="space-y-10 animate-in fade-in">
                 <div className="relative overflow-hidden bg-zinc-900 rounded-[3.5rem] p-12 text-white shadow-2xl">
                    <div className="relative z-10">
                       <h2 className="text-5xl font-black italic uppercase tracking-tighter mb-4">Halo, {user?.name}!</h2>
-                      <p className="text-zinc-400 font-bold uppercase text-xs tracking-widest max-w-md leading-relaxed">Senang melihatmu kembali. Pilih kursusmu dan mulai mabar developer.</p>
+                      <p className="text-zinc-400 font-bold uppercase text-xs tracking-widest max-w-md">Lanjutkan progres belajarmu hari ini.</p>
                    </div>
                    <div className="absolute -right-20 -bottom-20 h-80 w-80 bg-amber-500 rounded-full blur-[100px] opacity-20" />
                 </div>
@@ -133,63 +133,43 @@ export default function StudentDashboard() {
                    </Card>
                    <Card className="border-none shadow-sm rounded-[2.5rem] p-8 bg-white border-b-4 border-emerald-500">
                       <div className="h-12 w-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6"><Clock size={24} /></div>
-                      <p className="text-[10px] font-black uppercase text-zinc-400 mb-1">Progres Belajar</p>
-                      <h3 className="text-4xl font-black italic">{totalCompleted > 0 ? 1 : 0}</h3>
+                      <p className="text-[10px] font-black uppercase text-zinc-400 mb-1">Selesai Materi</p>
+                      <h3 className="text-4xl font-black italic">{totalCompleted}</h3>
                    </Card>
                 </div>
              </div>
           )}
 
-          {/* 2. DAFTAR KURSUS VIEW (LOGIKA STATUS PEMBAYARAN & VERIFIKASI) */}
+          {/* 2. DAFTAR KURSUS (DENGAN LOGIKA REJECTED & BELUM BAYAR) */}
           {activeMenu === "courses" && (
             <div className="space-y-8 animate-in fade-in">
               <h2 className="text-3xl font-black italic uppercase tracking-tighter">Explorasi Kursus</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {availableCourses.map((course) => {
                   const status = getEnrollmentStatus(course.id);
-                  
                   return (
                     <Card key={course.id} className="group border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white hover:shadow-2xl transition-all">
                       <div className={`h-40 flex items-center justify-center 
-                        ${status === 'success' ? 'bg-emerald-50' : 
-                          status === 'pending' ? 'bg-amber-50' : 
-                          status === 'rejected' ? 'bg-rose-50' : 'bg-zinc-100'}`}>
-                        {status === 'success' && <CheckCircle2 size={48} className="text-emerald-500" />}
-                        {status === 'pending' && <Clock size={48} className="text-amber-500 animate-pulse" />}
-                        {status === 'rejected' && <XCircle size={48} className="text-rose-500" />}
-                        {status === 'NOT_ENROLLED' && <BookOpen size={48} className="text-zinc-300" />}
+                        ${status === 'success' ? 'bg-emerald-50' : status === 'pending' ? 'bg-amber-50' : status === 'rejected' ? 'bg-rose-50' : 'bg-zinc-100'}`}>
+                        {status === 'success' ? <CheckCircle2 size={48} className="text-emerald-500" /> : status === 'pending' ? <Clock size={48} className="text-amber-500 animate-pulse" /> : status === 'rejected' ? <XCircle size={48} className="text-rose-500" /> : <BookOpen size={48} className="text-zinc-300" />}
                       </div>
-                      
                       <CardContent className="p-8">
                         <h4 className="text-sm font-black uppercase italic mb-8 line-clamp-2 min-h-[3rem] leading-tight">{course.title}</h4>
-                        
-                        {/* KONDISI TOMBOL */}
                         {status === 'success' ? (
-                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12">
-                            Buka Materi <ChevronRight size={14} className="ml-1" />
-                          </Button>
+                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12">Buka Materi <ChevronRight size={14} className="ml-1" /></Button>
                         ) : status === 'pending' ? (
-                          <div className="w-full bg-amber-100 text-amber-700 rounded-2xl font-black italic uppercase text-[9px] h-12 flex flex-col items-center justify-center leading-tight px-4 text-center">
-                            <span className="flex items-center gap-1"><Clock size={12}/> Menunggu Verifikasi</span>
-                            <span className="opacity-70 text-[8px]">Pembayaran sedang dicek</span>
+                          <div className="w-full bg-amber-100 text-amber-700 rounded-2xl font-black italic uppercase text-[9px] h-12 flex items-center justify-center gap-2">
+                             <Clock size={14}/> Menunggu Verifikasi
                           </div>
                         ) : status === 'rejected' ? (
                           <div className="space-y-3">
-                            <div className="text-[9px] font-black text-rose-600 uppercase italic text-center flex items-center justify-center gap-1">
-                              <AlertCircle size={12} /> Verifikasi Gagal / Ditolak
-                            </div>
-                            <Button onClick={() => window.open(`https://mejatika.com/course/${course.id}`, "_blank")} className="w-full bg-rose-600 text-white rounded-2xl font-black italic uppercase text-[10px] h-12">
-                              Daftar Sekarang <PlusCircle size={14} className="ml-1" />
-                            </Button>
+                            <p className="text-[9px] font-black text-rose-600 uppercase italic text-center">Verifikasi Gagal / Ditolak</p>
+                            <Button onClick={() => window.open(`https://mejatika.com/course/${course.id}`, "_blank")} className="w-full bg-rose-600 text-white rounded-2xl font-black italic uppercase text-[10px] h-12">Daftar Sekarang <PlusCircle size={14} className="ml-1" /></Button>
                           </div>
                         ) : (
                           <div className="space-y-3">
-                            <div className="text-[9px] font-black text-zinc-400 uppercase italic text-center">
-                              Anda belum melakukan pembayaran
-                            </div>
-                            <Button onClick={() => window.open(`https://mejatika.com/course/${course.id}`, "_blank")} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 hover:bg-amber-500 hover:text-zinc-950">
-                              Daftar Sekarang <PlusCircle size={14} className="ml-1" />
-                            </Button>
+                            <p className="text-[9px] font-black text-zinc-400 uppercase italic text-center">Anda belum melakukan pembayaran</p>
+                            <Button onClick={() => window.open(`https://mejatika.com/course/${course.id}`, "_blank")} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic uppercase text-[10px] h-12 hover:bg-amber-500 hover:text-zinc-950">Daftar Sekarang <PlusCircle size={14} className="ml-1" /></Button>
                           </div>
                         )}
                       </CardContent>
@@ -200,7 +180,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* 3. MATERI KURSUS VIEW (Hanya yang status Success) */}
+          {/* 3. MATERI KURSUS (FITUR LENGKAP) */}
           {activeMenu === "materials" && (
             <div className="grid grid-cols-12 gap-8 animate-in fade-in">
               <div className="col-span-4 space-y-6">
@@ -218,24 +198,48 @@ export default function StudentDashboard() {
                             <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-[10px] font-black italic ${activeMaterial?.id === m.id ? 'bg-amber-500 text-zinc-950' : 'bg-zinc-100'}`}>{idx+1}</div>
                             <span className="text-xs font-bold truncate">{m.title}</span>
                           </button>
+                          {/* Indicator Progress */}
+                          {activeMaterial?.id === m.id && (
+                             <div className="ml-8 pl-6 border-l-2 border-dashed border-amber-200 py-4 space-y-4">
+                               <div className="flex items-center gap-3"><div className={`w-3 h-3 rounded-full ${completedStatus[m.id] ? 'bg-emerald-500' : 'bg-amber-500'}`} /><span className="text-[9px] font-black uppercase italic">Materi</span></div>
+                               <div className="flex items-center gap-3"><div className={`w-3 h-3 rounded-full ${submittedTasks[m.id] ? 'bg-emerald-500' : 'bg-zinc-200'}`} /><span className="text-[9px] font-black uppercase italic">Latihan</span></div>
+                             </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   ))}
-                  {registrations.filter(r => r.status === 'success').length === 0 && (
-                    <div className="text-center py-20 opacity-30 font-black italic uppercase text-[10px]">Belum ada kursus aktif</div>
-                  )}
                 </div>
               </div>
               
-              <div className="col-span-8">
+              <div className="col-span-8 space-y-8">
                 {activeMaterial ? (
-                  <div className="animate-in fade-in space-y-6">
+                  <div className="animate-in fade-in">
                     <div className="bg-zinc-950 rounded-[2.5rem] p-6 shadow-2xl">{renderPreview(activeMaterial.file)}</div>
-                    <Card className="border-none shadow-sm rounded-[2.5rem] p-10 bg-white">
-                      <h3 className="text-3xl font-black italic uppercase mb-8 border-b pb-8">{activeMaterial.title}</h3>
+                    <Card className="border-none shadow-sm rounded-[2.5rem] p-10 bg-white mt-6">
+                      <div className="flex justify-between items-start mb-8 border-b pb-8">
+                        <h3 className="text-3xl font-black italic uppercase leading-tight max-w-xl">{activeMaterial.title}</h3>
+                        {!completedStatus[activeMaterial.id] && (
+                          <Button onClick={() => setCompletedStatus({...completedStatus, [activeMaterial.id]: true})} className="bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-10">Selesai Materi</Button>
+                        )}
+                      </div>
                       <div className="prose prose-zinc max-w-none text-zinc-600" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                     </Card>
+
+                    {/* Fitur Tugas */}
+                    {completedStatus[activeMaterial.id] && (
+                      <Card className="border-none shadow-xl rounded-[2.5rem] p-8 bg-white border-2 border-amber-100 mt-8">
+                        <h4 className="text-xl font-black italic uppercase mb-6">Tugas Latihan</h4>
+                        {submittedTasks[activeMaterial.id] ? (
+                          <div className="p-6 bg-emerald-50 rounded-3xl text-sm italic">{submittedTasks[activeMaterial.id]}</div>
+                        ) : (
+                          <div className="space-y-4">
+                            <textarea id="taskInput" placeholder="Ketik link drive tugas anda..." className="w-full h-32 rounded-3xl p-6 bg-zinc-50 outline-none" />
+                            <Button onClick={() => { const val = (document.getElementById('taskInput') as HTMLTextAreaElement).value; if(val) setSubmittedTasks({...submittedTasks, [activeMaterial.id]: val}); }} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black italic h-14">Kirim Tugas</Button>
+                          </div>
+                        )}
+                      </Card>
+                    )}
                   </div>
                 ) : (
                   <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-300 border-4 border-dashed border-zinc-100 rounded-[4rem]">
@@ -247,12 +251,12 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* 4. SERTIFIKAT VIEW */}
+          {/* 4. SERTIFIKAT */}
           {activeMenu === "certificates" && (
             <div className="space-y-10 animate-in fade-in">
                 <div className="bg-zinc-900 rounded-[3.5rem] p-12 text-white shadow-2xl relative overflow-hidden">
-                   <h2 className="text-5xl font-black italic uppercase mb-4 tracking-tighter">Sertifikat</h2>
-                   <p className="text-zinc-400 font-bold uppercase text-xs">Selesaikan materi untuk klaim sertifikat kursusmu.</p>
+                   <h2 className="text-5xl font-black italic uppercase mb-4">Sertifikat</h2>
+                   <p className="text-zinc-400 font-bold uppercase text-xs">Selesaikan minimal 12 materi untuk klaim sertifikat.</p>
                    <Award size={200} className="absolute -right-10 -bottom-10 text-white/5" />
                 </div>
             </div>
