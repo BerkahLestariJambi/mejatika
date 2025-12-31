@@ -16,6 +16,9 @@ import {
   Save,
   Search,
   ExternalLink,
+  Video,
+  ClipboardCheck,
+  Rocket,
   X
 } from "lucide-react"
 import {
@@ -36,7 +39,6 @@ import {
 } from "@/components/ui/select"
 import Swal from 'sweetalert2'
 
-// IMPORT DINAMIS (Sama dengan News Management)
 const ReactQuill = dynamic(() => import("react-quill-new"), { 
   ssr: false,
   loading: () => <div className="h-40 w-full bg-zinc-50 animate-pulse rounded-xl" />
@@ -60,11 +62,15 @@ export default function MaterialsPage() {
     timerProgressBar: true,
   })
 
+  // UPDATE STATE: Menambahkan kolom baru
   const [formData, setFormData] = useState({
     title: "",
     course_id: "",
     file: "", 
+    live_link: "",             // Tambah link live session
     content: "",
+    quiz_task: "",             // Tambah soal latihan
+    project_instructions: "",  // Tambah instruksi projek mini
   })
 
   const quillModules = useMemo(() => ({
@@ -108,20 +114,32 @@ export default function MaterialsPage() {
     )
   }, [materials, searchQuery])
 
+  // UPDATE HANDLE EDIT: Menyesuaikan field baru
   const handleEdit = (item: any) => {
     setEditingId(item.id)
     setFormData({
       title: item.title,
       course_id: item.course_id.toString(),
       file: item.file || "",
+      live_link: item.live_link || "",
       content: item.content || "",
+      quiz_task: item.quiz_task || "",
+      project_instructions: item.project_instructions || "",
     })
     setOpen(true)
   }
 
   const resetForm = () => {
     setEditingId(null)
-    setFormData({ title: "", course_id: "", file: "", content: "" })
+    setFormData({ 
+        title: "", 
+        course_id: "", 
+        file: "", 
+        live_link: "", 
+        content: "", 
+        quiz_task: "", 
+        project_instructions: "" 
+    })
     setOpen(false)
   }
 
@@ -218,10 +236,9 @@ export default function MaterialsPage() {
         />
       </div>
 
-      {/* MODAL FORM (PREMIUM SCROLL DESIGN) */}
+      {/* MODAL FORM */}
       <Dialog open={open} onOpenChange={(v) => { if(!v) resetForm(); }}>
         <DialogContent className="max-w-4xl p-0 bg-transparent border-none shadow-none overflow-visible">
-          {/* GULUNGAN ATAS (Sama dengan News) */}
           <div className="relative z-50 w-[95%] mx-auto">
             <div className="w-full h-14 bg-amber-500 rounded-full shadow-xl flex items-center justify-between px-10 relative overflow-hidden border-b-4 border-amber-700/30">
               <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
@@ -230,9 +247,9 @@ export default function MaterialsPage() {
             </div>
           </div>
 
-          {/* BODY FORM (KERTAS GULUNG) */}
-          <div className="bg-[#fffdfa] dark:bg-zinc-950 -mt-6 pt-12 pb-10 px-8 md:px-12 rounded-b-xl shadow-2xl relative border-x border-black/5 max-h-[80vh] overflow-y-auto custom-scrollbar">
+          <div className="bg-[#fffdfa] dark:bg-zinc-950 -mt-6 pt-12 pb-10 px-8 md:px-12 rounded-b-xl shadow-2xl relative border-x border-black/5 max-h-[85vh] overflow-y-auto custom-scrollbar">
             <form onSubmit={handleSubmit} className="space-y-6">
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Judul Materi</Label>
@@ -262,19 +279,34 @@ export default function MaterialsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-2">
-                  <Globe className="w-3 h-3" /> URL Sumber (YT/Drive/Link)
-                </Label>
-                <Input 
-                  value={formData.file} 
-                  onChange={(e) => setFormData({...formData, file: e.target.value})} 
-                  required 
-                  placeholder="https://www.youtube.com/watch?v=..." 
-                  className="border-amber-200 rounded-xl"
-                />
+              {/* URL SECTION */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-2">
+                    <Globe className="w-3 h-3" /> URL Sumber (YT/File)
+                  </Label>
+                  <Input 
+                    value={formData.file} 
+                    onChange={(e) => setFormData({...formData, file: e.target.value})} 
+                    required 
+                    placeholder="https://www.youtube.com/watch?v=..." 
+                    className="border-amber-200 rounded-xl"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-2">
+                    <Video className="w-3 h-3" /> Link Live Session (Zoom/GMeet)
+                  </Label>
+                  <Input 
+                    value={formData.live_link} 
+                    onChange={(e) => setFormData({...formData, live_link: e.target.value})} 
+                    placeholder="https://zoom.us/j/..." 
+                    className="border-amber-200 rounded-xl"
+                  />
+                </div>
               </div>
 
+              {/* CONTENT EDITOR */}
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Isi / Deskripsi Materi</Label>
                 <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-inner">
@@ -283,6 +315,32 @@ export default function MaterialsPage() {
                     value={formData.content} 
                     onChange={(val) => setFormData(prev => ({ ...prev, content: val }))} 
                     modules={quillModules} 
+                  />
+                </div>
+              </div>
+
+              {/* NEW SECTION: ASSIGNMENT & QUIZ */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50/50 p-6 rounded-[2rem] border border-amber-100/50">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-2">
+                    <ClipboardCheck className="w-4 h-4" /> Soal Latihan (Quiz)
+                  </Label>
+                  <textarea 
+                    className="w-full h-32 p-4 rounded-xl border border-amber-200 text-xs focus:ring-amber-500 outline-none"
+                    placeholder="Tuliskan soal-soal latihan di sini..."
+                    value={formData.quiz_task}
+                    onChange={(e) => setFormData({...formData, quiz_task: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-2">
+                    <Rocket className="w-4 h-4" /> Instruksi Mini Projek
+                  </Label>
+                  <textarea 
+                    className="w-full h-32 p-4 rounded-xl border border-amber-200 text-xs focus:ring-amber-500 outline-none"
+                    placeholder="Jelaskan detail tugas/projek mini..."
+                    value={formData.project_instructions}
+                    onChange={(e) => setFormData({...formData, project_instructions: e.target.value})}
                   />
                 </div>
               </div>
@@ -303,11 +361,11 @@ export default function MaterialsPage() {
       {/* MATERIALS TABLE */}
       <Card className="border-none shadow-xl bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden">
         <CardContent className="p-0">
-          <table className="w-full">
+          <table className="w-full text-left">
             <thead>
               <tr className="bg-amber-50/50 border-b border-amber-100 text-[10px] font-black uppercase tracking-widest text-amber-700">
-                <th className="px-6 py-4 text-left">Info Materi</th>
-                <th className="px-6 py-4 text-left">Sumber Link</th>
+                <th className="px-6 py-4">Materi & Aktivitas</th>
+                <th className="px-6 py-4">Akses Link</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
@@ -326,17 +384,35 @@ export default function MaterialsPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="font-bold text-sm text-zinc-800 group-hover:text-amber-600 transition-colors">{item.title}</div>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex flex-wrap items-center gap-2 mt-1">
                         <span className="text-[9px] font-black uppercase italic text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                           {item.course?.title || 'Umum'}
+                            {item.course?.title || 'Umum'}
                         </span>
+                        {item.quiz_task && (
+                          <span className="text-[8px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1">
+                             <ClipboardCheck size={8}/> Quiz OK
+                          </span>
+                        )}
+                        {item.project_instructions && (
+                          <span className="text-[8px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1">
+                             <Rocket size={8}/> Project OK
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                       <a href={item.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-amber-600 transition-all">
-                         <ExternalLink size={12} className="shrink-0" />
-                         <span className="truncate max-w-[150px]">{item.file}</span>
-                       </a>
+                       <div className="flex flex-col gap-1">
+                         <a href={item.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-amber-600 transition-all">
+                           <ExternalLink size={12} className="shrink-0" />
+                           <span className="truncate max-w-[120px]">Video/File</span>
+                         </a>
+                         {item.live_link && (
+                           <a href={item.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-amber-500 font-bold hover:underline">
+                             <Video size={12} className="shrink-0" />
+                             <span>Live Session</span>
+                           </a>
+                         )}
+                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
