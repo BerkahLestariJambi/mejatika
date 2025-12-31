@@ -20,8 +20,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -57,6 +55,7 @@ export default function MaterialsPage() {
     timerProgressBar: true,
   })
 
+  // State Form disesuaikan dengan database: project_link
   const [formData, setFormData] = useState({
     title: "",
     course_id: "",
@@ -64,7 +63,7 @@ export default function MaterialsPage() {
     live_link: "",
     content: "",
     quiz_task: "",
-    project_instructions: "",
+    project_link: "", // Nama kolom sesuai phpMyAdmin
   })
 
   const quillModules = useMemo(() => ({
@@ -111,13 +110,13 @@ export default function MaterialsPage() {
   const handleEdit = (item: any) => {
     setEditingId(item.id)
     setFormData({
-      title: item.title,
-      course_id: item.course_id.toString(),
+      title: item.title || "",
+      course_id: item.course_id ? item.course_id.toString() : "",
       file: item.file || "",
       live_link: item.live_link || "",
       content: item.content || "",
       quiz_task: item.quiz_task || "",
-      project_instructions: item.project_instructions || "",
+      project_link: item.project_link || "", // Mapping dari DB
     })
     setOpen(true)
   }
@@ -131,7 +130,7 @@ export default function MaterialsPage() {
         live_link: "", 
         content: "", 
         quiz_task: "", 
-        project_instructions: "" 
+        project_link: "" 
     })
     setOpen(false)
   }
@@ -141,20 +140,18 @@ export default function MaterialsPage() {
     setIsSubmitting(true)
     
     const token = localStorage.getItem("token")
-    
-    // Jika update, gunakan URL spesifik ID, jika tambah gunakan URL base
     const url = editingId 
       ? `https://backend.mejatika.com/api/materials/${editingId}`
       : "https://backend.mejatika.com/api/materials"
     
-    // LOGIKA PENTING: Gunakan Method Spoofing (_method: PUT) dikirim via POST
+    // Method Spoofing untuk Laravel
     const payload = editingId 
       ? { ...formData, _method: "PUT" } 
       : formData
 
     try {
       const res = await fetch(url, {
-        method: "POST", // Selalu POST untuk menghindari masalah CORS/PUT di server
+        method: "POST", 
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -166,15 +163,14 @@ export default function MaterialsPage() {
       const result = await res.json()
 
       if (res.ok) {
-        Toast.fire({ icon: 'success', title: editingId ? 'Materi diperbarui' : 'Materi berhasil diterbitkan' });
+        Toast.fire({ icon: 'success', title: editingId ? 'Materi diperbarui' : 'Materi diterbitkan' });
         resetForm()
         fetchData()
       } else {
-        console.error("Server Error:", result)
-        Toast.fire({ icon: 'error', title: result.message || 'Gagal menyimpan materi' });
+        Toast.fire({ icon: 'error', title: result.message || 'Gagal menyimpan' });
       }
     } catch (err) {
-      Toast.fire({ icon: 'error', title: 'Kesalahan koneksi ke server' });
+      Toast.fire({ icon: 'error', title: 'Koneksi bermasalah' });
     } finally {
       setIsSubmitting(false)
     }
@@ -182,14 +178,12 @@ export default function MaterialsPage() {
 
   const deleteMaterial = async (id: number) => {
     Swal.fire({
-      title: 'Hapus materi ini?',
-      text: "Data yang dihapus tidak dapat dikembalikan!",
+      title: 'Hapus materi?',
+      text: "Data akan hilang permanen!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#f59e0b',
-      cancelButtonColor: '#ef4444',
-      confirmButtonText: 'Ya, Hapus!',
-      cancelButtonText: 'Batal'
+      confirmButtonText: 'Ya, Hapus'
     }).then(async (result) => {
       if (result.isConfirmed) {
         const token = localStorage.getItem("token")
@@ -199,11 +193,11 @@ export default function MaterialsPage() {
             headers: { "Authorization": `Bearer ${token}` }
           })
           if (res.ok) {
-            setMaterials(materials.filter(m => m.id !== id))
-            Toast.fire({ icon: 'success', title: 'Materi terhapus' })
+            fetchData()
+            Toast.fire({ icon: 'success', title: 'Terhapus' })
           }
         } catch (err) {
-          Toast.fire({ icon: 'error', title: 'Gagal menghapus' })
+          Toast.fire({ icon: 'error', title: 'Gagal' })
         }
       }
     })
@@ -211,65 +205,61 @@ export default function MaterialsPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto min-h-screen">
-      {/* HEADER SECTION */}
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
           <h1 className="text-3xl font-black tracking-tight uppercase italic text-amber-600">MANAGEMENT MATERI</h1>
-          <p className="text-muted-foreground">Pusat Pembelajaran Digital Mejatika</p>
+          <p className="text-muted-foreground text-sm">Update materi, quiz, dan instruksi projek</p>
         </motion.div>
 
         <Button 
           onClick={() => { resetForm(); setOpen(true); }}
-          size="lg" 
-          className="bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg transition-transform active:scale-95"
+          className="bg-amber-500 hover:bg-amber-600 rounded-full shadow-lg"
         >
           <Plus className="mr-2 h-5 w-5" /> Tambah Materi
         </Button>
       </div>
 
-      {/* SEARCH BAR */}
+      {/* SEARCH */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
         <Input 
-          placeholder="Cari materi atau kursus..." 
-          className="pl-10 rounded-full border-amber-100 bg-white shadow-sm focus:ring-amber-500"
+          placeholder="Cari materi..." 
+          className="pl-10 rounded-full border-amber-100"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
-      {/* MODAL FORM */}
+      {/* MODAL */}
       <Dialog open={open} onOpenChange={(v) => { if(!v) resetForm(); }}>
-        <DialogContent className="max-w-4xl p-0 bg-transparent border-none shadow-none overflow-visible">
-          <div className="relative z-50 w-[95%] mx-auto">
-            <div className="w-full h-14 bg-amber-500 rounded-full shadow-xl flex items-center justify-between px-10 relative overflow-hidden border-b-4 border-amber-700/30">
-              <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-              <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] z-10">EDITOR MATERI</span>
-              <span className="text-[10px] font-black text-amber-900/50 uppercase tracking-[0.4em] z-10 italic">MEJATIKA</span>
+        <DialogContent className="max-w-4xl p-0 bg-transparent border-none shadow-none">
+          <div className="w-[95%] mx-auto relative z-50">
+            <div className="w-full h-12 bg-amber-500 rounded-full shadow-xl flex items-center px-10 border-b-4 border-amber-700/20">
+              <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">EDITOR MATERI MEJATIKA</span>
             </div>
           </div>
 
-          <div className="bg-[#fffdfa] dark:bg-zinc-950 -mt-6 pt-12 pb-10 px-8 md:px-12 rounded-b-xl shadow-2xl relative border-x border-black/5 max-h-[85vh] overflow-y-auto custom-scrollbar">
+          <div className="bg-white dark:bg-zinc-950 -mt-6 pt-12 pb-10 px-8 rounded-b-3xl shadow-2xl max-h-[85vh] overflow-y-auto custom-scrollbar">
             <form onSubmit={handleSubmit} className="space-y-6">
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Judul Materi</Label>
+                  <Label className="text-[10px] font-bold uppercase text-amber-600">Judul</Label>
                   <Input 
                     value={formData.title} 
                     onChange={(e) => setFormData({...formData, title: e.target.value})} 
                     required 
-                    placeholder="Contoh: Pengenalan Dasar" 
-                    className="border-amber-200 focus:ring-amber-500 rounded-xl"
+                    className="rounded-xl border-amber-100"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Pilih Kursus</Label>
+                  <Label className="text-[10px] font-bold uppercase text-amber-600">Kursus</Label>
                   <Select 
                     value={formData.course_id}
                     onValueChange={(val) => setFormData({...formData, course_id: val})}
                   >
-                    <SelectTrigger className="border-amber-200 rounded-xl">
+                    <SelectTrigger className="rounded-xl border-amber-100">
                       <SelectValue placeholder="Pilih Kursus" />
                     </SelectTrigger>
                     <SelectContent>
@@ -281,37 +271,33 @@ export default function MaterialsPage() {
                 </div>
               </div>
 
-              {/* URL SECTION */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-2">
-                    <Globe className="w-3 h-3" /> URL Sumber (YT/File)
+                  <Label className="text-[10px] font-bold uppercase text-amber-600 flex items-center gap-2">
+                    <Globe className="w-3 h-3" /> Link Video/Materi
                   </Label>
                   <Input 
                     value={formData.file} 
                     onChange={(e) => setFormData({...formData, file: e.target.value})} 
                     required 
-                    placeholder="https://www.youtube.com/watch?v=..." 
-                    className="border-amber-200 rounded-xl"
+                    className="rounded-xl border-amber-100"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600 flex items-center gap-2">
-                    <Video className="w-3 h-3" /> Link Live Session (Zoom/GMeet)
+                  <Label className="text-[10px] font-bold uppercase text-amber-600 flex items-center gap-2">
+                    <Video className="w-3 h-3" /> Link Live Session
                   </Label>
                   <Input 
                     value={formData.live_link} 
                     onChange={(e) => setFormData({...formData, live_link: e.target.value})} 
-                    placeholder="https://zoom.us/j/..." 
-                    className="border-amber-200 rounded-xl"
+                    className="rounded-xl border-amber-100"
                   />
                 </div>
               </div>
 
-              {/* CONTENT EDITOR */}
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-600">Isi / Deskripsi Materi</Label>
-                <div className="bg-white rounded-xl border border-amber-200 overflow-hidden shadow-inner">
+                <Label className="text-[10px] font-bold uppercase text-amber-600">Deskripsi</Label>
+                <div className="bg-white rounded-xl border border-amber-100 overflow-hidden shadow-sm">
                   <ReactQuill 
                     theme="snow" 
                     value={formData.content} 
@@ -321,38 +307,36 @@ export default function MaterialsPage() {
                 </div>
               </div>
 
-              {/* SECTION: ASSIGNMENT & QUIZ */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50/50 p-6 rounded-[2rem] border border-amber-100/50">
+              {/* ASIGNMENT SECTION */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50/30 p-6 rounded-3xl border border-amber-100">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-2">
+                  <Label className="text-[10px] font-bold uppercase text-amber-700 flex items-center gap-2">
                     <ClipboardCheck className="w-4 h-4" /> Soal Latihan (Quiz)
                   </Label>
                   <textarea 
-                    className="w-full h-32 p-4 rounded-xl border border-amber-200 text-xs focus:ring-amber-500 outline-none"
-                    placeholder="Tuliskan soal-soal latihan di sini..."
+                    className="w-full h-32 p-4 rounded-2xl border border-amber-100 text-xs focus:ring-amber-500 outline-none"
+                    placeholder="Masukkan soal..."
                     value={formData.quiz_task}
                     onChange={(e) => setFormData({...formData, quiz_task: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-2">
-                    <Rocket className="w-4 h-4" /> Instruksi Mini Projek
+                  <Label className="text-[10px] font-bold uppercase text-amber-700 flex items-center gap-2">
+                    <Rocket className="w-4 h-4" /> Instruksi Projek
                   </Label>
                   <textarea 
-                    className="w-full h-32 p-4 rounded-xl border border-amber-200 text-xs focus:ring-amber-500 outline-none"
-                    placeholder="Jelaskan detail tugas/projek mini..."
-                    value={formData.project_instructions}
-                    onChange={(e) => setFormData({...formData, project_instructions: e.target.value})}
+                    className="w-full h-32 p-4 rounded-2xl border border-amber-100 text-xs focus:ring-amber-500 outline-none"
+                    placeholder="Masukkan instruksi projek..."
+                    value={formData.project_link} // Sesuai kolom DB
+                    onChange={(e) => setFormData({...formData, project_link: e.target.value})}
                   />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-4">
-                 <Button type="button" variant="ghost" onClick={resetForm} className="flex-1 rounded-xl font-bold uppercase italic text-zinc-400">
-                    Batal
-                 </Button>
-                 <Button type="submit" disabled={isSubmitting} className="flex-[2] bg-amber-600 hover:bg-amber-700 text-white font-black uppercase tracking-widest h-12 rounded-xl">
-                    {isSubmitting ? <Loader2 className="animate-spin mr-2" /> : editingId ? "SIMPAN PERUBAHAN" : "TERBITKAN MATERI"}
+                 <Button type="button" variant="ghost" onClick={resetForm} className="flex-1 rounded-xl">Batal</Button>
+                 <Button type="submit" disabled={isSubmitting} className="flex-[2] bg-amber-600 hover:bg-amber-700 text-white font-bold h-12 rounded-xl">
+                    {isSubmitting ? <Loader2 className="animate-spin" /> : editingId ? "SIMPAN PERUBAHAN" : "TERBITKAN"}
                  </Button>
               </div>
             </form>
@@ -360,68 +344,51 @@ export default function MaterialsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MATERIALS TABLE */}
-      <Card className="border-none shadow-xl bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden">
+      {/* TABLE */}
+      <Card className="border-none shadow-xl rounded-2xl overflow-hidden">
         <CardContent className="p-0">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-amber-50/50 border-b border-amber-100 text-[10px] font-black uppercase tracking-widest text-amber-700">
-                <th className="px-6 py-4">Materi & Aktivitas</th>
-                <th className="px-6 py-4">Akses Link</th>
+              <tr className="bg-amber-50/50 text-[10px] font-black uppercase text-amber-700 border-b border-amber-100">
+                <th className="px-6 py-4">Materi</th>
+                <th className="px-6 py-4">Link</th>
                 <th className="px-6 py-4 text-right">Aksi</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr><td colSpan={3} className="py-20 text-center"><Loader2 className="animate-spin inline-block text-amber-500" /></td></tr>
-              ) : filteredMaterials.length === 0 ? (
-                <tr><td colSpan={3} className="py-20 text-center text-zinc-400 italic">Tidak ada materi ditemukan</td></tr>
               ) : (
                 filteredMaterials.map((item) => (
-                  <motion.tr 
-                    initial={{ opacity: 0 }} 
-                    animate={{ opacity: 1 }}
-                    key={item.id} 
-                    className="border-b border-zinc-50 hover:bg-amber-50/30 transition-colors group"
-                  >
+                  <motion.tr key={item.id} className="border-b border-zinc-50 hover:bg-amber-50/20 group transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-bold text-sm text-zinc-800 group-hover:text-amber-600 transition-colors">{item.title}</div>
-                      <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <span className="text-[9px] font-black uppercase italic text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                      <div className="font-bold text-sm text-zinc-800">{item.title}</div>
+                      <div className="flex gap-2 mt-1">
+                        <span className="text-[8px] font-bold uppercase bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
                             {item.course?.title || 'Umum'}
                         </span>
-                        {item.quiz_task && (
-                          <span className="text-[8px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1">
-                             <ClipboardCheck size={8}/> Quiz OK
-                          </span>
-                        )}
-                        {item.project_instructions && (
-                          <span className="text-[8px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold uppercase flex items-center gap-1">
-                             <Rocket size={8}/> Project OK
-                          </span>
-                        )}
+                        {item.quiz_task && <span className="text-[8px] bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded-full font-bold">QUIZ</span>}
+                        {item.project_link && <span className="text-[8px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-bold">PROJECT</span>}
                       </div>
                     </td>
                     <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          <a href={item.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-amber-600 transition-all">
-                            <ExternalLink size={12} className="shrink-0" />
-                            <span className="truncate max-w-[120px]">Video/File</span>
+                          <a href={item.file} target="_blank" className="flex items-center gap-1 text-[10px] text-zinc-400 hover:text-amber-600">
+                            <ExternalLink size={10} /> Video/File
                           </a>
                           {item.live_link && (
-                            <a href={item.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-amber-500 font-bold hover:underline">
-                              <Video size={12} className="shrink-0" />
-                              <span>Live Session</span>
+                            <a href={item.live_link} target="_blank" className="flex items-center gap-1 text-[10px] text-amber-500 font-bold">
+                              <Video size={10} /> Live
                             </a>
                           )}
                         </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-500 hover:bg-amber-50" onClick={() => handleEdit(item)}>
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-amber-500" onClick={() => handleEdit(item)}>
                           <Edit3 className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500 hover:bg-rose-50" onClick={() => deleteMaterial(item.id)}>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-rose-500" onClick={() => deleteMaterial(item.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
