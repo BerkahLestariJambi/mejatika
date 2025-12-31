@@ -94,20 +94,32 @@ export default function StudentDashboard() {
     return reg.status; 
   }
 
-  const renderEmbed = (url: string, height: string = "450px") => {
+  // FUNGSI RENDER EMBED YANG SUDAH DIPERBAIKI
+  const renderEmbed = (url: string) => {
     if (!url) return null;
     let embedUrl = url;
-    if (url.includes("drive.google.com")) {
-      embedUrl = url.replace("/view", "/preview").split('?')[0];
-    } else if (url.includes("youtube.com/watch?v=")) {
-      embedUrl = url.replace("watch?v=", "embed/");
+
+    // Fix YouTube URL biasa menjadi Embed URL
+    if (url.includes("youtube.com/watch?v=")) {
+      const videoId = url.split("v=")[1]?.split("&")[0];
+      embedUrl = `https://www.youtube.com/embed/${videoId}`;
     } else if (url.includes("youtu.be/")) {
-      embedUrl = url.replace("youtu.be/", "youtube.com/embed/");
+      const videoId = url.split("youtu.be/")[1]?.split("?")[0];
+      embedUrl = `https://www.youtube.com/embed/${videoId}`;
+    } 
+    // Fix Google Drive URL
+    else if (url.includes("drive.google.com")) {
+      embedUrl = url.replace("/view", "/preview").split('?')[0];
     }
     
     return (
       <div className={`relative w-full aspect-video rounded-[2.5rem] overflow-hidden bg-black shadow-2xl border-4 border-zinc-900`}>
-        <iframe src={embedUrl} className="w-full h-full border-none" allow="autoplay; fullscreen" />
+        <iframe 
+          src={embedUrl} 
+          className="w-full h-full border-none" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+          allowFullScreen 
+        />
       </div>
     );
   }
@@ -212,7 +224,7 @@ export default function StudentDashboard() {
                         
                         {expandedCourse === reg.id && (
                           <div className="relative ml-6 space-y-0">
-                            {/* Garis Vertikal */}
+                            {/* Garis Vertikal Sidebar */}
                             <div className="absolute left-[-17px] top-4 bottom-4 w-0.5 bg-zinc-200" />
                             
                             {reg.course?.materials?.map((m: any) => (
@@ -222,7 +234,7 @@ export default function StudentDashboard() {
                                   <span className="text-xs font-bold">{m.title}</span>
                                 </button>
 
-                                {/* FLOW 5 BULATAN */}
+                                {/* FLOW 5 BULATAN SIDEBAR */}
                                 <div className="mt-4 space-y-3 ml-2">
                                   {[
                                     { label: "Live Session", icon: Video, active: !!m.live_link },
@@ -232,12 +244,11 @@ export default function StudentDashboard() {
                                     { label: "Feedback", icon: MessageSquare, active: true }
                                   ].map((step, i) => {
                                     const isStepDone = completedStatus[m.id];
-                                    if (i === 0 && !step.active) return null; // Sembunyikan live jika tidak ada link
+                                    if (i === 0 && !step.active) return null;
                                     
                                     return (
                                       <div key={i} className="flex items-center gap-3 group">
                                         <div className="relative">
-                                          {/* Bulatan Flow */}
                                           <div className={`absolute left-[-24.5px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] z-10 transition-all ${isStepDone ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
                                           <step.icon size={14} className={isStepDone ? 'text-emerald-500' : 'text-zinc-400'} />
                                         </div>
