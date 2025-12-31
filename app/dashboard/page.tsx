@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, PlusCircle, ChevronDown, Clock, 
-  ShieldCheck, Send, FileText, Box, Loader2 
+  ShieldCheck, Send, FileText, Box, Loader2, Circle, Flame, Target, MessageSquare,
+  Video, MonitorPlay
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -17,7 +18,7 @@ export default function StudentDashboard() {
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [registeringId, setRegisteringId] = useState<number | null>(null) // State baru buat loading daftar
+  const [registeringId, setRegisteringId] = useState<number | null>(null)
 
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
@@ -52,7 +53,6 @@ export default function StudentDashboard() {
     }
   }
 
-  // FUNGSI DAFTAR YANG LO MINTA
   const handleEnroll = async (courseId: number) => {
     if (!confirm("Konfirmasi pendaftaran?")) return
     setRegisteringId(courseId)
@@ -70,7 +70,7 @@ export default function StudentDashboard() {
       
       if (res.ok) {
         alert("Pendaftaran Berhasil! Menunggu aktivasi admin.")
-        fetchData() // Refresh biar status pendaftaran update
+        fetchData()
       } else {
         alert("Gagal mendaftar.")
       }
@@ -94,13 +94,21 @@ export default function StudentDashboard() {
     return reg.status; 
   }
 
-  const renderPreview = (url: string) => {
+  // REUSABLE EMBED LOGIC
+  const renderEmbed = (url: string, height: string = "450px") => {
     if (!url) return null;
-    const isDrive = url.includes("drive.google.com");
-    const embedUrl = isDrive ? url.replace("/view", "/preview").split('?')[0] : url;
+    let embedUrl = url;
+    if (url.includes("drive.google.com")) {
+      embedUrl = url.replace("/view", "/preview").split('?')[0];
+    } else if (url.includes("youtube.com/watch?v=")) {
+      embedUrl = url.replace("watch?v=", "embed/");
+    } else if (url.includes("youtu.be/")) {
+      embedUrl = url.replace("youtu.be/", "youtube.com/embed/");
+    }
+    
     return (
-      <div className="relative w-full h-[450px] rounded-[2rem] overflow-hidden bg-black shadow-2xl">
-        <iframe src={embedUrl} className="w-full h-full border-none" allow="autoplay" />
+      <div className={`relative w-full h-[${height}] rounded-[2rem] overflow-hidden bg-black shadow-2xl border-4 border-zinc-900`}>
+        <iframe src={embedUrl} className="w-full h-full border-none" allow="autoplay; fullscreen" />
       </div>
     );
   }
@@ -204,13 +212,29 @@ export default function StudentDashboard() {
                         </button>
                         
                         {expandedCourse === reg.id && (
-                          <div className="relative ml-4 pl-6 border-l-2 border-zinc-200 space-y-4 py-2">
-                            {reg.course?.materials?.map((m: any, idx: number) => (
-                              <div key={m.id} className="relative">
-                                <div className={`absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] ${activeMaterial?.id === m.id ? 'bg-amber-500 scale-125' : 'bg-zinc-300'}`} />
-                                <button onClick={() => setActiveMaterial(m)} className={`w-full p-4 rounded-2xl text-left border-2 flex items-center gap-3 transition-all ${activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-md' : 'border-transparent bg-white shadow-sm hover:border-zinc-200'}`}>
-                                  <span className="text-xs font-bold truncate">{m.title}</span>
-                                </button>
+                          <div className="relative ml-4 pl-6 border-l-2 border-zinc-200 space-y-8 py-4">
+                            {reg.course?.materials?.map((m: any) => (
+                              <div key={m.id} className="space-y-3">
+                                <div className="relative">
+                                  <div className={`absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] ${activeMaterial?.id === m.id ? 'bg-amber-500 scale-125' : 'bg-zinc-300'}`} />
+                                  <button onClick={() => setActiveMaterial(m)} className={`w-full p-4 rounded-2xl text-left border-2 flex flex-col gap-1 transition-all ${activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-md' : 'border-transparent bg-white shadow-sm hover:border-zinc-200'}`}>
+                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Materi</span>
+                                    <span className="text-xs font-bold truncate">{m.title}</span>
+                                  </button>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-2 ml-2">
+                                  {[
+                                    { label: "Latihan", icon: Flame },
+                                    { label: "Projek", icon: Target },
+                                    { label: "Feedback", icon: MessageSquare }
+                                  ].map((step, i) => (
+                                    <div key={i} className="flex items-center gap-2 px-3 py-2 bg-zinc-50 rounded-xl border border-zinc-100">
+                                      {completedStatus[m.id] ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Circle size={10} className="text-zinc-300" />}
+                                      <span className="text-[8px] font-black uppercase italic text-zinc-500 tracking-tighter">{step.label}</span>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -222,34 +246,65 @@ export default function StudentDashboard() {
 
                 <div className="col-span-8">
                   {activeMaterial ? (
-                    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
-                      <div className="bg-zinc-950 rounded-[3rem] p-6 shadow-2xl">{renderPreview(activeMaterial.file)}</div>
-                      <Card className="p-10 bg-white rounded-[3rem] border-none shadow-sm">
-                        <div className="flex justify-between items-start mb-8 border-b pb-8">
-                          <h3 className="text-3xl font-black italic uppercase leading-tight max-w-xl">{activeMaterial.title}</h3>
-                          {!completedStatus[activeMaterial.id] && (
-                            <Button onClick={() => setCompletedStatus({...completedStatus, [activeMaterial.id]: true})} className="bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8">Selesai Materi</Button>
-                          )}
+                    <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+                      
+                      {/* FLOW 1: LIVE SESSION (ZOOM/YOUTUBE LIVE) - HANYA MUNCUL JIKA ADA LINK */}
+                      {activeMaterial.live_link && (
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3 bg-rose-500 text-white px-6 py-3 rounded-2xl w-fit animate-pulse">
+                            <Video size={18} />
+                            <span className="text-[10px] font-black uppercase italic tracking-widest">Flow 1: Live Session Active</span>
+                          </div>
+                          {renderEmbed(activeMaterial.live_link, "500px")}
+                          <Card className="p-6 bg-zinc-950 text-white rounded-[2rem] border-none shadow-xl flex items-center justify-between">
+                            <p className="text-xs font-bold italic opacity-80 uppercase">Klik tombol di atas jika sesi sedang berlangsung.</p>
+                            <Button onClick={() => window.open(activeMaterial.live_link, "_blank")} className="bg-white text-zinc-950 rounded-xl font-black uppercase italic text-[10px] h-10 px-6">Buka di Tab Baru</Button>
+                          </Card>
                         </div>
-                        <div className="prose prose-zinc max-w-none text-zinc-600 leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
-                      </Card>
-
-                      {completedStatus[activeMaterial.id] && (
-                        <Card className="p-8 bg-white border-2 border-amber-100 rounded-[3rem] shadow-xl">
-                          <h4 className="text-xl font-black italic uppercase mb-6 flex items-center gap-2"><FileText className="text-amber-500" /> Tugas Latihan</h4>
-                          {submittedTasks[activeMaterial.id] ? (
-                            <div className="p-6 bg-emerald-50 rounded-3xl text-sm italic font-bold text-emerald-700 border border-emerald-100 flex items-center justify-between">
-                              <span>Terkirim: {submittedTasks[activeMaterial.id]}</span>
-                              <CheckCircle2 size={20} />
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              <textarea id="taskInput" placeholder="Link Drive Tugas..." className="w-full h-32 rounded-3xl p-6 bg-zinc-50 outline-none border border-zinc-100 focus:border-amber-500 transition-all text-sm" />
-                              <Button onClick={() => { const val = (document.getElementById('taskInput') as HTMLTextAreaElement).value; if(val) setSubmittedTasks({...submittedTasks, [activeMaterial.id]: val}); }} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black h-14 uppercase italic text-[11px]">Kirim Tugas Sekarang <Send size={14} className="ml-2" /></Button>
-                            </div>
-                          )}
-                        </Card>
                       )}
+
+                      {/* FLOW 2: MATERI & PREVIEW */}
+                      <div className="space-y-6">
+                        {activeMaterial.live_link && (
+                           <div className="flex items-center gap-3 text-zinc-400 px-2">
+                             <MonitorPlay size={18} />
+                             <span className="text-[10px] font-black uppercase italic tracking-widest">Flow 2: Materi & Modul</span>
+                           </div>
+                        )}
+                        <div className="bg-zinc-950 rounded-[3rem] p-6 shadow-2xl">
+                          {renderEmbed(activeMaterial.file)}
+                        </div>
+                        
+                        <Card className="p-10 bg-white rounded-[3rem] border-none shadow-sm">
+                          <div className="flex justify-between items-start mb-8 border-b pb-8">
+                            <div>
+                              <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-2">Materi Pembelajaran</p>
+                              <h3 className="text-3xl font-black italic uppercase leading-tight max-w-xl">{activeMaterial.title}</h3>
+                            </div>
+                            {!completedStatus[activeMaterial.id] && (
+                              <Button onClick={() => setCompletedStatus({...completedStatus, [activeMaterial.id]: true})} className="bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8">Selesai Materi</Button>
+                            )}
+                          </div>
+                          <div className="prose prose-zinc max-w-none text-zinc-600 leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                        </Card>
+
+                        {completedStatus[activeMaterial.id] && (
+                          <Card className="p-8 bg-white border-2 border-amber-100 rounded-[3rem] shadow-xl">
+                            <h4 className="text-xl font-black italic uppercase mb-6 flex items-center gap-2"><FileText className="text-amber-500" /> Tugas Latihan & Projek</h4>
+                            {submittedTasks[activeMaterial.id] ? (
+                              <div className="p-6 bg-emerald-50 rounded-3xl text-sm italic font-bold text-emerald-700 border border-emerald-100 flex items-center justify-between">
+                                <span>Terkirim: {submittedTasks[activeMaterial.id]}</span>
+                                <CheckCircle2 size={20} />
+                              </div>
+                            ) : (
+                              <div className="space-y-4">
+                                <textarea id="taskInput" placeholder="Kirim Link Drive Tugas/Projek Anda di sini..." className="w-full h-32 rounded-3xl p-6 bg-zinc-50 outline-none border border-zinc-100 focus:border-amber-500 transition-all text-sm" />
+                                <Button onClick={() => { const val = (document.getElementById('taskInput') as HTMLTextAreaElement).value; if(val) setSubmittedTasks({...submittedTasks, [activeMaterial.id]: val}); }} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black h-14 uppercase italic text-[11px]">Kirim Tugas Sekarang <Send size={14} className="ml-2" /></Button>
+                              </div>
+                            )}
+                          </Card>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[4rem]">
@@ -265,7 +320,7 @@ export default function StudentDashboard() {
               <div className="h-[70vh] flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-500">
                 <div className="h-40 w-40 bg-amber-50 rounded-full flex items-center justify-center mb-10"><Award size={80} className="text-amber-500" /></div>
                 <h2 className="text-4xl font-black italic uppercase mb-4 tracking-tighter">Sertifikat</h2>
-                <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest max-w-sm mx-auto leading-relaxed">Selesaikan kursus untuk klaim sertifikat.</p>
+                <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest max-w-sm mx-auto leading-relaxed">Selesaikan seluruh flow materi untuk klaim sertifikat.</p>
               </div>
             )}
           </div>
