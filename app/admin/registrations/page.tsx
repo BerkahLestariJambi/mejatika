@@ -10,23 +10,34 @@ import {
   CheckCircle2, 
   Search,
   RefreshCcw,
-  Eye,
   ExternalLink,
-  Image as ImageIcon
+  Image as ImageIcon,
+  AlertCircle
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import Swal from "sweetalert2"
 
 export default function RegistrationsPage() {
   const [registrations, setRegistrations] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [search, setSearch] = useState("")
 
   const fetchData = async () => {
     setLoading(true)
+    setError(null)
     const token = localStorage.getItem("token")
+
+    if (!token) {
+      setError("Sesi Anda berakhir. Silakan login kembali.")
+      setLoading(false)
+      return
+    }
+
     try {
       const res = await fetch("https://backend.mejatika.com/api/admin/registrations", {
+        method: "GET",
         headers: {
           "Accept": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -34,18 +45,34 @@ export default function RegistrationsPage() {
         }
       })
       
-      const data = await res.json()
-      const finalData = Array.isArray(data) ? data : data.data || []
+      if (!res.ok) throw new Error(`Server merespons dengan status ${res.status}`)
+
+      const result = await res.json()
+      // Adaptasi terhadap format Laravel Resource atau Array Biasa
+      const finalData = Array.isArray(result) ? result : (result.data || [])
       setRegistrations(finalData)
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error fetching registrations:", err)
+      setError(err.message || "Gagal mengambil data pendaftaran.")
     } finally {
       setLoading(false)
     }
   }
 
   const updateStatus = async (id: number, newStatus: string) => {
-    if (!confirm(`Ubah status pendaftaran menjadi ${newStatus}?`)) return
+    const actionText = newStatus === 'success' ? 'Approve' : 'Tolak'
+    
+    const result = await Swal.fire({
+      title: `${actionText} Pendaftaran?`,
+      text: `Pastikan bukti pembayaran sudah valid sebelum melakukan ${actionText}.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: newStatus === 'success' ? "#10b981" : "#ef4444",
+      confirmButtonText: `Ya, ${actionText}!`,
+      cancelButtonText: "Batal"
+    })
+
+    if (!result.isConfirmed) return
     
     setUpdatingId(id)
     const token = localStorage.getItem("token")
@@ -64,11 +91,12 @@ export default function RegistrationsPage() {
         setRegistrations(prev => prev.map(reg => 
           reg.id === id ? { ...reg, status: newStatus } : reg
         ))
+        Swal.fire("Berhasil!", `Status pendaftaran telah diperbarui ke ${newStatus}.`, "success")
       } else {
-        alert("Gagal memperbarui status.")
+        throw new Error("Gagal memperbarui status di server.")
       }
-    } catch (err) {
-      alert("Terjadi kesalahan koneksi.")
+    } catch (err: any) {
+      Swal.fire("Error!", err.message || "Terjadi kesalahan koneksi.", "error")
     } finally {
       setUpdatingId(null)
     }
@@ -80,7 +108,8 @@ export default function RegistrationsPage() {
 
   const filteredData = registrations.filter((reg) => 
     reg.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
-    reg.course?.title?.toLowerCase().includes(search.toLowerCase())
+    reg.course?.title?.toLowerCase().includes(search.toLowerCase()) ||
+    reg.user?.email?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -98,17 +127,24 @@ export default function RegistrationsPage() {
             <div className="relative w-full md:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
               <Input 
-                  placeholder="Cari nama atau kursus..." 
+                  placeholder="Cari nama, email, atau kursus..." 
                   className="pl-10 rounded-2xl border-zinc-200 bg-white h-12 shadow-sm focus:ring-amber-500"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button onClick={fetchData} variant="outline" className="h-12 rounded-2xl bg-white border-zinc-200 shadow-sm">
+            <Button onClick={fetchData} variant="outline" className="h-12 rounded-2xl bg-white border-zinc-200 shadow-sm hover:bg-zinc-50">
                 <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
             </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-2xl flex items-center gap-3">
+          <AlertCircle size={20} />
+          <p className="text-sm font-bold uppercase italic">{error}</p>
+        </div>
+      )}
 
       <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
         <CardHeader className="p-8 border-b border-zinc-50 bg-white">
@@ -123,18 +159,18 @@ export default function RegistrationsPage() {
               <div className="h-20 w-20 bg-zinc-50 rounded-full flex items-center justify-center mb-4">
                 <Users className="h-10 w-10 text-zinc-300" />
               </div>
-              <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-sm">Belum ada pendaftaran</p>
+              <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-sm">Data tidak ditemukan</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-zinc-900 text-white">
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest">Siswa & Kontak</th>
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest">Kursus & Tanggal</th>
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-center">Bukti Bayar</th>
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-center">Status</th>
-                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-right">Tindakan</th>
+                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest border-zinc-800">Siswa & Kontak</th>
+                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest border-zinc-800">Kursus & Tanggal</th>
+                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-center border-zinc-800">Bukti Bayar</th>
+                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-center border-zinc-800">Status</th>
+                    <th className="p-6 font-black uppercase italic text-[10px] tracking-widest text-right border-zinc-800">Tindakan</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -142,16 +178,15 @@ export default function RegistrationsPage() {
                     <tr key={reg.id} className="hover:bg-zinc-50/80 transition-colors">
                       <td className="p-6">
                         <div className="font-bold text-zinc-900 leading-none mb-1">{reg.user?.name || "No Name"}</div>
-                        <div className="text-[11px] text-zinc-400 font-medium">{reg.user?.email}</div>
+                        <div className="text-[11px] text-zinc-400 font-medium">{reg.user?.email || "-"}</div>
                       </td>
                       <td className="p-6">
                         <div className="font-black text-xs uppercase italic text-amber-600 mb-1 leading-none">{reg.course?.title || "No Course"}</div>
                         <div className="text-[10px] text-zinc-400 uppercase font-bold tracking-tighter">
-                          {new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}
+                          {reg.created_at ? new Date(reg.created_at).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : "-"}
                         </div>
                       </td>
                       
-                      {/* KOLOM BUKTI BAYAR */}
                       <td className="p-6 text-center">
                         {reg.proof ? (
                           <a 
