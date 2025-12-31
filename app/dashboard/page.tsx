@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react" // Tambah useRef
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,8 @@ import {
 
 export default function StudentDashboard() {
   const router = useRouter()
+  const materiRef = useRef<HTMLDivElement>(null) // Ref untuk auto scroll
+  
   const [activeMenu, setActiveMenu] = useState("dashboard")
   const [registrations, setRegistrations] = useState<any[]>([])
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
@@ -22,6 +24,9 @@ export default function StudentDashboard() {
 
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
+  
+  // State baru untuk kontrol flow Live Session
+  const [liveDone, setLiveDone] = useState<Record<number, boolean>>({}) 
   const [completedStatus, setCompletedStatus] = useState<Record<number, boolean>>({}) 
   const [submittedTasks, setSubmittedTasks] = useState<Record<number, string>>({})
 
@@ -94,12 +99,9 @@ export default function StudentDashboard() {
     return reg.status; 
   }
 
-  // FUNGSI RENDER EMBED YANG SUDAH DIPERBAIKI
   const renderEmbed = (url: string) => {
     if (!url) return null;
     let embedUrl = url;
-
-    // Fix YouTube URL biasa menjadi Embed URL
     if (url.includes("youtube.com/watch?v=")) {
       const videoId = url.split("v=")[1]?.split("&")[0];
       embedUrl = `https://www.youtube.com/embed/${videoId}`;
@@ -107,7 +109,6 @@ export default function StudentDashboard() {
       const videoId = url.split("youtu.be/")[1]?.split("?")[0];
       embedUrl = `https://www.youtube.com/embed/${videoId}`;
     } 
-    // Fix Google Drive URL
     else if (url.includes("drive.google.com")) {
       embedUrl = url.replace("/view", "/preview").split('?')[0];
     }
@@ -224,7 +225,6 @@ export default function StudentDashboard() {
                         
                         {expandedCourse === reg.id && (
                           <div className="relative ml-6 space-y-0">
-                            {/* Garis Vertikal Sidebar */}
                             <div className="absolute left-[-17px] top-4 bottom-4 w-0.5 bg-zinc-200" />
                             
                             {reg.course?.materials?.map((m: any) => (
@@ -234,25 +234,23 @@ export default function StudentDashboard() {
                                   <span className="text-xs font-bold">{m.title}</span>
                                 </button>
 
-                                {/* FLOW 5 BULATAN SIDEBAR */}
                                 <div className="mt-4 space-y-3 ml-2">
                                   {[
-                                    { label: "Live Session", icon: Video, active: !!m.live_link },
-                                    { label: "Materi Pokok", icon: MonitorPlay, active: true },
-                                    { label: "Latihan", icon: Flame, active: true },
-                                    { label: "File Tugas", icon: FileText, active: true },
-                                    { label: "Feedback", icon: MessageSquare, active: true }
+                                    { label: "Live Session", icon: Video, active: !!m.live_link, done: liveDone[m.id] },
+                                    { label: "Materi Pokok", icon: MonitorPlay, active: true, done: completedStatus[m.id] },
+                                    { label: "Latihan", icon: Flame, active: true, done: !!submittedTasks[m.id] },
+                                    { label: "File Tugas", icon: FileText, active: true, done: !!submittedTasks[m.id] },
+                                    { label: "Feedback", icon: MessageSquare, active: true, done: !!submittedTasks[m.id] }
                                   ].map((step, i) => {
-                                    const isStepDone = completedStatus[m.id];
                                     if (i === 0 && !step.active) return null;
                                     
                                     return (
                                       <div key={i} className="flex items-center gap-3 group">
                                         <div className="relative">
-                                          <div className={`absolute left-[-24.5px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] z-10 transition-all ${isStepDone ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
-                                          <step.icon size={14} className={isStepDone ? 'text-emerald-500' : 'text-zinc-400'} />
+                                          <div className={`absolute left-[-24.5px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] z-10 transition-all ${step.done ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+                                          <step.icon size={14} className={step.done ? 'text-emerald-500' : 'text-zinc-400'} />
                                         </div>
-                                        <span className={`text-[9px] font-black uppercase italic tracking-tighter ${isStepDone ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                                        <span className={`text-[9px] font-black uppercase italic tracking-tighter ${step.done ? 'text-emerald-600' : 'text-zinc-500'}`}>
                                           {step.label}
                                         </span>
                                       </div>
@@ -272,7 +270,6 @@ export default function StudentDashboard() {
                   {activeMaterial ? (
                     <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                       
-                      {/* FRAME LIVE LINK (FLOW 1 - OTOMATIS PREVIEW) */}
                       {activeMaterial.live_link && (
                         <div className="space-y-4">
                           <div className="flex items-center justify-between px-2">
@@ -280,20 +277,32 @@ export default function StudentDashboard() {
                               <Zap size={14} className="fill-white" />
                               <span className="text-[10px] font-black uppercase italic tracking-widest">Live Preview Session</span>
                             </div>
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase italic">Tahap 1 / 5</span>
+                            {!liveDone[activeMaterial.id] && (
+                                <Button 
+                                  onClick={() => {
+                                    setLiveDone({...liveDone, [activeMaterial.id]: true});
+                                    setTimeout(() => materiRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                                  }}
+                                  className="bg-zinc-950 text-amber-500 rounded-xl font-black uppercase text-[10px] h-10 px-6 hover:scale-105 transition-all shadow-xl"
+                                >
+                                  Selesaikan Sesi Live & Lanjut
+                                </Button>
+                            )}
                           </div>
                           {renderEmbed(activeMaterial.live_link)}
                         </div>
                       )}
 
-                      {/* MATERI POKOK (FLOW 2) */}
-                      <div className="space-y-6">
+                      {/* AREA MATERI: Terkunci jika Live belum selesai */}
+                      <div 
+                        ref={materiRef} 
+                        className={`space-y-6 transition-all duration-700 ${activeMaterial.live_link && !liveDone[activeMaterial.id] ? 'opacity-30 pointer-events-none grayscale' : 'opacity-100'}`}
+                      >
                         <div className="flex items-center justify-between px-2">
                            <div className="flex items-center gap-3 text-zinc-950">
                              <MonitorPlay size={18} />
                              <span className="text-[10px] font-black uppercase italic tracking-[0.2em]">Tahap 2: Materi & File Modul</span>
                            </div>
-                           {!activeMaterial.live_link && <span className="text-[10px] font-bold text-zinc-400 uppercase italic">Tahap 1 / 4</span>}
                         </div>
                         
                         <div className="bg-zinc-950 rounded-[3rem] p-6 shadow-2xl">
@@ -313,7 +322,6 @@ export default function StudentDashboard() {
                           <div className="prose prose-zinc max-w-none text-zinc-600 leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                         </Card>
 
-                        {/* TUGAS & FEEDBACK (FLOW 3, 4, 5) */}
                         {completedStatus[activeMaterial.id] && (
                           <Card className="p-10 bg-white border-4 border-amber-400/20 rounded-[3.5rem] shadow-2xl relative overflow-hidden">
                             <div className="absolute top-0 right-0 p-8 opacity-5"><FileText size={120} /></div>
