@@ -208,11 +208,11 @@ export default function StudentDashboard() {
               </div>
 
               {/* AREA KONTEN AKTIF */}
-              <div className="col-span-8">
+              <div className="col-span-8 overflow-hidden">
                 {activeMaterial ? (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                     
-                    <div className="bg-white p-8 rounded-[3rem] shadow-sm border-none">
+                    <div className="bg-white p-8 rounded-[3rem] shadow-sm border-none overflow-hidden">
                       <h3 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-3">
                          <span className="h-8 w-8 bg-amber-500 rounded-lg flex items-center justify-center text-zinc-950 text-xs italic">
                            {activeStep === "live" ? "1" : activeStep === "materi" ? "2" : activeStep === "tugas" ? "3" : "4"}
@@ -233,7 +233,10 @@ export default function StudentDashboard() {
                       {activeStep === "materi" && (
                         <div className="space-y-6">
                           {renderEmbed(activeMaterial.file)}
-                          <div className="prose prose-zinc max-w-none text-sm leading-relaxed p-6 bg-zinc-50 rounded-[2rem]" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                          {/* PERBAIKAN DESKRIPSI: Ditambahkan overflow-hidden dan word-break agar tidak keluar frame */}
+                          <div className="prose prose-zinc max-w-full text-sm leading-relaxed p-6 bg-zinc-50 rounded-[2rem] overflow-hidden break-words" 
+                               dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
+                          />
                           <Button onClick={() => { setMateriDone({...materiDone, [activeMaterial.id]: true}); setActiveStep("tugas"); }} className="w-full bg-emerald-500 text-white h-14 rounded-2xl font-black italic uppercase">
                              Materi Selesai, Lanjut Ke Tugas
                           </Button>
@@ -247,7 +250,7 @@ export default function StudentDashboard() {
                               <p className="text-xs font-bold text-zinc-500 uppercase italic">Kirimkan Link Progres Pengerjaan Modul Ini</p>
                            </div>
                            {taskSubmitted[activeMaterial.id] ? (
-                             <div className="p-6 bg-emerald-50 text-emerald-600 rounded-2xl text-[10px] font-black uppercase italic">Berhasil Terkirim: {taskSubmitted[activeMaterial.id]}</div>
+                             <div className="p-6 bg-emerald-50 text-emerald-600 rounded-2xl text-[10px] font-black uppercase italic truncate">Berhasil Terkirim: {taskSubmitted[activeMaterial.id]}</div>
                            ) : (
                              <>
                                <textarea id="taskInput" placeholder="Paste link Drive/Github di sini..." className="w-full h-32 p-6 rounded-[2rem] bg-zinc-50 outline-none text-sm" />
@@ -259,9 +262,9 @@ export default function StudentDashboard() {
 
                       {activeStep === "feedback" && (
                         <div className="space-y-6">
-                           <div className="bg-amber-50 p-8 rounded-[2rem] border-2 border-amber-100">
+                           <div className="bg-amber-50 p-8 rounded-[2rem] border-2 border-amber-100 overflow-hidden">
                              <h4 className="text-sm font-black uppercase italic text-amber-700 mb-4 flex items-center gap-2"><MessageSquare size={16}/> Feedback Instruktur</h4>
-                             <p className="text-xs text-zinc-600 leading-relaxed italic">"Belum ada feedback khusus untuk modul ini. Silakan hubungi mentor di grup Discord jika ada kesulitan dalam pengerjaan."</p>
+                             <p className="text-xs text-zinc-600 leading-relaxed italic break-words">"Belum ada feedback khusus untuk modul ini. Silakan hubungi mentor di grup Discord jika ada kesulitan dalam pengerjaan."</p>
                            </div>
                            <Button onClick={() => setFeedbackDone({...feedbackDone, [activeMaterial.id]: true})} className="w-full bg-amber-500 text-zinc-950 h-14 rounded-2xl font-black italic uppercase">Tandai Feedback Selesai</Button>
                         </div>
