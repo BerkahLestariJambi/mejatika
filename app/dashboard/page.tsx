@@ -8,13 +8,11 @@ import {
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, PlusCircle, ChevronDown, Clock, 
   Send, FileText, Loader2, Circle, Flame, Target, MessageSquare,
-  Video, MonitorPlay, Zap, Lock
+  Video, MonitorPlay, Zap, Lock, CreditCard, Copy, ExternalLink
 } from "lucide-react"
 
 export default function StudentDashboard() {
   const router = useRouter()
-  const materiRef = useRef<HTMLDivElement>(null)
-  
   const [activeMenu, setActiveMenu] = useState("dashboard")
   const [registrations, setRegistrations] = useState<any[]>([])
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
@@ -25,7 +23,7 @@ export default function StudentDashboard() {
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
   
   // State Navigasi Tahapan (Flow Control)
-  const [activeStep, setActiveStep] = useState<string>("live") // live, materi, tugas, feedback
+  const [activeStep, setActiveStep] = useState<string>("live") 
   const [liveDone, setLiveDone] = useState<Record<number, boolean>>({}) 
   const [materiDone, setMateriDone] = useState<Record<number, boolean>>({}) 
   const [taskSubmitted, setTaskSubmitted] = useState<Record<number, string>>({})
@@ -63,7 +61,10 @@ export default function StudentDashboard() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ course_id: courseId })
       })
-      if (res.ok) { alert("Pendaftaran Berhasil!"); fetchData(); }
+      if (res.ok) { 
+        alert("Pendaftaran Berhasil! Silakan lengkapi pembayaran."); 
+        fetchData(); 
+      }
     } catch (err) { alert("Error koneksi."); } finally { setRegisteringId(null); }
   }
 
@@ -122,6 +123,7 @@ export default function StudentDashboard() {
 
         <main className="flex-1 ml-72 p-10 flex flex-col">
           
+          {/* DASHBOARD VIEW */}
           {activeMenu === "dashboard" && (
             <div className="space-y-10">
               <div className="bg-zinc-900 rounded-[3rem] p-12 text-white">
@@ -136,24 +138,58 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* COURSES VIEW + PAYMENT LOGIC */}
           {activeMenu === "courses" && (
             <div className="space-y-8">
               <h2 className="text-3xl font-black italic uppercase tracking-tighter">Katalog Kursus</h2>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-2 gap-8">
                 {availableCourses.map((course) => {
                   const status = getEnrollmentStatus(course.id);
                   return (
-                    <Card key={course.id} className="rounded-[2.5rem] overflow-hidden bg-white border-none shadow-sm">
-                      <div className="h-32 bg-zinc-50 flex items-center justify-center"><BookOpen className="text-zinc-200" size={40} /></div>
-                      <CardContent className="p-8">
-                        <h4 className="text-sm font-black uppercase italic mb-6 min-h-[3rem]">{course.title}</h4>
+                    <Card key={course.id} className="rounded-[3rem] overflow-hidden bg-white border-none shadow-sm flex flex-col">
+                      <div className="h-40 bg-zinc-50 flex items-center justify-center border-b border-zinc-100">
+                        <BookOpen className="text-zinc-200" size={60} />
+                      </div>
+                      <CardContent className="p-10 flex-1 flex flex-col">
+                        <h4 className="text-lg font-black uppercase italic mb-6 leading-tight">{course.title}</h4>
+                        
                         {status === 'success' ? (
-                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white rounded-xl font-black italic uppercase text-[10px]">Buka Materi</Button>
+                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white h-14 rounded-2xl font-black italic uppercase text-[10px]">
+                            Akses Terbuka <Zap size={14} className="ml-2"/>
+                          </Button>
                         ) : status === 'pending' ? (
-                          <Button disabled className="w-full bg-zinc-100 text-zinc-400 rounded-xl font-black uppercase text-[10px]"><Clock size={14} className="mr-2"/> Menunggu Verifikasi</Button>
+                          <div className="space-y-4 bg-amber-50 p-6 rounded-[2.5rem] border border-amber-200">
+                             <div className="flex items-center gap-3 text-amber-700 font-black italic uppercase text-[10px]">
+                               <CreditCard size={18}/> Instruksi Pembayaran
+                             </div>
+                             <div className="p-5 bg-white rounded-2xl border border-amber-200 shadow-sm relative">
+                               <p className="text-[9px] text-zinc-400 font-bold uppercase">Bank BRI</p>
+                               <p className="text-lg font-black text-zinc-900 tracking-tighter">0021-01-234567-53-1</p>
+                               <p className="text-[9px] text-zinc-500 font-medium italic">A/N Mejatika Edukasi Digital</p>
+                               <button onClick={() => navigator.clipboard.writeText("002101234567531")} className="absolute top-4 right-4 text-amber-500 hover:text-amber-600">
+                                 <Copy size={16} />
+                               </button>
+                             </div>
+                             <div className="space-y-2">
+                               <p className="text-[9px] font-black uppercase text-zinc-500 italic ml-2">Input Link Bukti Transfer:</p>
+                               <input 
+                                 type="text" 
+                                 placeholder="Paste link Drive / Screenshot di sini..." 
+                                 className="w-full p-4 rounded-xl bg-white border border-amber-200 text-[10px] outline-none focus:ring-2 ring-amber-500/20" 
+                               />
+                               <Button className="w-full bg-zinc-950 text-amber-500 h-12 rounded-xl font-black italic uppercase text-[10px]">
+                                 Kirim Konfirmasi
+                               </Button>
+                             </div>
+                             <p className="text-[8px] text-amber-600 font-bold italic text-center">Admin akan memverifikasi dalam 1x24 jam.</p>
+                          </div>
                         ) : (
-                          <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-zinc-950 text-amber-500 rounded-xl font-black italic uppercase text-[10px]">
-                            {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar Sekarang"}
+                          <Button 
+                            onClick={() => handleEnroll(course.id)} 
+                            disabled={registeringId === course.id} 
+                            className="w-full bg-zinc-950 text-amber-500 h-14 rounded-2xl font-black italic uppercase text-[10px]"
+                          >
+                            {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar & Dapatkan Akses"}
                           </Button>
                         )}
                       </CardContent>
@@ -164,9 +200,9 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* MATERIALS VIEW */}
           {activeMenu === "materials" && (
             <div className="grid grid-cols-12 gap-8">
-              {/* Sidebar Materi per Modul */}
               <div className="col-span-4 space-y-6">
                 <h2 className="text-2xl font-black italic uppercase tracking-tighter">Modul Belajar</h2>
                 <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -180,8 +216,6 @@ export default function StudentDashboard() {
                       {expandedCourse === reg.course_id && reg.course?.materials?.map((m: any) => (
                         <div key={m.id} className="ml-4 space-y-2 border-l-2 border-zinc-200 pl-4 py-2">
                           <p className="text-[9px] font-black text-amber-500 uppercase tracking-widest">{m.title}</p>
-                          
-                          {/* SPAN MENU TAHAPAN */}
                           {[
                             { id: "live", label: "1. Live Session", icon: Video, done: liveDone[m.id], locked: false },
                             { id: "materi", label: "2. Materi Pokok", icon: MonitorPlay, done: materiDone[m.id], locked: !liveDone[m.id] },
@@ -207,11 +241,9 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              {/* AREA KONTEN AKTIF */}
               <div className="col-span-8 overflow-hidden">
                 {activeMaterial ? (
                   <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                    
                     <div className="bg-white p-8 rounded-[3rem] shadow-sm border-none overflow-hidden">
                       <h3 className="text-2xl font-black italic uppercase mb-6 flex items-center gap-3">
                          <span className="h-8 w-8 bg-amber-500 rounded-lg flex items-center justify-center text-zinc-950 text-xs italic">
@@ -220,26 +252,18 @@ export default function StudentDashboard() {
                          {activeStep === "live" ? "Live Session" : activeStep === "materi" ? "Materi Pokok" : activeStep === "tugas" ? "Tugas Praktik" : "Feedback & Evaluasi"}
                       </h3>
 
-                      {/* TAMPILAN PER TAHAP */}
                       {activeStep === "live" && (
                         <div className="space-y-6">
                           {renderEmbed(activeMaterial.live_link)}
-                          <Button onClick={() => { setLiveDone({...liveDone, [activeMaterial.id]: true}); setActiveStep("materi"); }} className="w-full bg-zinc-950 text-amber-500 h-14 rounded-2xl font-black italic uppercase">
-                             Selesaikan Sesi Live & Lanjut Ke Materi
-                          </Button>
+                          <Button onClick={() => { setLiveDone({...liveDone, [activeMaterial.id]: true}); setActiveStep("materi"); }} className="w-full bg-zinc-950 text-amber-500 h-14 rounded-2xl font-black italic uppercase">Selesaikan Sesi Live & Lanjut Ke Materi</Button>
                         </div>
                       )}
 
                       {activeStep === "materi" && (
                         <div className="space-y-6">
                           {renderEmbed(activeMaterial.file)}
-                          {/* PERBAIKAN DESKRIPSI: Ditambahkan overflow-hidden dan word-break agar tidak keluar frame */}
-                          <div className="prose prose-zinc max-w-full text-sm leading-relaxed p-6 bg-zinc-50 rounded-[2rem] overflow-hidden break-words" 
-                               dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
-                          />
-                          <Button onClick={() => { setMateriDone({...materiDone, [activeMaterial.id]: true}); setActiveStep("tugas"); }} className="w-full bg-emerald-500 text-white h-14 rounded-2xl font-black italic uppercase">
-                             Materi Selesai, Lanjut Ke Tugas
-                          </Button>
+                          <div className="prose prose-zinc max-w-full text-sm leading-relaxed p-6 bg-zinc-50 rounded-[2rem] overflow-hidden break-words" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                          <Button onClick={() => { setMateriDone({...materiDone, [activeMaterial.id]: true}); setActiveStep("tugas"); }} className="w-full bg-emerald-500 text-white h-14 rounded-2xl font-black italic uppercase">Materi Selesai, Lanjut Ke Tugas</Button>
                         </div>
                       )}
 
@@ -281,6 +305,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* CERTIFICATES VIEW */}
           {activeMenu === "certificates" && (
             <div className="h-[60vh] flex flex-col items-center justify-center text-center">
               <Award size={100} className="text-zinc-100 mb-6" />
@@ -289,8 +314,8 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          <footer className="py-10 border-t border-zinc-100 mt-auto">
-            <p className="text-[9px] font-black uppercase italic text-zinc-400 tracking-widest text-center">© 2025 MEJATIKA.COM | DEVELOPER DASHBOARD</p>
+          <footer className="py-10 border-t border-zinc-100 mt-auto text-center">
+            <p className="text-[9px] font-black uppercase italic text-zinc-400 tracking-widest">© 2025 MEJATIKA.COM | DEVELOPER DASHBOARD</p>
           </footer>
         </main>
       </div>
