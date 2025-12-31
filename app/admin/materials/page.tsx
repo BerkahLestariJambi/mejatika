@@ -1,30 +1,25 @@
 "use client"
 
 import { useEffect, useState, useMemo, useCallback } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion } from "framer-motion"
 import dynamic from "next/dynamic"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Plus, 
-  FileText, 
   Loader2, 
   Trash2, 
   Edit3,
   Globe,
-  BookOpen,
-  Save,
   Search,
   ExternalLink,
   Video,
   ClipboardCheck,
-  Rocket,
-  X
+  Rocket
 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -62,15 +57,14 @@ export default function MaterialsPage() {
     timerProgressBar: true,
   })
 
-  // UPDATE STATE: Menambahkan kolom baru
   const [formData, setFormData] = useState({
     title: "",
     course_id: "",
     file: "", 
-    live_link: "",             // Tambah link live session
+    live_link: "",
     content: "",
-    quiz_task: "",             // Tambah soal latihan
-    project_instructions: "",  // Tambah instruksi projek mini
+    quiz_task: "",
+    project_instructions: "",
   })
 
   const quillModules = useMemo(() => ({
@@ -114,7 +108,6 @@ export default function MaterialsPage() {
     )
   }, [materials, searchQuery])
 
-  // UPDATE HANDLE EDIT: Menyesuaikan field baru
   const handleEdit = (item: any) => {
     setEditingId(item.id)
     setFormData({
@@ -148,31 +141,40 @@ export default function MaterialsPage() {
     setIsSubmitting(true)
     
     const token = localStorage.getItem("token")
+    
+    // Jika update, gunakan URL spesifik ID, jika tambah gunakan URL base
     const url = editingId 
       ? `https://backend.mejatika.com/api/materials/${editingId}`
       : "https://backend.mejatika.com/api/materials"
     
-    const method = editingId ? "PUT" : "POST"
+    // LOGIKA PENTING: Gunakan Method Spoofing (_method: PUT) dikirim via POST
+    const payload = editingId 
+      ? { ...formData, _method: "PUT" } 
+      : formData
 
     try {
       const res = await fetch(url, {
-        method: method,
+        method: "POST", // Selalu POST untuk menghindari masalah CORS/PUT di server
         headers: { 
           "Authorization": `Bearer ${token}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Accept": "application/json"
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       })
+
+      const result = await res.json()
 
       if (res.ok) {
         Toast.fire({ icon: 'success', title: editingId ? 'Materi diperbarui' : 'Materi berhasil diterbitkan' });
         resetForm()
         fetchData()
       } else {
-        Toast.fire({ icon: 'error', title: 'Gagal menyimpan materi' });
+        console.error("Server Error:", result)
+        Toast.fire({ icon: 'error', title: result.message || 'Gagal menyimpan materi' });
       }
     } catch (err) {
-      Toast.fire({ icon: 'error', title: 'Kesalahan koneksi' });
+      Toast.fire({ icon: 'error', title: 'Kesalahan koneksi ke server' });
     } finally {
       setIsSubmitting(false)
     }
@@ -319,7 +321,7 @@ export default function MaterialsPage() {
                 </div>
               </div>
 
-              {/* NEW SECTION: ASSIGNMENT & QUIZ */}
+              {/* SECTION: ASSIGNMENT & QUIZ */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-amber-50/50 p-6 rounded-[2rem] border border-amber-100/50">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-amber-700 flex items-center gap-2">
@@ -401,18 +403,18 @@ export default function MaterialsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                       <div className="flex flex-col gap-1">
-                         <a href={item.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-amber-600 transition-all">
-                           <ExternalLink size={12} className="shrink-0" />
-                           <span className="truncate max-w-[120px]">Video/File</span>
-                         </a>
-                         {item.live_link && (
-                           <a href={item.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-amber-500 font-bold hover:underline">
-                             <Video size={12} className="shrink-0" />
-                             <span>Live Session</span>
-                           </a>
-                         )}
-                       </div>
+                        <div className="flex flex-col gap-1">
+                          <a href={item.file} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-zinc-400 hover:text-amber-600 transition-all">
+                            <ExternalLink size={12} className="shrink-0" />
+                            <span className="truncate max-w-[120px]">Video/File</span>
+                          </a>
+                          {item.live_link && (
+                            <a href={item.live_link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-[10px] text-amber-500 font-bold hover:underline">
+                              <Video size={12} className="shrink-0" />
+                              <span>Live Session</span>
+                            </a>
+                          )}
+                        </div>
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end gap-2">
