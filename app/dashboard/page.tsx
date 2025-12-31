@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, PlusCircle, ChevronDown, Clock, 
-  ShieldCheck, Send, FileText, Box, Loader2, Circle, Flame, Target, MessageSquare,
-  Video, MonitorPlay
+  Send, FileText, Loader2, Circle, Flame, Target, MessageSquare,
+  Video, MonitorPlay, Zap
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -94,7 +94,6 @@ export default function StudentDashboard() {
     return reg.status; 
   }
 
-  // REUSABLE EMBED LOGIC
   const renderEmbed = (url: string, height: string = "450px") => {
     if (!url) return null;
     let embedUrl = url;
@@ -107,7 +106,7 @@ export default function StudentDashboard() {
     }
     
     return (
-      <div className={`relative w-full h-[${height}] rounded-[2rem] overflow-hidden bg-black shadow-2xl border-4 border-zinc-900`}>
+      <div className={`relative w-full aspect-video rounded-[2.5rem] overflow-hidden bg-black shadow-2xl border-4 border-zinc-900`}>
         <iframe src={embedUrl} className="w-full h-full border-none" allow="autoplay; fullscreen" />
       </div>
     );
@@ -202,7 +201,7 @@ export default function StudentDashboard() {
             {activeMenu === "materials" && (
               <div className="grid grid-cols-12 gap-8 animate-in fade-in duration-500">
                 <div className="col-span-4 space-y-6">
-                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">Modul</h2>
+                  <h2 className="text-2xl font-black italic uppercase tracking-tighter">Modul Belajar</h2>
                   <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
                     {registrations.filter(r => r.status === 'success').map((reg) => (
                       <div key={reg.id} className="space-y-4">
@@ -212,28 +211,42 @@ export default function StudentDashboard() {
                         </button>
                         
                         {expandedCourse === reg.id && (
-                          <div className="relative ml-4 pl-6 border-l-2 border-zinc-200 space-y-8 py-4">
+                          <div className="relative ml-6 space-y-0">
+                            {/* Garis Vertikal */}
+                            <div className="absolute left-[-17px] top-4 bottom-4 w-0.5 bg-zinc-200" />
+                            
                             {reg.course?.materials?.map((m: any) => (
-                              <div key={m.id} className="space-y-3">
-                                <div className="relative">
-                                  <div className={`absolute -left-[31px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] ${activeMaterial?.id === m.id ? 'bg-amber-500 scale-125' : 'bg-zinc-300'}`} />
-                                  <button onClick={() => setActiveMaterial(m)} className={`w-full p-4 rounded-2xl text-left border-2 flex flex-col gap-1 transition-all ${activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-md' : 'border-transparent bg-white shadow-sm hover:border-zinc-200'}`}>
-                                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Materi</span>
-                                    <span className="text-xs font-bold truncate">{m.title}</span>
-                                  </button>
-                                </div>
-                                
-                                <div className="grid grid-cols-2 gap-2 ml-2">
+                              <div key={m.id} className="relative pb-8 last:pb-0">
+                                <button onClick={() => setActiveMaterial(m)} className={`w-full p-5 rounded-2xl text-left border-2 transition-all ${activeMaterial?.id === m.id ? 'border-amber-500 bg-white shadow-lg scale-[1.02]' : 'border-transparent bg-white shadow-sm hover:border-zinc-200'}`}>
+                                  <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest mb-1 block">Modul Aktif</span>
+                                  <span className="text-xs font-bold">{m.title}</span>
+                                </button>
+
+                                {/* FLOW 5 BULATAN */}
+                                <div className="mt-4 space-y-3 ml-2">
                                   {[
-                                    { label: "Latihan", icon: Flame },
-                                    { label: "Projek", icon: Target },
-                                    { label: "Feedback", icon: MessageSquare }
-                                  ].map((step, i) => (
-                                    <div key={i} className="flex items-center gap-2 px-3 py-2 bg-zinc-50 rounded-xl border border-zinc-100">
-                                      {completedStatus[m.id] ? <CheckCircle2 size={10} className="text-emerald-500" /> : <Circle size={10} className="text-zinc-300" />}
-                                      <span className="text-[8px] font-black uppercase italic text-zinc-500 tracking-tighter">{step.label}</span>
-                                    </div>
-                                  ))}
+                                    { label: "Live Session", icon: Video, active: !!m.live_link },
+                                    { label: "Materi Pokok", icon: MonitorPlay, active: true },
+                                    { label: "Latihan", icon: Flame, active: true },
+                                    { label: "File Tugas", icon: FileText, active: true },
+                                    { label: "Feedback", icon: MessageSquare, active: true }
+                                  ].map((step, i) => {
+                                    const isStepDone = completedStatus[m.id];
+                                    if (i === 0 && !step.active) return null; // Sembunyikan live jika tidak ada link
+                                    
+                                    return (
+                                      <div key={i} className="flex items-center gap-3 group">
+                                        <div className="relative">
+                                          {/* Bulatan Flow */}
+                                          <div className={`absolute left-[-24.5px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-4 border-[#F8F9FB] z-10 transition-all ${isStepDone ? 'bg-emerald-500' : 'bg-zinc-300'}`} />
+                                          <step.icon size={14} className={isStepDone ? 'text-emerald-500' : 'text-zinc-400'} />
+                                        </div>
+                                        <span className={`text-[9px] font-black uppercase italic tracking-tighter ${isStepDone ? 'text-emerald-600' : 'text-zinc-500'}`}>
+                                          {step.label}
+                                        </span>
+                                      </div>
+                                    )
+                                  })}
                                 </div>
                               </div>
                             ))}
@@ -246,31 +259,32 @@ export default function StudentDashboard() {
 
                 <div className="col-span-8">
                   {activeMaterial ? (
-                    <div className="space-y-8 animate-in slide-in-from-right-4 duration-500">
+                    <div className="space-y-10 animate-in slide-in-from-right-4 duration-500">
                       
-                      {/* FLOW 1: LIVE SESSION (ZOOM/YOUTUBE LIVE) - HANYA MUNCUL JIKA ADA LINK */}
+                      {/* FRAME LIVE LINK (FLOW 1 - OTOMATIS PREVIEW) */}
                       {activeMaterial.live_link && (
                         <div className="space-y-4">
-                          <div className="flex items-center gap-3 bg-rose-500 text-white px-6 py-3 rounded-2xl w-fit animate-pulse">
-                            <Video size={18} />
-                            <span className="text-[10px] font-black uppercase italic tracking-widest">Flow 1: Live Session Active</span>
+                          <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center gap-3 bg-rose-600 text-white px-5 py-2 rounded-full shadow-lg shadow-rose-200 animate-pulse">
+                              <Zap size={14} className="fill-white" />
+                              <span className="text-[10px] font-black uppercase italic tracking-widest">Live Preview Session</span>
+                            </div>
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase italic">Tahap 1 / 5</span>
                           </div>
-                          {renderEmbed(activeMaterial.live_link, "500px")}
-                          <Card className="p-6 bg-zinc-950 text-white rounded-[2rem] border-none shadow-xl flex items-center justify-between">
-                            <p className="text-xs font-bold italic opacity-80 uppercase">Klik tombol di atas jika sesi sedang berlangsung.</p>
-                            <Button onClick={() => window.open(activeMaterial.live_link, "_blank")} className="bg-white text-zinc-950 rounded-xl font-black uppercase italic text-[10px] h-10 px-6">Buka di Tab Baru</Button>
-                          </Card>
+                          {renderEmbed(activeMaterial.live_link)}
                         </div>
                       )}
 
-                      {/* FLOW 2: MATERI & PREVIEW */}
+                      {/* MATERI POKOK (FLOW 2) */}
                       <div className="space-y-6">
-                        {activeMaterial.live_link && (
-                           <div className="flex items-center gap-3 text-zinc-400 px-2">
+                        <div className="flex items-center justify-between px-2">
+                           <div className="flex items-center gap-3 text-zinc-950">
                              <MonitorPlay size={18} />
-                             <span className="text-[10px] font-black uppercase italic tracking-widest">Flow 2: Materi & Modul</span>
+                             <span className="text-[10px] font-black uppercase italic tracking-[0.2em]">Tahap 2: Materi & File Modul</span>
                            </div>
-                        )}
+                           {!activeMaterial.live_link && <span className="text-[10px] font-bold text-zinc-400 uppercase italic">Tahap 1 / 4</span>}
+                        </div>
+                        
                         <div className="bg-zinc-950 rounded-[3rem] p-6 shadow-2xl">
                           {renderEmbed(activeMaterial.file)}
                         </div>
@@ -278,28 +292,37 @@ export default function StudentDashboard() {
                         <Card className="p-10 bg-white rounded-[3rem] border-none shadow-sm">
                           <div className="flex justify-between items-start mb-8 border-b pb-8">
                             <div>
-                              <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-2">Materi Pembelajaran</p>
+                              <p className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] mb-2">Penjelasan Materi</p>
                               <h3 className="text-3xl font-black italic uppercase leading-tight max-w-xl">{activeMaterial.title}</h3>
                             </div>
                             {!completedStatus[activeMaterial.id] && (
-                              <Button onClick={() => setCompletedStatus({...completedStatus, [activeMaterial.id]: true})} className="bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8">Selesai Materi</Button>
+                              <Button onClick={() => setCompletedStatus({...completedStatus, [activeMaterial.id]: true})} className="bg-emerald-500 text-white rounded-2xl font-black italic uppercase text-[10px] h-12 px-8 shadow-xl shadow-emerald-100 hover:bg-emerald-600 transition-all">Selesaikan Tahapan</Button>
                             )}
                           </div>
                           <div className="prose prose-zinc max-w-none text-zinc-600 leading-relaxed text-sm" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                         </Card>
 
+                        {/* TUGAS & FEEDBACK (FLOW 3, 4, 5) */}
                         {completedStatus[activeMaterial.id] && (
-                          <Card className="p-8 bg-white border-2 border-amber-100 rounded-[3rem] shadow-xl">
-                            <h4 className="text-xl font-black italic uppercase mb-6 flex items-center gap-2"><FileText className="text-amber-500" /> Tugas Latihan & Projek</h4>
+                          <Card className="p-10 bg-white border-4 border-amber-400/20 rounded-[3.5rem] shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-8 opacity-5"><FileText size={120} /></div>
+                            <h4 className="text-2xl font-black italic uppercase mb-2 flex items-center gap-3"><Zap className="text-amber-500" /> Tugas & Feedback</h4>
+                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-8">Kirimkan link pengerjaan tugas/latihan Anda di bawah ini.</p>
+                            
                             {submittedTasks[activeMaterial.id] ? (
-                              <div className="p-6 bg-emerald-50 rounded-3xl text-sm italic font-bold text-emerald-700 border border-emerald-100 flex items-center justify-between">
-                                <span>Terkirim: {submittedTasks[activeMaterial.id]}</span>
-                                <CheckCircle2 size={20} />
+                              <div className="p-8 bg-emerald-50 rounded-[2rem] text-sm italic font-bold text-emerald-700 border border-emerald-100 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="h-12 w-12 bg-emerald-500 rounded-full flex items-center justify-center text-white shadow-lg"><CheckCircle2 size={24} /></div>
+                                  <div>
+                                    <p className="text-[10px] uppercase opacity-60">Status: Berhasil Terkirim</p>
+                                    <span className="truncate max-w-xs block">{submittedTasks[activeMaterial.id]}</span>
+                                  </div>
+                                </div>
                               </div>
                             ) : (
                               <div className="space-y-4">
-                                <textarea id="taskInput" placeholder="Kirim Link Drive Tugas/Projek Anda di sini..." className="w-full h-32 rounded-3xl p-6 bg-zinc-50 outline-none border border-zinc-100 focus:border-amber-500 transition-all text-sm" />
-                                <Button onClick={() => { const val = (document.getElementById('taskInput') as HTMLTextAreaElement).value; if(val) setSubmittedTasks({...submittedTasks, [activeMaterial.id]: val}); }} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black h-14 uppercase italic text-[11px]">Kirim Tugas Sekarang <Send size={14} className="ml-2" /></Button>
+                                <textarea id="taskInput" placeholder="Masukkan Link Google Drive / Github / Link Tugas Anda..." className="w-full h-32 rounded-[2rem] p-8 bg-zinc-50 outline-none border-2 border-zinc-100 focus:border-amber-500 focus:bg-white transition-all text-sm font-medium" />
+                                <Button onClick={() => { const val = (document.getElementById('taskInput') as HTMLTextAreaElement).value; if(val) setSubmittedTasks({...submittedTasks, [activeMaterial.id]: val}); }} className="w-full bg-zinc-950 text-amber-500 rounded-2xl font-black h-16 uppercase italic text-[12px] shadow-2xl hover:bg-black transition-all">Kirim Semua Progres <Send size={16} className="ml-2" /></Button>
                               </div>
                             )}
                           </Card>
@@ -307,9 +330,9 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                   ) : (
-                    <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[4rem]">
+                    <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[4rem] bg-white/50">
                        <PlayCircle size={100} className="mb-6 opacity-5 animate-pulse" />
-                       <p className="font-black italic uppercase text-[12px] tracking-[0.5em] opacity-40">Pilih Modul</p>
+                       <p className="font-black italic uppercase text-[12px] tracking-[0.5em] opacity-40">Pilih Modul Pembelajaran</p>
                     </div>
                   )}
                 </div>
@@ -318,9 +341,9 @@ export default function StudentDashboard() {
 
             {activeMenu === "certificates" && (
               <div className="h-[70vh] flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-500">
-                <div className="h-40 w-40 bg-amber-50 rounded-full flex items-center justify-center mb-10"><Award size={80} className="text-amber-500" /></div>
-                <h2 className="text-4xl font-black italic uppercase mb-4 tracking-tighter">Sertifikat</h2>
-                <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest max-w-sm mx-auto leading-relaxed">Selesaikan seluruh flow materi untuk klaim sertifikat.</p>
+                <div className="h-40 w-40 bg-amber-50 rounded-full flex items-center justify-center mb-10 shadow-inner"><Award size={80} className="text-amber-500" /></div>
+                <h2 className="text-4xl font-black italic uppercase mb-4 tracking-tighter">Sertifikat Kelulusan</h2>
+                <p className="text-zinc-400 font-bold uppercase text-[10px] tracking-widest max-w-sm mx-auto leading-relaxed">Selesaikan seluruh flow modul (Live, Materi, & Tugas) untuk klaim sertifikat resmi Mejatika.</p>
               </div>
             )}
           </div>
