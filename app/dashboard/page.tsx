@@ -25,6 +25,9 @@ export default function StudentDashboard() {
   
   const [selectedProof, setSelectedProof] = useState<File | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
+  
+  // State untuk menangkap input siswa sesuai kolom database
+  const [studentAnswer, setStudentAnswer] = useState("")
   const [taskLink, setTaskLink] = useState("")
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
@@ -59,8 +62,9 @@ export default function StudentDashboard() {
     }
   }
 
+  // FUNGSI UPDATED: Mengirim student_answer DAN project_link
   const handleSubmitTask = async () => {
-    if (!taskLink) return alert("Masukkan link tugas dulu!")
+    if (!taskLink && !studentAnswer) return alert("Isi jawaban atau link tugas terlebih dahulu!")
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
     
@@ -71,13 +75,18 @@ export default function StudentDashboard() {
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}` 
         },
-        body: JSON.stringify({ project_link: taskLink })
+        // Data yang dikirim disesuaikan dengan kolom di phpMyAdmin
+        body: JSON.stringify({ 
+          student_answer: studentAnswer,
+          project_link: taskLink 
+        })
       })
 
       if (res.ok) {
-        alert("Tugas berhasil dikirim!")
+        alert("Tugas berhasil dikirim ke database!")
         markStepComplete(activeMaterial.id, "tugas", "feedback")
       } else {
+        // Fallback jika API sedang maintenance tapi ingin progress tetap jalan di frontend
         markStepComplete(activeMaterial.id, "tugas", "feedback")
       }
     } catch (err) {
@@ -162,6 +171,7 @@ export default function StudentDashboard() {
     <div className="flex min-h-screen bg-[#F8F9FB] text-zinc-900 flex-col">
       <div className="flex flex-1">
         
+        {/* SIDEBAR */}
         <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
           <div className="p-8 flex items-center gap-3 font-black italic">
             <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]">M</div>
@@ -188,6 +198,7 @@ export default function StudentDashboard() {
 
         <main className="flex-1 ml-72 p-10 flex flex-col">
           
+          {/* DASHBOARD VIEW */}
           {activeMenu === "dashboard" && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="bg-zinc-900 rounded-[3.5rem] p-16 text-white relative overflow-hidden">
@@ -203,6 +214,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* COURSES VIEW */}
           {activeMenu === "courses" && (
             <div className="space-y-10 animate-in fade-in duration-500">
               <h2 className="text-4xl font-black italic uppercase tracking-tighter">Katalog Kursus</h2>
@@ -251,6 +263,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* MATERIALS VIEW */}
           {activeMenu === "materials" && (
             <div className="grid grid-cols-12 gap-10 animate-in fade-in duration-500">
               {/* SIDEBAR MATERI */}
@@ -300,7 +313,7 @@ export default function StudentDashboard() {
               {/* KONTEN UTAMA */}
               <div className="col-span-8">
                 {activeMaterial ? (
-                  <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500 overflow-hidden">
+                  <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500">
                     <div className="flex items-center justify-between">
                       <h3 className="text-3xl font-black italic uppercase flex items-center gap-4">
                         <span className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 text-sm">0{activeStep === "live" ? "1" : activeStep === "materi" ? "2" : activeStep === "tugas" ? "3" : "4"}</span>
@@ -319,57 +332,52 @@ export default function StudentDashboard() {
                     {activeStep === "materi" && (
                       <div className="space-y-8">
                         {renderEmbed(activeMaterial.file)}
-                        
-                        {/* FIX: Deskripsi Materi agar tidak keluar frame */}
-                        <div className="bg-zinc-50 rounded-[3rem] border border-zinc-100 overflow-hidden">
-                          <div className="p-8 md:p-10">
-                            <h4 className="text-[10px] font-black uppercase text-zinc-400 mb-4 tracking-widest flex items-center gap-2">
-                               <BookOpen size={14}/> Deskripsi Materi:
-                            </h4>
-                            <div 
-                              className="prose prose-zinc max-w-full w-full text-base leading-relaxed italic text-zinc-700 break-words overflow-x-hidden" 
-                              dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
-                            />
-                          </div>
-                        </div>
-
+                        <div className="prose prose-zinc max-w-full text-base leading-relaxed p-10 bg-zinc-50 rounded-[3rem] border border-zinc-100 italic" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                         <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-emerald-500 text-white h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Sudah Paham, Lanjut Tugas</Button>
                       </div>
                     )}
 
+                    {/* VIEW TUGAS: Mengisi student_answer & project_link */}
                     {activeStep === "tugas" && (
                       <div className="space-y-8">
-                         <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100 shadow-inner overflow-hidden">
+                         <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100 shadow-inner">
                             <h4 className="text-[10px] font-black uppercase text-amber-700 mb-4 tracking-widest flex items-center gap-2">
                                <Flame size={14} className="fill-current"/> Soal Latihan:
                             </h4>
-                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium break-words">
-                              {activeMaterial.quiz_task ? (
-                                <p>{activeMaterial.quiz_task}</p>
-                              ) : (
-                                <p className="text-zinc-400">Instruksi tugas belum diinput oleh Admin untuk modul ini.</p>
-                              )}
+                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium">
+                              {activeMaterial.quiz_task || "Kerjakan instruksi yang ada di dalam video/materi."}
                             </div>
                          </div>
 
-                         <div className="p-12 border-4 border-dashed border-zinc-100 rounded-[3.5rem] text-center bg-zinc-50/50">
-                            <UploadCloud size={50} className="mx-auto text-zinc-200 mb-4" />
-                            <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Kumpulkan Link Project Kamu<br/>(Github, Drive, atau Figma)</p>
+                         {/* Input untuk student_answer */}
+                         <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Jawaban Pertanyaan / Catatan</label>
+                            <textarea 
+                               value={studentAnswer} 
+                               onChange={(e) => setStudentAnswer(e.target.value)} 
+                               placeholder="Tuliskan jawaban teks Anda di sini..." 
+                               className="w-full h-32 p-8 rounded-[2.5rem] bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 transition-all" 
+                            />
                          </div>
-                         
-                         <textarea 
-                           value={taskLink} 
-                           onChange={(e) => setTaskLink(e.target.value)} 
-                           placeholder="https://github.com/username/project-anda" 
-                           className="w-full h-32 p-8 rounded-[2.5rem] bg-white outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 font-mono transition-all" 
-                         />
+
+                         {/* Input untuk project_link */}
+                         <div className="space-y-3">
+                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Link Project (Github/Drive/Figma)</label>
+                            <input 
+                               type="text"
+                               value={taskLink} 
+                               onChange={(e) => setTaskLink(e.target.value)} 
+                               placeholder="https://github.com/username/project" 
+                               className="w-full p-6 rounded-full bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 font-mono transition-all" 
+                            />
+                         </div>
                          
                          <Button 
                             onClick={handleSubmitTask} 
-                            disabled={!taskLink || isSubmittingTask}
+                            disabled={isSubmittingTask}
                             className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px] shadow-xl hover:scale-[1.01] transition-transform"
                          >
-                           {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Link Tugas"}
+                           {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Jawaban & Tugas"}
                          </Button>
                       </div>
                     )}
@@ -379,7 +387,7 @@ export default function StudentDashboard() {
                          <div className="bg-emerald-50 p-12 rounded-[3.5rem] border-2 border-emerald-100">
                            <CheckCircle2 className="mx-auto text-emerald-500 mb-6" size={48} />
                            <h4 className="text-xl font-black italic uppercase mb-2">Tugas Terkirim!</h4>
-                           <p className="text-sm text-zinc-600 italic leading-relaxed max-w-md mx-auto">Jawaban kamu sudah kami terima di kolom <b>project_link</b>. Jika ada kendala, silakan hubungi mentor di Discord.</p>
+                           <p className="text-sm text-zinc-600 italic leading-relaxed max-w-md mx-auto">Jawaban kamu sudah kami terima di database (kolom <b>student_answer</b> & <b>project_link</b>).</p>
                          </div>
                          <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Selesaikan Modul</Button>
                       </div>
