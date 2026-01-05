@@ -307,13 +307,13 @@ export default function StudentDashboard() {
 
               <div className="col-span-8">
                 {activeMaterial ? (
-                  <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500">
+                  <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500 max-w-full overflow-hidden">
                     <div className="flex items-center justify-between">
                       <h3 className="text-3xl font-black italic uppercase flex items-center gap-4">
                         <span className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 text-sm">0{activeStep === "live" ? "1" : activeStep === "materi" ? "2" : activeStep === "tugas" ? "3" : "4"}</span>
                         {activeStep === "live" ? "Live Session" : activeStep === "materi" ? "Materi Pokok" : activeStep === "tugas" ? "Tugas Praktik" : "Feedback"}
                       </h3>
-                      <div className="px-4 py-2 bg-zinc-100 rounded-full text-[9px] font-black uppercase text-zinc-500 italic">{activeMaterial.title}</div>
+                      <div className="px-4 py-2 bg-zinc-100 rounded-full text-[9px] font-black uppercase text-zinc-500 italic truncate max-w-[200px]">{activeMaterial.title}</div>
                     </div>
 
                     {activeStep === "live" && (
@@ -323,12 +323,20 @@ export default function StudentDashboard() {
                       </div>
                     )}
 
+                    {/* PERBAIKAN DI SINI: Materi Pokok dengan CSS Word-Break */}
                     {activeStep === "materi" && (
-                      <div className="space-y-8">
-                        {/* Anti-double frame logic */}
+                      <div className="space-y-8 w-full max-w-full">
                         {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
-                        <div className="prose prose-zinc max-w-full text-base leading-relaxed p-10 bg-zinc-50 rounded-[3rem] border border-zinc-100 italic" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
-                        <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-emerald-500 text-white h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Sudah Paham, Lanjut Tugas</Button>
+                        <div className="bg-zinc-50 rounded-[3rem] border border-zinc-100 p-8 md:p-10 shadow-inner overflow-hidden">
+                          <div 
+                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium 
+                                       break-words overflow-wrap-anywhere
+                                       [&>p]:mb-4 [&>p]:leading-relaxed"
+                            style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                            dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
+                          />
+                        </div>
+                        <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-emerald-500 text-white h-16 rounded-[2rem] font-black italic uppercase text-[11px] hover:bg-emerald-600 shadow-lg">Sudah Paham, Lanjut Tugas</Button>
                       </div>
                     )}
 
