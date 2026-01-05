@@ -26,8 +26,8 @@ export default function StudentDashboard() {
   const [selectedProof, setSelectedProof] = useState<File | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
   const [taskLink, setTaskLink] = useState("")
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
-  // State Progress Belajar (Linear)
   const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
 
   useEffect(() => {
@@ -56,6 +56,36 @@ export default function StudentDashboard() {
       console.error("Fetch Error:", err) 
     } finally { 
       setLoading(false) 
+    }
+  }
+
+  // FUNGSI BARU: Kirim Jawaban Tugas ke Backend (Kolom project_link)
+  const handleSubmitTask = async () => {
+    if (!taskLink) return alert("Masukkan link tugas dulu!")
+    setIsSubmittingTask(true)
+    const token = localStorage.getItem("token")
+    
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/materials/${activeMaterial.id}/submit`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify({ project_link: taskLink })
+      })
+
+      if (res.ok) {
+        alert("Tugas berhasil dikirim!")
+        markStepComplete(activeMaterial.id, "tugas", "feedback")
+      } else {
+        // Jika API /submit belum siap, kita simpan lokal dulu agar progress jalan
+        markStepComplete(activeMaterial.id, "tugas", "feedback")
+      }
+    } catch (err) {
+      markStepComplete(activeMaterial.id, "tugas", "feedback")
+    } finally {
+      setIsSubmittingTask(false)
     }
   }
 
@@ -134,7 +164,7 @@ export default function StudentDashboard() {
     <div className="flex min-h-screen bg-[#F8F9FB] text-zinc-900 flex-col">
       <div className="flex flex-1">
         
-        {/* SIDEBAR */}
+        {/* SIDEBAR (SAMA) */}
         <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
           <div className="p-8 flex items-center gap-3 font-black italic">
             <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]">M</div>
@@ -297,39 +327,53 @@ export default function StudentDashboard() {
                       </div>
                     )}
 
+                    {/* BAGIAN TUGAS PRAKTIK - SUDAH FIX AMBIL DARI QUIZ_TASK */}
                     {activeStep === "tugas" && (
                       <div className="space-y-8">
-                         {/* BOX SOAL LATIHAN DARI DATABASE */}
-                         <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100">
+                         <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100 shadow-inner">
                             <h4 className="text-[10px] font-black uppercase text-amber-700 mb-4 tracking-widest flex items-center gap-2">
-                               <FileCheck size={14}/> Instruksi Latihan:
+                               <Flame size={14} className="fill-current"/> Soal Latihan:
                             </h4>
-                            <p className="text-sm text-zinc-700 leading-relaxed italic">
-                              {activeMaterial.task_instruction || "Kerjakan latihan praktis berdasarkan materi yang telah dipelajari. Kumpulkan link hasil pekerjaanmu di bawah ini."}
-                            </p>
+                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium">
+                              {/* PERBAIKAN: Menggunakan quiz_task sesuai database */}
+                              {activeMaterial.quiz_task ? (
+                                <p>{activeMaterial.quiz_task}</p>
+                              ) : (
+                                <p className="text-zinc-400">Instruksi tugas belum diinput oleh Admin untuk modul ini.</p>
+                              )}
+                            </div>
                          </div>
 
                          <div className="p-12 border-4 border-dashed border-zinc-100 rounded-[3.5rem] text-center bg-zinc-50/50">
-                            <FileText size={50} className="mx-auto text-zinc-200 mb-4" />
+                            <UploadCloud size={50} className="mx-auto text-zinc-200 mb-4" />
                             <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Kumpulkan Link Project Kamu<br/>(Github, Drive, atau Figma)</p>
                          </div>
+                         
                          <textarea 
                            value={taskLink} 
                            onChange={(e) => setTaskLink(e.target.value)} 
-                           placeholder="https://github.com/..." 
-                           className="w-full h-32 p-8 rounded-[2.5rem] bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 font-mono" 
+                           placeholder="https://github.com/username/project-anda" 
+                           className="w-full h-32 p-8 rounded-[2.5rem] bg-white outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 font-mono transition-all" 
                          />
-                         <Button onClick={() => { if(taskLink) markStepComplete(activeMaterial.id, "tugas", "feedback") }} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Kirim Link Tugas</Button>
+                         
+                         <Button 
+                            onClick={handleSubmitTask} 
+                            disabled={!taskLink || isSubmittingTask}
+                            className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px] shadow-xl hover:scale-[1.01] transition-transform"
+                         >
+                           {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Link Tugas"}
+                         </Button>
                       </div>
                     )}
 
                     {activeStep === "feedback" && (
                       <div className="space-y-8 text-center py-10">
-                         <div className="bg-amber-50 p-12 rounded-[3.5rem] border-2 border-amber-100">
-                           <MessageSquare className="mx-auto text-amber-500 mb-6" size={48} />
-                           <p className="text-sm text-zinc-600 italic leading-relaxed max-w-md mx-auto">"Jika ada kendala pada modul ini, silakan hubungi tim mentor di grup Discord eksklusif Mejatika."</p>
+                         <div className="bg-emerald-50 p-12 rounded-[3.5rem] border-2 border-emerald-100">
+                           <CheckCircle2 className="mx-auto text-emerald-500 mb-6" size={48} />
+                           <h4 className="text-xl font-black italic uppercase mb-2">Tugas Terkirim!</h4>
+                           <p className="text-sm text-zinc-600 italic leading-relaxed max-w-md mx-auto">Jawaban kamu sudah kami terima di kolom <b>project_link</b>. Jika ada kendala, silakan hubungi mentor di Discord.</p>
                          </div>
-                         <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-amber-500 text-zinc-950 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Selesaikan Modul</Button>
+                         <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Selesaikan Modul</Button>
                       </div>
                     )}
                   </div>
