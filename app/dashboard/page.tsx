@@ -59,7 +59,6 @@ export default function StudentDashboard() {
     }
   }
 
-  // FUNGSI BARU: Kirim Jawaban Tugas ke Backend (Kolom project_link)
   const handleSubmitTask = async () => {
     if (!taskLink) return alert("Masukkan link tugas dulu!")
     setIsSubmittingTask(true)
@@ -79,7 +78,6 @@ export default function StudentDashboard() {
         alert("Tugas berhasil dikirim!")
         markStepComplete(activeMaterial.id, "tugas", "feedback")
       } else {
-        // Jika API /submit belum siap, kita simpan lokal dulu agar progress jalan
         markStepComplete(activeMaterial.id, "tugas", "feedback")
       }
     } catch (err) {
@@ -164,7 +162,6 @@ export default function StudentDashboard() {
     <div className="flex min-h-screen bg-[#F8F9FB] text-zinc-900 flex-col">
       <div className="flex flex-1">
         
-        {/* SIDEBAR (SAMA) */}
         <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
           <div className="p-8 flex items-center gap-3 font-black italic">
             <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]">M</div>
@@ -303,7 +300,7 @@ export default function StudentDashboard() {
               {/* KONTEN UTAMA */}
               <div className="col-span-8">
                 {activeMaterial ? (
-                  <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500">
+                  <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500 overflow-hidden">
                     <div className="flex items-center justify-between">
                       <h3 className="text-3xl font-black italic uppercase flex items-center gap-4">
                         <span className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 text-sm">0{activeStep === "live" ? "1" : activeStep === "materi" ? "2" : activeStep === "tugas" ? "3" : "4"}</span>
@@ -322,20 +319,31 @@ export default function StudentDashboard() {
                     {activeStep === "materi" && (
                       <div className="space-y-8">
                         {renderEmbed(activeMaterial.file)}
-                        <div className="prose prose-zinc max-w-full text-base leading-relaxed p-10 bg-zinc-50 rounded-[3rem] border border-zinc-100 italic" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                        
+                        {/* FIX: Deskripsi Materi agar tidak keluar frame */}
+                        <div className="bg-zinc-50 rounded-[3rem] border border-zinc-100 overflow-hidden">
+                          <div className="p-8 md:p-10">
+                            <h4 className="text-[10px] font-black uppercase text-zinc-400 mb-4 tracking-widest flex items-center gap-2">
+                               <BookOpen size={14}/> Deskripsi Materi:
+                            </h4>
+                            <div 
+                              className="prose prose-zinc max-w-full w-full text-base leading-relaxed italic text-zinc-700 break-words overflow-x-hidden" 
+                              dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
+                            />
+                          </div>
+                        </div>
+
                         <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-emerald-500 text-white h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Sudah Paham, Lanjut Tugas</Button>
                       </div>
                     )}
 
-                    {/* BAGIAN TUGAS PRAKTIK - SUDAH FIX AMBIL DARI QUIZ_TASK */}
                     {activeStep === "tugas" && (
                       <div className="space-y-8">
-                         <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100 shadow-inner">
+                         <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100 shadow-inner overflow-hidden">
                             <h4 className="text-[10px] font-black uppercase text-amber-700 mb-4 tracking-widest flex items-center gap-2">
                                <Flame size={14} className="fill-current"/> Soal Latihan:
                             </h4>
-                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium">
-                              {/* PERBAIKAN: Menggunakan quiz_task sesuai database */}
+                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium break-words">
                               {activeMaterial.quiz_task ? (
                                 <p>{activeMaterial.quiz_task}</p>
                               ) : (
