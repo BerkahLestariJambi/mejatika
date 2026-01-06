@@ -60,17 +60,24 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Fungsi Ambil Status Submission & Feedback (Penting untuk Replay)
+  // 2. Fungsi Ambil Status Submission & Feedback (SINKRONISASI DB)
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json" 
+        }
       })
-      const data = await res.json()
-      // Pastikan state submissionFeedback terupdate dengan data terbaru dari database
-      setSubmissionFeedback(data.data || data)
+      const result = await res.json()
+      // Pastikan data dimasukkan ke state dengan benar
+      if (result.success) {
+        setSubmissionFeedback(result.data)
+      } else {
+        setSubmissionFeedback(null)
+      }
     } catch (err) {
       console.error("Gagal mengambil status submission")
     }
@@ -82,7 +89,6 @@ export default function StudentDashboard() {
     if (saved) setCourseProgress(JSON.parse(saved))
   }, [fetchData])
 
-  // Trigger fetch feedback setiap kali step berubah ke 'feedback' atau materi berganti
   useEffect(() => {
     if (activeStep === "feedback" && activeMaterial) {
       fetchSubmissionStatus()
@@ -91,7 +97,12 @@ export default function StudentDashboard() {
 
   // 3. Fungsi Kirim Balasan (Disimpan ke DB)
   const handleSendReply = async () => {
-    if (!replyText.trim() || !submissionFeedback?.id) return
+    // Validasi ID submission harus ada
+    if (!replyText.trim() || !submissionFeedback?.id) {
+      alert("ID Tugas tidak ditemukan. Coba refresh halaman.")
+      return
+    }
+
     setIsSendingReply(true)
     const token = localStorage.getItem("token")
     try {
@@ -99,17 +110,24 @@ export default function StudentDashboard() {
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
-          "Authorization": `Bearer ${token}` 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
         },
         body: JSON.stringify({ student_reply: replyText })
       })
-      if (res.ok) {
+
+      const result = await res.json()
+
+      if (res.ok && result.success) {
         setReplyText("")
-        // Refresh data dari server agar pesan yang baru dikirim langsung muncul di UI
-        await fetchSubmissionStatus()
+        // Langsung update state lokal agar UI berubah seketika
+        setSubmissionFeedback(result.data)
+        alert("Balasan berhasil dikirim!")
+      } else {
+        alert(result.message || "Gagal menyimpan balasan ke database")
       }
     } catch (err) {
-      alert("Gagal mengirim balasan")
+      alert("Koneksi bermasalah")
     } finally {
       setIsSendingReply(false)
     }
@@ -137,11 +155,13 @@ export default function StudentDashboard() {
           project_link: taskLink 
         })
       })
-      if (res.ok) {
-        alert("Tugas berhasil dikirim!");
-        markStepComplete(activeMaterial.id, "tugas", "feedback");
-        setStudentAnswer("");
-        setTaskLink("");
+      const result = await res.json()
+      if (res.ok && result.success) {
+        alert("Tugas berhasil dikirim!")
+        setSubmissionFeedback(result.data) // Simpan data submission yang baru dibuat
+        markStepComplete(activeMaterial.id, "tugas", "feedback")
+        setStudentAnswer("")
+        setTaskLink("")
       }
     } catch (err) {
       markStepComplete(activeMaterial.id, "tugas", "feedback")
