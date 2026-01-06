@@ -36,7 +36,7 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
-  // 1. Fungsi Fetch Data Utama
+  // 1. Fetch Data Utama (User, Registrations, Courses)
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
@@ -60,7 +60,7 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Fungsi Ambil Status Submission & Feedback
+  // 2. Fetch Status Tugas & Feedback Mentor
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
@@ -69,6 +69,7 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
+      // Mengambil data feedback dari properti .data jika ada, jika tidak langsung datanya
       setSubmissionFeedback(data.data || data)
     } catch (err) {
       console.error("Gagal mengambil status submission")
@@ -87,7 +88,7 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // 3. FIX: Fungsi Kirim Balasan (Gunakan PUT & key message)
+  // 3. Fungsi Kirim Balasan Diskusi (Update via PUT)
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
@@ -95,19 +96,20 @@ export default function StudentDashboard() {
     
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
-        method: "PUT", // Sesuai dengan route api.php
+        method: "PUT",
         headers: { 
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json"
         },
-        body: JSON.stringify({ message: replyText }) // Sesuai dengan $request->message di Controller
+        body: JSON.stringify({ message: replyText })
       })
 
       const result = await res.json()
       if (res.ok) {
         setReplyText("")
-        await fetchSubmissionStatus() // Refresh agar chat muncul
+        // Refresh data feedback agar bubble chat langsung muncul
+        await fetchSubmissionStatus()
       } else {
         alert(result.message || "Gagal mengirim balasan")
       }
@@ -118,6 +120,7 @@ export default function StudentDashboard() {
     }
   }
 
+  // 4. Submit Tugas
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
     const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
@@ -145,9 +148,12 @@ export default function StudentDashboard() {
         markStepComplete(activeMaterial.id, "tugas", "feedback");
         setStudentAnswer("");
         setTaskLink("");
+      } else {
+        const errData = await res.json();
+        alert(errData.message || "Gagal kirim tugas");
       }
     } catch (err) {
-      markStepComplete(activeMaterial.id, "tugas", "feedback")
+      console.error(err)
     } finally {
       setIsSubmittingTask(false)
     }
@@ -254,6 +260,7 @@ export default function StudentDashboard() {
 
         <main className="flex-1 ml-72 p-10 flex flex-col">
           
+          {/* CONTENT DASHBOARD */}
           {activeMenu === "dashboard" && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="bg-zinc-900 rounded-[3.5rem] p-16 text-white relative overflow-hidden">
@@ -269,6 +276,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* CONTENT COURSES */}
           {activeMenu === "courses" && (
             <div className="space-y-10 animate-in fade-in duration-500">
               <h2 className="text-4xl font-black italic uppercase tracking-tighter">Katalog Kursus</h2>
@@ -316,6 +324,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
+          {/* CONTENT MATERIALS */}
           {activeMenu === "materials" && (
             <div className="grid grid-cols-12 gap-10 animate-in fade-in duration-500">
               <div className="col-span-4 space-y-8">
@@ -408,7 +417,6 @@ export default function StudentDashboard() {
                       <div className="space-y-8 animate-in fade-in duration-500">
                          {submissionFeedback ? (
                            <div className="space-y-8">
-                              {/* BOX FEEDBACK MENTOR */}
                               <div className="bg-zinc-900 p-10 rounded-[3.5rem] text-white relative overflow-hidden">
                                 <div className="flex justify-between items-start relative z-10">
                                   <div className="flex items-center gap-3">
@@ -428,11 +436,9 @@ export default function StudentDashboard() {
                                 </div>
                               </div>
 
-                              {/* FITUR REPLAY CHAT / DISKUSI */}
                               <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 space-y-6">
                                 <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2"><MessageSquare size={14}/> Diskusi Modul</h5>
                                 
-                                {/* Bubble Chat Balasan Siswa dari DB */}
                                 {submissionFeedback.student_reply && (
                                   <div className="flex flex-col items-end animate-in slide-in-from-right-4">
                                     <div className="bg-amber-100 text-amber-900 p-6 rounded-t-3xl rounded-bl-3xl max-w-[80%] text-sm italic font-medium shadow-sm">
@@ -442,7 +448,6 @@ export default function StudentDashboard() {
                                   </div>
                                 )}
 
-                                {/* Input Balasan */}
                                 {!submissionFeedback.student_reply ? (
                                   <div className="relative">
                                     <textarea 
