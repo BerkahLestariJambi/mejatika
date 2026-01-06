@@ -71,16 +71,25 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Ambil Status Submission & Diskusi
+  // 2. Ambil Status Submission & Diskusi (DISESUAIKAN DENGAN BACKEND)
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+      // Endpoint disesuaikan dengan Route::get('/submissions/{material_id}', ...)
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/${activeMaterial.id}`, {
+        headers: { 
+          "Authorization": `Bearer ${token}`, 
+          "Accept": "application/json" 
+        }
       })
       const data = await res.json()
-      setSubmissionFeedback(data.data || data)
+      // Jika data.success true, tampilkan data. Jika tidak (misal 404), reset feedback.
+      if (data.success && data.data) {
+        setSubmissionFeedback(data.data)
+      } else {
+        setSubmissionFeedback(null)
+      }
     } catch (err) {
       console.error("Gagal mengambil status submission")
     }
@@ -129,13 +138,22 @@ export default function StudentDashboard() {
     }
   }
 
+  // 4. Kirim Tugas (SINKRON DENGAN VALIDASI BACKEND)
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
+    
+    // Cari pendaftaran yang sesuai dengan course yang sedang dibuka
     const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
     if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
 
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
+
+    // Pastikan link memiliki prefix https:// agar lolos validasi 'url' di Laravel
+    const formattedLink = taskLink && !taskLink.startsWith('http') 
+                          ? `https://${taskLink}` 
+                          : taskLink;
+
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions`, {
         method: "POST",
@@ -148,17 +166,24 @@ export default function StudentDashboard() {
           material_id: activeMaterial.id,
           registration_id: currentReg.id,
           student_answer: studentAnswer,
-          project_link: taskLink 
+          project_link: formattedLink 
         })
       })
-      if (res.ok) {
-        alert("Tugas berhasil dikirim!");
+
+      const result = await res.json();
+
+      if (res.ok && result.success) {
+        alert("Tugas berhasil disimpan di database!");
         markStepComplete(activeMaterial.id, "tugas", "feedback");
         setStudentAnswer("");
         setTaskLink("");
+        // Langsung tarik data terbaru dari server untuk tab feedback
+        await fetchSubmissionStatus();
+      } else {
+        alert(result.message || "Gagal menyimpan. Pastikan link project valid (Contoh: https://github.com)");
       }
     } catch (err) {
-      markStepComplete(activeMaterial.id, "tugas", "feedback")
+      alert("Terjadi kesalahan jaringan.");
     } finally {
       setIsSubmittingTask(false)
     }
@@ -467,7 +492,7 @@ export default function StudentDashboard() {
                                           {chat.message}
                                         </div>
                                         <span className="text-[8px] font-black uppercase text-zinc-400 mt-2 mx-2">
-                                          {isAdmin ? "Mentor Mejatika" : "Anda"} • {chat.formatted_date}
+                                          {isAdmin ? "Mentor Mejatika" : "Anda"} • {chat.formatted_date || "Baru saja"}
                                         </span>
                                       </div>
                                     )
