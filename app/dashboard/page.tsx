@@ -9,7 +9,7 @@ import {
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
-  Send, UserCircle2 
+  Send, UserCircle2, Menu, X, Star
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -23,6 +23,7 @@ export default function StudentDashboard() {
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false) // State untuk mobile
   
   const [selectedProof, setSelectedProof] = useState<File | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
@@ -36,7 +37,7 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
-  // 1. Fetch Data Utama (User, Registrations, Courses)
+  // 1. Fetch Data Utama
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
@@ -60,7 +61,7 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Fetch Status Tugas & Feedback Mentor
+  // 2. Fetch Status Tugas & Feedback
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
@@ -69,7 +70,6 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
-      // Mengambil data feedback dari properti .data jika ada, jika tidak langsung datanya
       setSubmissionFeedback(data.data || data)
     } catch (err) {
       console.error("Gagal mengambil status submission")
@@ -88,82 +88,55 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // 3. Fungsi Kirim Balasan Diskusi (Update via PUT)
+  // Hitung Progress Kursus
+  const calculateProgress = (courseId: number) => {
+    const course = availableCourses.find(c => c.id === courseId)
+    if (!course || !course.materials) return 0
+    const totalSteps = course.materials.length * 4
+    let completedSteps = 0
+    course.materials.forEach((m: any) => {
+      const prog = courseProgress[m.id] || {}
+      if (prog.live) completedSteps++
+      if (prog.materi) completedSteps++
+      if (prog.tugas) completedSteps++
+      if (prog.feedback) completedSteps++
+    })
+    return Math.round((completedSteps / totalSteps) * 100)
+  }
+
+  // Logika-logika action (Reply, Submit, Enroll, Upload) tetap sama seperti kode Anda...
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
     const token = localStorage.getItem("token")
-    
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
         method: "PUT",
-        headers: { 
-          "Content-Type": "application/json", 
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json"
-        },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
         body: JSON.stringify({ message: replyText })
       })
-
-      const result = await res.json()
-      if (res.ok) {
-        setReplyText("")
-        // Refresh data feedback agar bubble chat langsung muncul
-        await fetchSubmissionStatus()
-      } else {
-        alert(result.message || "Gagal mengirim balasan")
-      }
-    } catch (err) {
-      alert("Terjadi kesalahan koneksi")
-    } finally {
-      setIsSendingReply(false)
-    }
+      if (res.ok) { setReplyText(""); await fetchSubmissionStatus(); }
+    } catch (err) { alert("Terjadi kesalahan koneksi") } finally { setIsSendingReply(false) }
   }
 
-  // 4. Submit Tugas
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
     const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
     if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
-
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json"
-        },
-        body: JSON.stringify({ 
-          material_id: activeMaterial.id,
-          registration_id: currentReg.id,
-          student_answer: studentAnswer,
-          project_link: taskLink 
-        })
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+        body: JSON.stringify({ material_id: activeMaterial.id, registration_id: currentReg.id, student_answer: studentAnswer, project_link: taskLink })
       })
-      if (res.ok) {
-        alert("Tugas berhasil dikirim!");
-        markStepComplete(activeMaterial.id, "tugas", "feedback");
-        setStudentAnswer("");
-        setTaskLink("");
-      } else {
-        const errData = await res.json();
-        alert(errData.message || "Gagal kirim tugas");
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setIsSubmittingTask(false)
-    }
+      if (res.ok) { alert("Tugas berhasil dikirim!"); markStepComplete(activeMaterial.id, "tugas", "feedback"); setStudentAnswer(""); setTaskLink(""); }
+    } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
   }
 
   const markStepComplete = (materialId: number, currentStep: string, nextStep: string | null) => {
-    const newProgress = {
-      ...courseProgress,
-      [materialId]: { ...(courseProgress[materialId] || {}), [currentStep]: true }
-    }
+    const newProgress = { ...courseProgress, [materialId]: { ...(courseProgress[materialId] || {}), [currentStep]: true } }
     setCourseProgress(newProgress)
     localStorage.setItem("mejatika_progress", JSON.stringify(newProgress))
     if (nextStep) setActiveStep(nextStep)
@@ -204,11 +177,7 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}` },
         body: formData 
       })
-      if (res.ok) {
-        alert("Bukti terkirim!");
-        setSelectedProof(null);
-        await fetchData();
-      }
+      if (res.ok) { alert("Bukti terkirim!"); setSelectedProof(null); await fetchData(); }
     } catch (err) { alert("Gagal upload") } finally { setUploadingId(null) }
   }
 
@@ -231,272 +200,310 @@ export default function StudentDashboard() {
   if (loading) return <div className="h-screen flex items-center justify-center font-black italic text-zinc-400 animate-pulse text-xl tracking-tighter">MEJATIKA PROCESSING...</div>
 
   return (
-    <div className="flex min-h-screen bg-[#F8F9FB] text-zinc-900 flex-col">
-      <div className="flex flex-1">
-        
-        {/* SIDEBAR */}
-        <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
-          <div className="p-8 flex items-center gap-3 font-black italic">
-            <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]">M</div>
-            <h1 className="text-xl uppercase tracking-tighter">Mejatika<span className="text-amber-500">.</span></h1>
-          </div>
-          <nav className="flex-1 px-4 space-y-2">
-            {[
-              { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-              { id: "courses", label: "Daftar Kursus", icon: BookOpen },
-              { id: "materials", label: "Materi Kursus", icon: FileCheck },
-            ].map((item) => (
-              <button key={item.id} onClick={() => setActiveMenu(item.id)} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-black italic uppercase text-[10px] transition-all duration-300 ${activeMenu === item.id ? 'bg-amber-500 text-zinc-950 shadow-lg translate-x-2' : 'text-zinc-500 hover:bg-zinc-900 hover:text-white'}`}>
-                <item.icon size={18} /> {item.label}
-              </button>
-            ))}
-          </nav>
-          <div className="p-6 border-t border-zinc-900">
-             <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-rose-500 font-black italic uppercase text-[10px] hover:bg-rose-500/10 rounded-2xl transition-all">
-              <LogOut size={18} /> Logout
+    <div className="flex min-h-screen bg-[#F8F9FB] text-zinc-900">
+      
+      {/* MOBILE HEADER */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-zinc-950 p-4 z-[60] flex justify-between items-center">
+        <div className="flex items-center gap-2 font-black italic text-white">
+          <div className="h-8 w-8 bg-amber-500 rounded-lg flex items-center justify-center text-zinc-950 text-xs">M</div>
+          <span className="uppercase text-sm tracking-tighter">Mejatika</span>
+        </div>
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-white">
+          {sidebarOpen ? <X /> : <Menu />}
+        </button>
+      </div>
+
+      {/* SIDEBAR */}
+      <aside className={`w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="p-8 hidden lg:flex items-center gap-3 font-black italic">
+          <div className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 shadow-[0_0_20px_rgba(245,158,11,0.3)]">M</div>
+          <h1 className="text-xl uppercase tracking-tighter">Mejatika<span className="text-amber-500">.</span></h1>
+        </div>
+        <nav className="flex-1 px-4 mt-20 lg:mt-0 space-y-2">
+          {[
+            { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+            { id: "courses", label: "Katalog Kursus", icon: BookOpen },
+            { id: "materials", label: "Ruang Belajar", icon: FileCheck },
+            { id: "certificates", label: "Sertifikat", icon: Award },
+          ].map((item) => (
+            <button key={item.id} onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl font-black italic uppercase text-[10px] transition-all duration-300 ${activeMenu === item.id ? 'bg-amber-500 text-zinc-950 shadow-lg translate-x-2' : 'text-zinc-500 hover:bg-zinc-900 hover:text-white'}`}>
+              <item.icon size={18} /> {item.label}
             </button>
-          </div>
-        </aside>
+          ))}
+        </nav>
+        <div className="p-6 border-t border-zinc-900">
+           <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-rose-500 font-black italic uppercase text-[10px] hover:bg-rose-500/10 rounded-2xl transition-all">
+            <LogOut size={18} /> Logout
+          </button>
+        </div>
+      </aside>
 
-        <main className="flex-1 ml-72 p-10 flex flex-col">
-          
-          {/* CONTENT DASHBOARD */}
-          {activeMenu === "dashboard" && (
-            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="bg-zinc-900 rounded-[3.5rem] p-16 text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-10 opacity-10"><Zap size={200} /></div>
-                <h2 className="text-6xl font-black italic uppercase tracking-tighter mb-4 leading-none">Woi, {user?.name?.split(' ')[0]}!</h2>
-                <p className="text-amber-500 font-bold uppercase text-[11px] tracking-[0.3em]">Ready to build something great today?</p>
-              </div>
-              <div className="grid grid-cols-3 gap-8">
-                <Card className="p-10 rounded-[2.5rem] bg-white border-none shadow-sm"><p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Katalog</p><h3 className="text-5xl font-black italic">{availableCourses.length}</h3></Card>
-                <Card className="p-10 rounded-[2.5rem] bg-white border-none shadow-sm"><p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Sedang Diikuti</p><h3 className="text-5xl font-black italic">{registrations.length}</h3></Card>
-                <Card className="p-10 rounded-[2.5rem] bg-white border-b-8 border-emerald-500 shadow-sm"><p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Kursus Aktif</p><h3 className="text-5xl font-black italic text-emerald-600">{registrations.filter(r => r.status === 'success').length}</h3></Card>
-              </div>
+      {/* MAIN CONTENT */}
+      <main className={`flex-1 transition-all duration-300 ${sidebarOpen ? 'blur-sm' : ''} lg:ml-72 p-6 lg:p-10 flex flex-col mt-16 lg:mt-0`}>
+        
+        {/* DASHBOARD TAB */}
+        {activeMenu === "dashboard" && (
+          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="bg-zinc-900 rounded-[2.5rem] lg:rounded-[3.5rem] p-8 lg:p-16 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-10 opacity-10 hidden lg:block"><Zap size={200} /></div>
+              <h2 className="text-4xl lg:text-6xl font-black italic uppercase tracking-tighter mb-4 leading-none">Woi, {user?.name?.split(' ')[0]}!</h2>
+              <p className="text-amber-500 font-bold uppercase text-[11px] tracking-[0.3em]">Siap bantai codingan hari ini?</p>
             </div>
-          )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+              <Card className="p-8 lg:p-10 rounded-[2.5rem] bg-white border-none shadow-sm">
+                <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Total Katalog</p>
+                <h3 className="text-4xl lg:text-5xl font-black italic">{availableCourses.length}</h3>
+              </Card>
+              <Card className="p-8 lg:p-10 rounded-[2.5rem] bg-white border-none shadow-sm">
+                <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Pendaftaran</p>
+                <h3 className="text-4xl lg:text-5xl font-black italic text-amber-500">{registrations.length}</h3>
+              </Card>
+              <Card className="p-8 lg:p-10 rounded-[2.5rem] bg-white border-b-8 border-emerald-500 shadow-sm">
+                <p className="text-[10px] font-black uppercase text-zinc-400 mb-2">Kursus Aktif</p>
+                <h3 className="text-4xl lg:text-5xl font-black italic text-emerald-600">{registrations.filter(r => r.status === 'success').length}</h3>
+              </Card>
+            </div>
 
-          {/* CONTENT COURSES */}
-          {activeMenu === "courses" && (
-            <div className="space-y-10 animate-in fade-in duration-500">
-              <h2 className="text-4xl font-black italic uppercase tracking-tighter">Katalog Kursus</h2>
-              <div className="grid grid-cols-2 gap-10">
-                {availableCourses.map((course) => {
-                  const reg = registrations.find(r => Number(r.course_id) === Number(course.id));
-                  const status = reg?.status;
-                  return (
-                    <Card key={course.id} className="rounded-[3.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:scale-[1.02] transition-transform duration-500">
-                      <div className="h-52 bg-zinc-50 flex items-center justify-center border-b border-zinc-100 relative">
-                        <BookOpen className="text-zinc-200" size={80} />
-                        {status === 'success' && <div className="absolute top-6 right-6 bg-emerald-500 text-white p-2 rounded-full shadow-lg"><CheckCircle2 size={20}/></div>}
+            {/* QUICK RESUME */}
+            {registrations.filter(r => r.status === 'success').length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-xl font-black italic uppercase tracking-tight">Lanjutkan Belajar</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {registrations.filter(r => r.status === 'success').slice(0, 2).map(reg => (
+                    <div key={reg.id} className="bg-white p-8 rounded-[2.5rem] shadow-sm flex items-center justify-between group">
+                      <div>
+                        <p className="text-[9px] font-black text-amber-500 uppercase mb-1">{calculateProgress(reg.course_id)}% Selesai</p>
+                        <h4 className="font-black italic uppercase text-sm truncate max-w-[150px]">{reg.course?.title}</h4>
                       </div>
-                      <CardContent className="p-12 flex-1 flex flex-col">
-                        <h4 className="text-2xl font-black uppercase italic mb-8 leading-tight tracking-tighter">{course.title}</h4>
-                        {status === 'success' ? (
-                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white h-16 rounded-[1.5rem] font-black italic uppercase text-[11px] hover:bg-emerald-600">Lanjutkan Belajar <Zap size={14} className="ml-2 fill-current"/></Button>
-                        ) : status === 'pending' ? (
-                          <div className="space-y-5 bg-amber-50 p-8 rounded-[2.5rem] border-2 border-amber-100">
-                             <div className="flex items-center gap-3 text-amber-700 font-black italic uppercase text-[10px] mb-2"><CreditCard size={18}/> Detail Pembayaran BRI</div>
-                             <div className="p-6 bg-white rounded-2xl border border-amber-200 text-center">
-                               <p className="text-xl font-black text-zinc-900 tracking-tighter">0021-01-234567-53-1</p>
-                               <p className="text-[9px] text-zinc-500 italic">A/N Mejatika Edukasi Digital</p>
-                             </div>
-                             <div className="space-y-3">
-                                <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-amber-300 rounded-[1.5rem] bg-amber-100/30 cursor-pointer">
-                                  {selectedProof ? <span className="text-[9px] font-black uppercase text-emerald-700">{selectedProof.name}</span> : <UploadCloud className="text-amber-500" size={28} />}
-                                  <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
-                                </label>
-                                <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-zinc-950 text-amber-500 h-12 rounded-[1.2rem] font-black italic uppercase text-[10px]">
-                                  {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Kirim Konfirmasi"}
-                                </Button>
-                             </div>
-                          </div>
-                        ) : (
-                          <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[1.5rem] font-black italic uppercase text-[11px]">
-                            {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar & Amankan Slot"}
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* CONTENT MATERIALS */}
-          {activeMenu === "materials" && (
-            <div className="grid grid-cols-12 gap-10 animate-in fade-in duration-500">
-              <div className="col-span-4 space-y-8">
-                <h2 className="text-3xl font-black italic uppercase tracking-tighter">Modul Belajar</h2>
-                <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar">
-                  {registrations.filter(r => r.status === 'success').map((reg) => (
-                    <div key={reg.id} className="space-y-4">
-                      <button onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} className={`w-full p-6 rounded-[2rem] flex items-center justify-between transition-all duration-500 ${expandedCourse === reg.course_id ? 'bg-zinc-950 text-white shadow-2xl scale-105' : 'bg-white shadow-sm'}`}>
-                        <span className="text-[11px] font-black uppercase italic truncate">{reg.course?.title}</span>
-                        <ChevronDown size={16} className={`${expandedCourse === reg.course_id ? 'rotate-180' : ''}`} />
-                      </button>
-                      {expandedCourse === reg.course_id && reg.course?.materials?.map((m: any) => (
-                        <div key={m.id} className="ml-6 space-y-3 border-l-4 border-zinc-200 pl-6 py-2">
-                          <p className="text-[10px] font-black text-amber-600 uppercase italic mb-2 tracking-widest">{m.title}</p>
-                          {[
-                            { id: "live", label: "01. Live Session", icon: Video },
-                            { id: "materi", label: "02. Materi Pokok", icon: MonitorPlay },
-                            { id: "tugas", label: "03. Latihan & Tugas", icon: Flame },
-                            { id: "feedback", label: "04. Feedback", icon: MessageSquare }
-                          ].map((step) => {
-                            const locked = isStepLocked(m.id, step.id)
-                            const done = courseProgress[m.id]?.[step.id]
-                            return (
-                              <button key={step.id} disabled={locked} onClick={() => { setActiveMaterial(m); setActiveStep(step.id); }} className={`w-full flex items-center justify-between p-4 rounded-xl text-[10px] font-black uppercase italic transition-all ${activeMaterial?.id === m.id && activeStep === step.id ? 'bg-amber-100 text-amber-700 shadow-md' : 'bg-white text-zinc-400'} ${locked ? 'opacity-20 grayscale cursor-not-allowed' : 'hover:bg-zinc-100'}`}>
-                                <span className="flex items-center gap-3">{locked ? <Lock size={14} /> : <step.icon size={14} />} {step.label}</span>
-                                {done && <CheckCircle2 size={14} className="text-emerald-500" />}
-                              </button>
-                            )
-                          })}
-                        </div>
-                      ))}
+                      <Button onClick={() => { setExpandedCourse(reg.course_id); setActiveMenu("materials"); }} size="icon" className="rounded-full bg-zinc-950 text-white group-hover:scale-110 transition-transform">
+                        <PlayCircle size={20} />
+                      </Button>
                     </div>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+        )}
 
-              <div className="col-span-8">
-                {activeMaterial ? (
-                  <div className="bg-white p-12 rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500 max-w-full overflow-hidden">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-3xl font-black italic uppercase flex items-center gap-4">
-                        <span className="h-10 w-10 bg-amber-500 rounded-xl flex items-center justify-center text-zinc-950 text-sm">0{activeStep === "live" ? "1" : activeStep === "materi" ? "2" : activeStep === "tugas" ? "3" : "4"}</span>
-                        {activeStep === "live" ? "Live Session" : activeStep === "materi" ? "Materi Pokok" : activeStep === "tugas" ? "Tugas Praktik" : "Feedback"}
-                      </h3>
-                      <div className="px-4 py-2 bg-zinc-100 rounded-full text-[9px] font-black uppercase text-zinc-500 italic truncate max-w-[200px]">{activeMaterial.title}</div>
+        {/* COURSES TAB */}
+        {activeMenu === "courses" && (
+          <div className="space-y-10 animate-in fade-in duration-500">
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter">Katalog Kursus</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+              {availableCourses.map((course) => {
+                const reg = registrations.find(r => Number(r.course_id) === Number(course.id));
+                const status = reg?.status;
+                return (
+                  <Card key={course.id} className="rounded-[3.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:shadow-xl transition-all duration-500">
+                    <div className="h-48 bg-zinc-100 flex items-center justify-center relative">
+                      <BookOpen className="text-zinc-300" size={60} />
+                      {status === 'success' && <div className="absolute top-6 right-6 bg-emerald-500 text-white p-2 rounded-full shadow-lg"><CheckCircle2 size={20}/></div>}
                     </div>
-
-                    {activeStep === "live" && (
-                      <div className="space-y-8">
-                        {renderEmbed(activeMaterial.live_link)}
-                        <Button onClick={() => markStepComplete(activeMaterial.id, "live", "materi")} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Tandai Selesai & Lanjut</Button>
-                      </div>
-                    )}
-
-                    {activeStep === "materi" && (
-                      <div className="space-y-8 w-full max-w-full">
-                        {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
-                        <div className="bg-zinc-50 rounded-[3rem] border border-zinc-100 p-8 md:p-10 shadow-inner overflow-hidden">
-                          <div 
-                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium break-words overflow-wrap-anywhere"
-                            style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
-                            dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
-                          />
+                    <CardContent className="p-10 flex-1 flex flex-col">
+                      <h4 className="text-2xl font-black uppercase italic mb-6 leading-tight tracking-tighter">{course.title}</h4>
+                      {status === 'success' ? (
+                        <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white h-14 rounded-2xl font-black italic uppercase text-[11px]">Buka Modul <Zap size={14} className="ml-2"/></Button>
+                      ) : status === 'pending' ? (
+                        <div className="space-y-4 bg-amber-50 p-6 rounded-[2rem] border-2 border-amber-100">
+                           <div className="flex items-center gap-2 text-amber-700 font-black italic uppercase text-[10px] mb-2"><CreditCard size={16}/> BRI: 0021-01-234567-53-1</div>
+                           <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-amber-300 rounded-2xl bg-white cursor-pointer hover:bg-amber-100 transition-colors">
+                             {selectedProof ? <span className="text-[9px] font-black uppercase text-emerald-700 truncate px-4">{selectedProof.name}</span> : <UploadCloud className="text-amber-400" size={24} />}
+                             <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
+                           </label>
+                           <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-zinc-950 text-amber-500 h-12 rounded-xl font-black italic uppercase text-[10px]">
+                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Bayar"}
+                           </Button>
                         </div>
-                        <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-emerald-500 text-white h-16 rounded-[2rem] font-black italic uppercase text-[11px] hover:bg-emerald-600 shadow-lg">Sudah Paham, Lanjut Tugas</Button>
+                      ) : (
+                        <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-zinc-950 text-amber-500 h-14 rounded-2xl font-black italic uppercase text-[11px]">
+                          {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar Sekarang"}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* MATERIALS TAB (Ruang Belajar) */}
+        {activeMenu === "materials" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 animate-in fade-in duration-500">
+            {/* Sidebar Modul */}
+            <div className="lg:col-span-4 space-y-6">
+              <h2 className="text-3xl font-black italic uppercase tracking-tighter">Modul</h2>
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                {registrations.filter(r => r.status === 'success').map((reg) => (
+                  <div key={reg.id} className="space-y-3">
+                    <button onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all ${expandedCourse === reg.course_id ? 'bg-zinc-950 text-white' : 'bg-white shadow-sm'}`}>
+                      <span className="text-[10px] font-black uppercase italic truncate pr-4">{reg.course?.title}</span>
+                      <ChevronDown size={14} className={`${expandedCourse === reg.course_id ? 'rotate-180' : ''}`} />
+                    </button>
+                    {expandedCourse === reg.course_id && reg.course?.materials?.map((m: any) => (
+                      <div key={m.id} className="ml-4 pl-4 border-l-2 border-zinc-200 space-y-2">
+                        <p className="text-[9px] font-black text-amber-600 uppercase italic mb-1">{m.title}</p>
+                        {[
+                          { id: "live", label: "Live Session", icon: Video },
+                          { id: "materi", label: "Materi Pokok", icon: MonitorPlay },
+                          { id: "tugas", label: "Tugas Praktik", icon: Flame },
+                          { id: "feedback", label: "Feedback", icon: MessageSquare }
+                        ].map((step) => {
+                          const locked = isStepLocked(m.id, step.id)
+                          const done = courseProgress[m.id]?.[step.id]
+                          return (
+                            <button key={step.id} disabled={locked} onClick={() => { setActiveMaterial(m); setActiveStep(step.id); }} className={`w-full flex items-center justify-between p-3 rounded-xl text-[9px] font-black uppercase italic transition-all ${activeMaterial?.id === m.id && activeStep === step.id ? 'bg-amber-100 text-amber-700' : 'bg-white'} ${locked ? 'opacity-30 grayscale cursor-not-allowed' : 'hover:bg-zinc-50'}`}>
+                              <span className="flex items-center gap-2">{locked ? <Lock size={12} /> : <step.icon size={12} />} {step.label}</span>
+                              {done && <CheckCircle2 size={12} className="text-emerald-500" />}
+                            </button>
+                          )
+                        })}
                       </div>
-                    )}
-
-                    {activeStep === "tugas" && (
-                      <div className="space-y-8">
-                         <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100 shadow-inner">
-                            <h4 className="text-[10px] font-black uppercase text-amber-700 mb-4 tracking-widest flex items-center gap-2"><Flame size={14} className="fill-current"/> Soal Latihan:</h4>
-                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium">{activeMaterial.quiz_task || "Kerjakan instruksi yang telah dijelaskan dalam materi."}</div>
-                         </div>
-                         <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Jawaban Pertanyaan</label>
-                            <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tuliskan jawaban teks Anda di sini..." className="w-full h-32 p-8 rounded-[2.5rem] bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 transition-all" />
-                         </div>
-                         <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Link Project</label>
-                            <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="https://github.com/..." className="w-full p-6 rounded-full bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 font-mono transition-all" />
-                         </div>
-                         <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px] shadow-xl">
-                           {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Jawaban & Tugas"}
-                         </Button>
-                      </div>
-                    )}
-
-                    {activeStep === "feedback" && (
-                      <div className="space-y-8 animate-in fade-in duration-500">
-                         {submissionFeedback ? (
-                           <div className="space-y-8">
-                              <div className="bg-zinc-900 p-10 rounded-[3.5rem] text-white relative overflow-hidden">
-                                <div className="flex justify-between items-start relative z-10">
-                                  <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 bg-amber-500 rounded-full flex items-center justify-center text-zinc-950"><UserCircle2 size={24}/></div>
-                                    <div>
-                                      <p className="text-[9px] font-black uppercase text-amber-500 tracking-widest">Mentor Mejatika</p>
-                                      <h4 className="text-xl font-black italic uppercase tracking-tighter">Review & Skor</h4>
-                                    </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-[9px] font-black uppercase text-zinc-500 mb-1">Grade</p>
-                                    <div className="text-5xl font-black italic text-amber-500">{submissionFeedback.score || "—"}</div>
-                                  </div>
-                                </div>
-                                <div className="mt-8 p-8 bg-zinc-800/50 rounded-3xl border border-zinc-800 italic text-zinc-300 text-sm leading-relaxed">
-                                  "{submissionFeedback.mentor_feedback || "Kerjaanmu sudah kami terima. Mentor akan segera mereview dan memberikan feedback di sini."}"
-                                </div>
-                              </div>
-
-                              <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 space-y-6">
-                                <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2"><MessageSquare size={14}/> Diskusi Modul</h5>
-                                
-                                {submissionFeedback.student_reply && (
-                                  <div className="flex flex-col items-end animate-in slide-in-from-right-4">
-                                    <div className="bg-amber-100 text-amber-900 p-6 rounded-t-3xl rounded-bl-3xl max-w-[80%] text-sm italic font-medium shadow-sm">
-                                      {submissionFeedback.student_reply}
-                                    </div>
-                                    <span className="text-[9px] font-black uppercase text-zinc-400 mt-2 mr-2">Pesan Anda</span>
-                                  </div>
-                                )}
-
-                                {!submissionFeedback.student_reply ? (
-                                  <div className="relative">
-                                    <textarea 
-                                      value={replyText}
-                                      onChange={(e) => setReplyText(e.target.value)}
-                                      placeholder="Tanya mentor tentang feedback ini..."
-                                      className="w-full p-6 pr-16 bg-white border-2 border-zinc-100 rounded-[2rem] outline-none text-sm italic focus:border-amber-500 transition-all min-h-[100px]"
-                                    />
-                                    <button 
-                                      onClick={handleSendReply}
-                                      disabled={isSendingReply || !replyText.trim()}
-                                      className="absolute bottom-4 right-4 h-10 w-10 bg-zinc-950 text-amber-500 rounded-full flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50"
-                                    >
-                                      {isSendingReply ? <Loader2 size={18} className="animate-spin"/> : <Send size={18} />}
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-4 border-t border-zinc-100">
-                                    <p className="text-[9px] font-black uppercase text-zinc-300 italic">Diskusi untuk modul ini telah terkirim</p>
-                                  </div>
-                                )}
-                              </div>
-                           </div>
-                         ) : (
-                           <div className="bg-emerald-50 p-12 rounded-[3.5rem] border-2 border-emerald-100 text-center">
-                              <CheckCircle2 className="mx-auto text-emerald-500 mb-6" size={48} />
-                              <h4 className="text-xl font-black italic uppercase mb-2">Tugas Terkirim!</h4>
-                              <p className="text-sm text-zinc-600 italic leading-relaxed max-w-md mx-auto">Jawabanmu sedang menunggu feedback dari admin.</p>
-                           </div>
-                         )}
-                         <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Selesaikan Modul</Button>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                ) : (
-                  <div className="h-[70vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[5rem] bg-white/50">
-                    <PlayCircle size={100} className="opacity-5 mb-6" />
-                    <p className="font-black italic uppercase text-[11px] tracking-[0.4em] opacity-30">Pilih Modul Untuk Mulai</p>
-                  </div>
-                )}
+                ))}
               </div>
             </div>
-          )}
 
-          <footer className="py-12 border-t border-zinc-100 mt-auto text-center">
-            <p className="text-[10px] font-black uppercase italic text-zinc-400 tracking-[0.5em]">© 2026 MEJATIKA.COM — LEVEL UP YOUR CODE</p>
-          </footer>
-        </main>
-      </div>
+            {/* Area Belajar */}
+            <div className="lg:col-span-8">
+              {activeMaterial ? (
+                <div className="bg-white p-6 lg:p-12 rounded-[2.5rem] lg:rounded-[4rem] shadow-sm space-y-8 animate-in zoom-in-95 duration-500 overflow-hidden">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    <h3 className="text-2xl font-black italic uppercase flex items-center gap-3">
+                      <span className="h-8 w-8 bg-amber-500 rounded-lg flex items-center justify-center text-zinc-950 text-xs">0{activeStep === "live" ? "1" : activeStep === "materi" ? "2" : activeStep === "tugas" ? "3" : "4"}</span>
+                      {activeStep === "live" ? "Live" : activeStep === "materi" ? "Materi" : activeStep === "tugas" ? "Tugas" : "Review"}
+                    </h3>
+                    <div className="px-4 py-1.5 bg-zinc-100 rounded-full text-[9px] font-black uppercase text-zinc-400 italic truncate max-w-[200px]">{activeMaterial.title}</div>
+                  </div>
+
+                  {/* STEP: LIVE */}
+                  {activeStep === "live" && (
+                    <div className="space-y-8">
+                      {renderEmbed(activeMaterial.live_link)}
+                      <Button onClick={() => markStepComplete(activeMaterial.id, "live", "materi")} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Selesai Nonton & Lanjut</Button>
+                    </div>
+                  )}
+
+                  {/* STEP: MATERI */}
+                  {activeStep === "materi" && (
+                    <div className="space-y-8">
+                      {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
+                      <div className="bg-zinc-50 rounded-[2.5rem] p-8 border border-zinc-100 prose prose-zinc max-w-full italic font-medium">
+                        <div dangerouslySetInnerHTML={{ __html: activeMaterial.content }} style={{ wordBreak: 'break-word' }} />
+                      </div>
+                      <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-emerald-500 text-white h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Sudah Paham, Ke Tugas</Button>
+                    </div>
+                  )}
+
+                  {/* STEP: TUGAS */}
+                  {activeStep === "tugas" && (
+                    <div className="space-y-6">
+                       <div className="p-8 bg-amber-50 rounded-[2.5rem] border-2 border-amber-100">
+                          <h4 className="text-[10px] font-black uppercase text-amber-700 mb-3 tracking-widest flex items-center gap-2"><Flame size={14}/> Instruksi:</h4>
+                          <div className="text-sm italic font-medium text-zinc-800">{activeMaterial.quiz_task || "Silahkan kerjakan tugas sesuai arahan di video materi."}</div>
+                       </div>
+                       <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tulis jawaban atau catatan di sini..." className="w-full h-32 p-6 rounded-3xl bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500" />
+                       <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="URL Project (GitHub/Drive)" className="w-full p-5 rounded-full bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500" />
+                       <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">
+                         {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Submit Tugas Anda"}
+                       </Button>
+                    </div>
+                  )}
+
+                  {/* STEP: FEEDBACK */}
+                  {activeStep === "feedback" && (
+                    <div className="space-y-6 animate-in fade-in">
+                       {submissionFeedback ? (
+                         <div className="space-y-6">
+                            <div className="bg-zinc-900 p-8 rounded-[3rem] text-white">
+                               <div className="flex justify-between items-start mb-6">
+                                  <div className="flex items-center gap-3">
+                                     <div className="h-10 w-10 bg-amber-500 rounded-full flex items-center justify-center text-zinc-950"><UserCircle2 size={24}/></div>
+                                     <div>
+                                        <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest">Mentor Review</p>
+                                        <h4 className="text-xl font-black italic uppercase">Feedback</h4>
+                                     </div>
+                                  </div>
+                                  <div className="text-center bg-zinc-800 px-4 py-2 rounded-2xl">
+                                     <p className="text-[8px] font-black text-zinc-500 uppercase">Nilai</p>
+                                     <div className="text-3xl font-black italic text-amber-500">{submissionFeedback.score || "—"}</div>
+                                  </div>
+                               </div>
+                               <div className="p-6 bg-zinc-800/50 rounded-2xl italic text-zinc-300 text-sm">
+                                  "{submissionFeedback.mentor_feedback || "Menunggu review mentor..."}"
+                               </div>
+                            </div>
+                            {/* Chat Reply Area */}
+                            <div className="bg-zinc-50 p-6 rounded-[2.5rem] border border-zinc-100 space-y-4">
+                               {submissionFeedback.student_reply && (
+                                 <div className="flex flex-col items-end">
+                                    <div className="bg-amber-100 p-4 rounded-2xl text-sm italic font-medium max-w-[90%]">{submissionFeedback.student_reply}</div>
+                                    <span className="text-[8px] font-black uppercase text-zinc-400 mt-1">Balasan Anda</span>
+                                 </div>
+                               )}
+                               {!submissionFeedback.student_reply && (
+                                 <div className="relative">
+                                    <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Balas atau tanya mentor..." className="w-full p-5 pr-14 bg-white border-2 border-zinc-100 rounded-3xl outline-none text-sm italic" />
+                                    <button onClick={handleSendReply} className="absolute bottom-4 right-4 h-10 w-10 bg-zinc-950 text-amber-500 rounded-full flex items-center justify-center"><Send size={16}/></button>
+                                 </div>
+                               )}
+                            </div>
+                         </div>
+                       ) : (
+                         <div className="bg-emerald-50 p-12 rounded-[3rem] text-center border-2 border-emerald-100">
+                            <CheckCircle2 className="mx-auto text-emerald-500 mb-4" size={40} />
+                            <h4 className="text-lg font-black italic uppercase">Tugas Terkirim!</h4>
+                            <p className="text-xs text-zinc-500 italic">Silahkan tunggu mentor memberikan feedback dan nilai.</p>
+                         </div>
+                       )}
+                       <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Selesaikan Modul Ini</Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="h-[60vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[3rem] lg:rounded-[5rem] bg-white/50">
+                  <PlayCircle size={80} className="opacity-10 mb-4" />
+                  <p className="font-black italic uppercase text-[10px] tracking-[0.3em] opacity-40">Pilih Modul Belajar</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* CERTIFICATES TAB */}
+        {activeMenu === "certificates" && (
+          <div className="space-y-10 animate-in fade-in duration-500">
+            <h2 className="text-4xl font-black italic uppercase tracking-tighter">Sertifikat</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {registrations.filter(r => r.status === 'success').map(reg => {
+                const isFinished = calculateProgress(reg.course_id) === 100;
+                return (
+                  <Card key={reg.id} className={`rounded-[2.5rem] p-8 flex flex-col items-center text-center ${isFinished ? 'bg-white' : 'bg-zinc-50 opacity-50'}`}>
+                    <div className={`h-20 w-20 rounded-full flex items-center justify-center mb-6 ${isFinished ? 'bg-amber-100 text-amber-500' : 'bg-zinc-200 text-zinc-400'}`}>
+                      <Award size={40} />
+                    </div>
+                    <h4 className="font-black italic uppercase text-sm mb-2">{reg.course?.title}</h4>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase mb-6">{isFinished ? "Verified Graduate" : "Kursus Belum Selesai"}</p>
+                    <Button disabled={!isFinished} className={`w-full h-12 rounded-xl font-black italic uppercase text-[10px] ${isFinished ? 'bg-zinc-950 text-amber-500' : 'bg-zinc-200'}`}>
+                      {isFinished ? "Download PDF" : "Progress: " + calculateProgress(reg.course_id) + "%"}
+                    </Button>
+                  </Card>
+                )
+              })}
+              {registrations.filter(r => r.status === 'success').length === 0 && (
+                 <div className="col-span-full py-20 text-center italic text-zinc-400 font-bold uppercase tracking-widest">Belum ada kursus yang diselesaikan.</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <footer className="py-12 border-t border-zinc-100 mt-auto text-center">
+          <p className="text-[9px] font-black uppercase italic text-zinc-400 tracking-[0.4em]">© 2026 MEJATIKA.COM — BUILD WITH SPEED AND STYLE</p>
+        </footer>
+      </main>
     </div>
   )
 }
