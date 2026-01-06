@@ -9,7 +9,7 @@ import {
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
-  Send, UserCircle2, Menu, X, Star
+  Send, UserCircle2, Menu, X, Star, RefreshCw
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -23,7 +23,7 @@ export default function StudentDashboard() {
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<any>(null)
-  const [sidebarOpen, setSidebarOpen] = useState(false) // State untuk mobile
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   
   const [selectedProof, setSelectedProof] = useState<File | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
@@ -61,7 +61,7 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Fetch Status Tugas & Feedback
+  // 2. Fetch Status Tugas & Feedback (SEKALIGUS UNTUK EDIT)
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
@@ -70,11 +70,18 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
-      setSubmissionFeedback(data.data || data)
+      const submission = data.data || data
+      setSubmissionFeedback(submission)
+      
+      // Auto-fill input jika sudah ada data sebelumnya (UNTUK FITUR UPDATE)
+      if (submission && activeStep === "tugas") {
+        setStudentAnswer(submission.student_answer || "")
+        setTaskLink(submission.project_link || "")
+      }
     } catch (err) {
       console.error("Gagal mengambil status submission")
     }
-  }, [activeMaterial])
+  }, [activeMaterial, activeStep])
 
   useEffect(() => {
     fetchData()
@@ -82,8 +89,9 @@ export default function StudentDashboard() {
     if (saved) setCourseProgress(JSON.parse(saved))
   }, [fetchData])
 
+  // Menjalankan fetch submission saat pindah ke step tugas atau feedback
   useEffect(() => {
-    if (activeStep === "feedback" && activeMaterial) {
+    if ((activeStep === "feedback" || activeStep === "tugas") && activeMaterial) {
       fetchSubmissionStatus()
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
@@ -104,7 +112,6 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // Logika-logika action (Reply, Submit, Enroll, Upload) tetap sama seperti kode Anda...
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
@@ -119,20 +126,47 @@ export default function StudentDashboard() {
     } catch (err) { alert("Terjadi kesalahan koneksi") } finally { setIsSendingReply(false) }
   }
 
+  // MODIFIKASI: Mendukung POST (Baru) dan PUT (Update)
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
+    
     const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
     if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
+    
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
+    
+    // Jika sudah ada submissionFeedback.id, berarti kita melakukan UPDATE (PUT)
+    const isUpdate = submissionFeedback && submissionFeedback.id
+    const url = isUpdate 
+      ? `https://backend.mejatika.com/api/submissions/${submissionFeedback.id}`
+      : `https://backend.mejatika.com/api/submissions`
+    
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/submissions`, {
-        method: "POST",
+      const res = await fetch(url, {
+        method: isUpdate ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-        body: JSON.stringify({ material_id: activeMaterial.id, registration_id: currentReg.id, student_answer: studentAnswer, project_link: taskLink })
+        body: JSON.stringify({ 
+          material_id: activeMaterial.id, 
+          registration_id: currentReg.id, 
+          student_answer: studentAnswer, 
+          project_link: taskLink 
+        })
       })
-      if (res.ok) { alert("Tugas berhasil dikirim!"); markStepComplete(activeMaterial.id, "tugas", "feedback"); setStudentAnswer(""); setTaskLink(""); }
-    } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
+      
+      if (res.ok) { 
+        alert(isUpdate ? "Tugas berhasil diperbarui!" : "Tugas berhasil dikirim!")
+        markStepComplete(activeMaterial.id, "tugas", "feedback")
+      } else {
+        const errData = await res.json()
+        alert(errData.message || "Gagal mengirim tugas")
+      }
+    } catch (err) { 
+      console.error(err)
+      alert("Terjadi kesalahan sistem") 
+    } finally { 
+      setIsSubmittingTask(false) 
+    }
   }
 
   const markStepComplete = (materialId: number, currentStep: string, nextStep: string | null) => {
@@ -405,10 +439,31 @@ export default function StudentDashboard() {
                           <h4 className="text-[10px] font-black uppercase text-amber-700 mb-3 tracking-widest flex items-center gap-2"><Flame size={14}/> Instruksi:</h4>
                           <div className="text-sm italic font-medium text-zinc-800">{activeMaterial.quiz_task || "Silahkan kerjakan tugas sesuai arahan di video materi."}</div>
                        </div>
-                       <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tulis jawaban atau catatan di sini..." className="w-full h-32 p-6 rounded-3xl bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500" />
-                       <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="URL Project (GitHub/Drive)" className="w-full p-5 rounded-full bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500" />
-                       <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">
-                         {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Submit Tugas Anda"}
+                       
+                       {/* Label Informasi jika sedang Edit */}
+                       {submissionFeedback && (
+                         <div className="flex items-center gap-2 px-6 py-2 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black italic uppercase w-fit">
+                           <RefreshCw size={12} className="animate-spin-slow" /> Anda sedang mengedit tugas yang sudah dikirim
+                         </div>
+                       )}
+
+                       <textarea 
+                        value={studentAnswer} 
+                        onChange={(e) => setStudentAnswer(e.target.value)} 
+                        placeholder="Tulis jawaban atau catatan di sini..." 
+                        className="w-full h-32 p-6 rounded-3xl bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500" 
+                       />
+                       
+                       <input 
+                        type="text" 
+                        value={taskLink} 
+                        onChange={(e) => setTaskLink(e.target.value)} 
+                        placeholder="URL Project (GitHub/Drive)" 
+                        className="w-full p-5 rounded-full bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500" 
+                       />
+
+                       <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className={`w-full h-16 rounded-[2rem] font-black italic uppercase text-[11px] ${submissionFeedback ? 'bg-emerald-600 text-white' : 'bg-zinc-950 text-amber-500'}`}>
+                         {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Tugas Anda" : "Submit Tugas Anda")}
                        </Button>
                     </div>
                   )}
@@ -436,6 +491,16 @@ export default function StudentDashboard() {
                                   "{submissionFeedback.mentor_feedback || "Menunggu review mentor..."}"
                                </div>
                             </div>
+
+                            {/* Tombol Revisi: Membawa balik ke tab tugas */}
+                            <Button 
+                              variant="outline"
+                              onClick={() => setActiveStep("tugas")}
+                              className="w-full border-2 border-zinc-200 rounded-2xl font-black italic uppercase text-[10px] h-12 hover:bg-zinc-50"
+                            >
+                              <RefreshCw size={14} className="mr-2" /> Perbaiki / Update Tugas
+                            </Button>
+
                             {/* Chat Reply Area */}
                             <div className="bg-zinc-50 p-6 rounded-[2.5rem] border border-zinc-100 space-y-4">
                                {submissionFeedback.student_reply && (
