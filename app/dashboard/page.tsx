@@ -8,7 +8,8 @@ import {
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
-  Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud
+  Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
+  Send, UserCircle2 // Tambahkan icon baru
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -31,8 +32,10 @@ export default function StudentDashboard() {
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
   const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
   
-  // State baru untuk menampung feedback dari tabel submissions
+  // State untuk feedback dan fitur reply
   const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
+  const [replyText, setReplyText] = useState("") // State input balasan
+  const [isSendingReply, setIsSendingReply] = useState(false) // State loading kirim balasan
 
   useEffect(() => {
     fetchData()
@@ -40,7 +43,6 @@ export default function StudentDashboard() {
     if (saved) setCourseProgress(JSON.parse(saved))
   }, [])
 
-  // Auto-fetch feedback saat masuk ke tab feedback
   useEffect(() => {
     if (activeStep === "feedback" && activeMaterial) {
       fetchSubmissionStatus();
@@ -83,18 +85,39 @@ export default function StudentDashboard() {
     }
   }
 
+  // FUNGSI BARU: Mengirim balasan siswa ke mentor
+  const handleSendReply = async () => {
+    if (!replyText.trim()) return
+    setIsSendingReply(true)
+    const token = localStorage.getItem("token")
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify({ student_reply: replyText })
+      })
+      if (res.ok) {
+        setReplyText("")
+        fetchSubmissionStatus() // Refresh data feedback agar chat muncul
+      }
+    } catch (err) {
+      alert("Gagal mengirim balasan")
+    } finally {
+      setIsSendingReply(false)
+    }
+  }
+
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
-    
-    // Mencari pendaftaran yang aktif untuk kursus ini
     const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
     if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
 
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
-    
     try {
-      // MENGIRIM KE TABEL SUBMISSIONS (BARU)
       const res = await fetch(`https://backend.mejatika.com/api/submissions`, {
         method: "POST",
         headers: { 
@@ -109,15 +132,11 @@ export default function StudentDashboard() {
           project_link: taskLink 
         })
       })
-
       if (res.ok) {
         alert("Tugas berhasil dikirim ke folder submission!");
         markStepComplete(activeMaterial.id, "tugas", "feedback");
         setStudentAnswer("");
         setTaskLink("");
-      } else {
-        // Jika gagal di backend, tetap izinkan lanjut (opsional) atau tampilkan error
-        markStepComplete(activeMaterial.id, "tugas", "feedback")
       }
     } catch (err) {
       markStepComplete(activeMaterial.id, "tugas", "feedback")
@@ -296,14 +315,10 @@ export default function StudentDashboard() {
                 <div className="space-y-5 max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar">
                   {registrations.filter(r => r.status === 'success').map((reg) => (
                     <div key={reg.id} className="space-y-4">
-                      <button 
-                        onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} 
-                        className={`w-full p-6 rounded-[2rem] flex items-center justify-between transition-all duration-500 ${expandedCourse === reg.course_id ? 'bg-zinc-950 text-white shadow-2xl scale-105' : 'bg-white shadow-sm'}`}
-                      >
+                      <button onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} className={`w-full p-6 rounded-[2rem] flex items-center justify-between transition-all duration-500 ${expandedCourse === reg.course_id ? 'bg-zinc-950 text-white shadow-2xl scale-105' : 'bg-white shadow-sm'}`}>
                         <span className="text-[11px] font-black uppercase italic truncate">{reg.course?.title}</span>
                         <ChevronDown size={16} className={`${expandedCourse === reg.course_id ? 'rotate-180' : ''}`} />
                       </button>
-                      
                       {expandedCourse === reg.course_id && reg.course?.materials?.map((m: any) => (
                         <div key={m.id} className="ml-6 space-y-3 border-l-4 border-zinc-200 pl-6 py-2">
                           <p className="text-[10px] font-black text-amber-600 uppercase italic mb-2 tracking-widest">{m.title}</p>
@@ -316,12 +331,7 @@ export default function StudentDashboard() {
                             const locked = isStepLocked(m.id, step.id)
                             const done = courseProgress[m.id]?.[step.id]
                             return (
-                              <button 
-                                key={step.id} 
-                                disabled={locked} 
-                                onClick={() => { setActiveMaterial(m); setActiveStep(step.id); }} 
-                                className={`w-full flex items-center justify-between p-4 rounded-xl text-[10px] font-black uppercase italic transition-all ${activeMaterial?.id === m.id && activeStep === step.id ? 'bg-amber-100 text-amber-700 shadow-md' : 'bg-white text-zinc-400'} ${locked ? 'opacity-20 grayscale cursor-not-allowed' : 'hover:bg-zinc-100'}`}
-                              >
+                              <button key={step.id} disabled={locked} onClick={() => { setActiveMaterial(m); setActiveStep(step.id); }} className={`w-full flex items-center justify-between p-4 rounded-xl text-[10px] font-black uppercase italic transition-all ${activeMaterial?.id === m.id && activeStep === step.id ? 'bg-amber-100 text-amber-700 shadow-md' : 'bg-white text-zinc-400'} ${locked ? 'opacity-20 grayscale cursor-not-allowed' : 'hover:bg-zinc-100'}`}>
                                 <span className="flex items-center gap-3">{locked ? <Lock size={14} /> : <step.icon size={14} />} {step.label}</span>
                                 {done && <CheckCircle2 size={14} className="text-emerald-500" />}
                               </button>
@@ -357,9 +367,7 @@ export default function StudentDashboard() {
                         {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
                         <div className="bg-zinc-50 rounded-[3rem] border border-zinc-100 p-8 md:p-10 shadow-inner overflow-hidden">
                           <div 
-                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium 
-                                       break-words overflow-wrap-anywhere
-                                       [&>p]:mb-4 [&>p]:leading-relaxed"
+                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium break-words overflow-wrap-anywhere"
                             style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                             dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
                           />
@@ -371,33 +379,18 @@ export default function StudentDashboard() {
                     {activeStep === "tugas" && (
                       <div className="space-y-8">
                          <div className="p-10 bg-amber-50 rounded-[3rem] border-2 border-amber-100 shadow-inner">
-                            <h4 className="text-[10px] font-black uppercase text-amber-700 mb-4 tracking-widest flex items-center gap-2">
-                               <Flame size={14} className="fill-current"/> Soal Latihan:
-                            </h4>
-                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium">
-                              {activeMaterial.quiz_task || "Kerjakan instruksi yang telah dijelaskan dalam materi."}
-                            </div>
+                            <h4 className="text-[10px] font-black uppercase text-amber-700 mb-4 tracking-widest flex items-center gap-2"><Flame size={14} className="fill-current"/> Soal Latihan:</h4>
+                            <div className="text-sm text-zinc-800 leading-relaxed italic font-medium">{activeMaterial.quiz_task || "Kerjakan instruksi yang telah dijelaskan dalam materi."}</div>
                          </div>
                          <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Jawaban Pertanyaan (student_answer)</label>
-                            <textarea 
-                               value={studentAnswer} 
-                               onChange={(e) => setStudentAnswer(e.target.value)} 
-                               placeholder="Tuliskan jawaban teks Anda di sini..." 
-                               className="w-full h-32 p-8 rounded-[2.5rem] bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 transition-all" 
-                            />
+                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Jawaban Pertanyaan</label>
+                            <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tuliskan jawaban teks Anda di sini..." className="w-full h-32 p-8 rounded-[2.5rem] bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 transition-all" />
                          </div>
                          <div className="space-y-3">
-                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Link Project (project_link)</label>
-                            <input 
-                               type="text"
-                               value={taskLink} 
-                               onChange={(e) => setTaskLink(e.target.value)} 
-                               placeholder="https://github.com/..." 
-                               className="w-full p-6 rounded-full bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 font-mono transition-all" 
-                            />
+                            <label className="text-[10px] font-black uppercase text-zinc-400 ml-4">Link Project</label>
+                            <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="https://github.com/..." className="w-full p-6 rounded-full bg-zinc-50 outline-none text-sm border-2 border-zinc-100 focus:border-amber-500 font-mono transition-all" />
                          </div>
-                         <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px] shadow-xl hover:scale-[1.01] transition-transform">
+                         <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px] shadow-xl">
                            {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Jawaban & Tugas"}
                          </Button>
                       </div>
@@ -406,28 +399,61 @@ export default function StudentDashboard() {
                     {activeStep === "feedback" && (
                       <div className="space-y-8 animate-in fade-in duration-500">
                          {submissionFeedback ? (
-                           <div className="space-y-6">
-                              <div className="bg-zinc-900 p-10 rounded-[3rem] text-white relative overflow-hidden">
+                           <div className="space-y-8">
+                              {/* BOX FEEDBACK MENTOR */}
+                              <div className="bg-zinc-900 p-10 rounded-[3.5rem] text-white relative overflow-hidden">
                                 <div className="flex justify-between items-start relative z-10">
-                                  <div>
-                                    <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-2">Hasil Penilaian</p>
-                                    <h4 className="text-2xl font-black italic uppercase tracking-tighter">Review Mentor</h4>
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 bg-amber-500 rounded-full flex items-center justify-center text-zinc-950"><UserCircle2 size={24}/></div>
+                                    <div>
+                                      <p className="text-[9px] font-black uppercase text-amber-500 tracking-widest">Mentor Mejatika</p>
+                                      <h4 className="text-xl font-black italic uppercase tracking-tighter">Review & Skor</h4>
+                                    </div>
                                   </div>
                                   <div className="text-right">
-                                    <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">Skor</p>
-                                    <div className="text-5xl font-black italic text-amber-500">{submissionFeedback.score || 0}</div>
+                                    <p className="text-[9px] font-black uppercase text-zinc-500 mb-1">Grade</p>
+                                    <div className="text-5xl font-black italic text-amber-500">{submissionFeedback.score || "—"}</div>
                                   </div>
                                 </div>
-                                <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/10 italic text-zinc-300 text-sm">
-                                  {submissionFeedback.mentor_feedback || "Mentor sedang memeriksa jawabanmu. Sabar ya!"}
+                                <div className="mt-8 p-8 bg-zinc-800/50 rounded-3xl border border-zinc-800 italic text-zinc-300 text-sm leading-relaxed">
+                                  "{submissionFeedback.mentor_feedback || "Kerjaanmu sudah kami terima. Mentor akan segera mereview dan memberikan feedback di sini."}"
                                 </div>
                               </div>
-                              <div className="bg-emerald-50 p-6 rounded-[2.5rem] border-2 border-emerald-100 flex items-center gap-4">
-                                <CheckCircle2 className="text-emerald-500" size={32} />
-                                <div>
-                                  <p className="text-[10px] font-black uppercase text-emerald-700">Status Modul</p>
-                                  <p className="text-sm font-black italic uppercase">Tugas Sudah Terarsip di Database</p>
-                                </div>
+
+                              {/* FITUR REPLAY CHAT / DISKUSI */}
+                              <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 space-y-6">
+                                <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2"><MessageSquare size={14}/> Diskusi Modul</h5>
+                                
+                                {/* Bubble Chat Balasan Siswa jika sudah ada */}
+                                {submissionFeedback.student_reply && (
+                                  <div className="flex flex-col items-end animate-in slide-in-from-right-4">
+                                    <div className="bg-amber-100 text-amber-900 p-6 rounded-t-3xl rounded-bl-3xl max-w-[80%] text-sm italic font-medium shadow-sm">
+                                      {submissionFeedback.student_reply}
+                                    </div>
+                                    <span className="text-[9px] font-black uppercase text-zinc-400 mt-2 mr-2">Pesan Anda</span>
+                                  </div>
+                                )}
+
+                                {/* Input Balasan (Hanya muncul jika siswa belum membalas) */}
+                                {!submissionFeedback.student_reply ? (
+                                  <div className="relative">
+                                    <textarea 
+                                      value={replyText}
+                                      onChange={(e) => setReplyText(e.target.value)}
+                                      placeholder="Tanya mentor tentang feedback ini..."
+                                      className="w-full p-6 pr-16 bg-white border-2 border-zinc-100 rounded-[2rem] outline-none text-sm italic focus:border-amber-500 transition-all min-h-[100px]"
+                                    />
+                                    <button 
+                                      onClick={handleSendReply}
+                                      disabled={isSendingReply || !replyText.trim()}
+                                      className="absolute bottom-4 right-4 h-10 w-10 bg-zinc-950 text-amber-500 rounded-full flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50"
+                                    >
+                                      {isSendingReply ? <Loader2 size={18} className="animate-spin"/> : <Send size={18} />}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <p className="text-[9px] text-center font-black uppercase text-zinc-300 italic">Diskusi untuk modul ini telah terkirim</p>
+                                )}
                               </div>
                            </div>
                          ) : (
