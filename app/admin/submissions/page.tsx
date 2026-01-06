@@ -14,7 +14,8 @@ import {
   Star, 
   Search,
   RefreshCcw,
-  AlertCircle
+  AlertCircle,
+  User
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Swal from 'sweetalert2'
@@ -28,15 +29,15 @@ export default function SubmissionsPage() {
 
   const [feedbackData, setFeedbackData] = useState({
     mentor_feedback: "",
-    material_score: 0
+    score: 0 // Sesuai kolom database baru
   })
 
-  // 1. PERBAIKAN: Fungsi Fetch Data yang sinkron dengan Backend
+  // 1. FETCH DATA: Mengambil dari tabel submissions
   const fetchData = async () => {
     setLoading(true)
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch("https://backend.mejatika.com/api/materials", {
+      const res = await fetch("https://backend.mejatika.com/api/admin/submissions", {
         headers: { 
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json"
@@ -44,15 +45,8 @@ export default function SubmissionsPage() {
       })
       const result = await res.json()
       
-      // Ambil dari result.data karena Backend membungkusnya
-      const allMaterials = result.data || []
-      
-      // Filter: Hanya yang sudah ada jawaban tapi belum dinilai atau perlu direview
-      const onlySubmissions = allMaterials.filter((m: any) => 
-        m.student_answer !== null && m.student_answer !== ""
-      )
-      
-      setSubmissions(onlySubmissions)
+      // Data sudah otomatis terfilter oleh logic "pasti punya jawaban" karena berada di tabel submissions
+      setSubmissions(result.data || [])
     } catch (err) {
       console.error("Fetch error:", err)
     } finally {
@@ -66,21 +60,21 @@ export default function SubmissionsPage() {
     setSelectedSub(sub)
     setFeedbackData({
       mentor_feedback: sub.mentor_feedback || "",
-      material_score: sub.material_score || 0
+      score: sub.score || 0
     })
   }
 
-  // 2. PERBAIKAN: Fungsi Submit Feedback (Metode PUT)
+  // 2. SUBMIT: Mengirim ke endpoint submissions/{id}
   const submitFeedback = async () => {
-    if (feedbackData.material_score < 0 || feedbackData.material_score > 100) {
+    if (feedbackData.score < 0 || feedbackData.score > 100) {
       return Swal.fire('Error', 'Skor harus antara 0-100', 'warning')
     }
 
     setIsUpdating(true)
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/materials/${selectedSub.id}`, {
-        method: "PUT", // Gunakan PUT langsung karena kita mengirim JSON
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/${selectedSub.id}`, {
+        method: "PUT",
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
@@ -92,7 +86,7 @@ export default function SubmissionsPage() {
       if (res.ok) {
         Swal.fire({
           title: 'Berhasil!',
-          text: 'Nilai dan feedback telah disimpan.',
+          text: 'Penilaian telah disimpan.',
           icon: 'success',
           timer: 1500,
           showConfirmButton: false
@@ -103,16 +97,16 @@ export default function SubmissionsPage() {
         throw new Error("Gagal update")
       }
     } catch (err) {
-      Swal.fire('Gagal', 'Terjadi kesalahan saat menyimpan data.', 'error')
+      Swal.fire('Gagal', 'Terjadi kesalahan saat menyimpan penilaian.', 'error')
     } finally {
       setIsUpdating(false)
     }
   }
 
-  // 3. FITUR: Filter Pencarian
+  // 3. FILTER: Cari berdasarkan judul materi ATAU nama siswa
   const filteredSubmissions = submissions.filter(sub => 
-    sub.title.toLowerCase().includes(search.toLowerCase()) || 
-    sub.course?.title.toLowerCase().includes(search.toLowerCase())
+    sub.material?.title.toLowerCase().includes(search.toLowerCase()) || 
+    sub.user?.name.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -123,14 +117,14 @@ export default function SubmissionsPage() {
           <h1 className="text-4xl font-black uppercase italic text-zinc-900 tracking-tighter">
             Submission <span className="text-amber-500">Review</span>
           </h1>
-          <p className="text-zinc-500 font-medium">Koreksi tugas dan berikan apresiasi kepada siswa.</p>
+          <p className="text-zinc-500 font-medium">Review jawaban dari para siswa Mejatika.</p>
         </div>
         
         <div className="flex gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input 
-              placeholder="Cari materi atau kursus..." 
+              placeholder="Cari materi atau nama siswa..." 
               className="pl-10 rounded-2xl bg-white border-zinc-200 h-12 shadow-sm focus:ring-amber-500" 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -146,15 +140,13 @@ export default function SubmissionsPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
           <Loader2 className="animate-spin text-amber-500 h-12 w-12" />
-          <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-xs">Memuat data submission...</p>
+          <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-xs">Menghubungkan ke tabel submissions...</p>
         </div>
       ) : filteredSubmissions.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] shadow-inner border border-zinc-100">
-          <div className="bg-zinc-50 p-6 rounded-full mb-4">
-            <AlertCircle className="h-12 w-12 text-zinc-300" />
-          </div>
-          <h3 className="text-zinc-900 font-black uppercase italic">Tidak Ada Antrean</h3>
-          <p className="text-zinc-400 text-sm">Belum ada tugas siswa yang perlu dikoreksi.</p>
+          <AlertCircle className="h-12 w-12 text-zinc-300 mb-4" />
+          <h3 className="text-zinc-900 font-black uppercase italic">Antrean Kosong</h3>
+          <p className="text-zinc-400 text-sm">Belum ada siswa yang mengirimkan tugas di tabel baru.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -163,35 +155,39 @@ export default function SubmissionsPage() {
               <motion.div
                 key={sub.id}
                 layout
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
               >
                 <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white hover:shadow-2xl transition-all border border-zinc-100 group">
                   <CardHeader className="bg-zinc-900 text-white p-6 group-hover:bg-zinc-800 transition-colors">
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-center mb-2">
                       <Badge className="bg-amber-500 text-white border-none text-[9px] uppercase font-black px-3">
-                        {sub.course?.title || "Umum"}
+                        {sub.material?.course?.title || "Materi"}
                       </Badge>
-                      {sub.material_score > 0 ? (
-                        <div className="flex items-center text-amber-400 gap-1 text-sm font-black">
-                          <Star size={14} fill="currentColor" /> {sub.material_score}
-                        </div>
-                      ) : (
-                        <Badge variant="outline" className="border-zinc-700 text-zinc-400 text-[9px] font-bold">BELUM DINILAI</Badge>
-                      )}
+                      <div className="flex items-center gap-1.5 text-zinc-400">
+                         <User size={12} />
+                         <span className="text-[10px] font-bold uppercase truncate max-w-[100px]">{sub.user?.name}</span>
+                      </div>
                     </div>
-                    <CardTitle className="mt-4 text-xl font-black italic uppercase leading-tight tracking-tighter">
-                      {sub.title}
+                    <CardTitle className="text-lg font-black italic uppercase leading-tight tracking-tighter line-clamp-2 min-h-[3rem]">
+                      {sub.material?.title}
                     </CardTitle>
+                    <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+                       <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Status Penilaian</span>
+                       {sub.score > 0 ? (
+                         <div className="flex items-center text-amber-400 gap-1 text-sm font-black">
+                           <Star size={14} fill="currentColor" /> {sub.score}
+                         </div>
+                       ) : (
+                         <span className="text-[10px] text-rose-400 font-black animate-pulse uppercase">Menunggu</span>
+                       )}
+                    </div>
                   </CardHeader>
                   <CardContent className="p-6 space-y-5">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Jawaban Siswa:</span>
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md italic">Baru saja</span>
-                      </div>
-                      <p className="text-sm text-zinc-600 line-clamp-4 bg-zinc-50 p-4 rounded-2xl border border-dashed border-zinc-200 font-medium italic">
+                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Konten Jawaban:</span>
+                      <p className="text-sm text-zinc-600 line-clamp-3 bg-zinc-50 p-4 rounded-2xl border border-dashed border-zinc-200 font-medium italic">
                         "{sub.student_answer}"
                       </p>
                     </div>
@@ -200,7 +196,7 @@ export default function SubmissionsPage() {
                       className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-2xl font-black uppercase italic text-xs h-14 shadow-lg shadow-zinc-100 transition-all"
                     >
                       <MessageSquare size={16} className="mr-2" /> 
-                      {sub.material_score > 0 ? "Edit Penilaian" : "Beri Nilai & Feedback"}
+                      Koreksi Tugas
                     </Button>
                   </CardContent>
                 </Card>
@@ -218,16 +214,17 @@ export default function SubmissionsPage() {
               <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter">
                 Review <span className="text-amber-500">Submission</span>
               </DialogTitle>
-              <p className="text-zinc-400 text-sm font-bold uppercase italic tracking-widest mt-1">
-                Materi: {selectedSub?.title}
-              </p>
+              <div className="mt-2 flex items-center gap-2">
+                 <Badge variant="outline" className="border-zinc-700 text-amber-500 font-black">{selectedSub?.user?.name}</Badge>
+                 <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest">— {selectedSub?.material?.title}</span>
+              </div>
             </DialogHeader>
           </div>
           
           <div className="p-8 space-y-6">
-            <div className="bg-zinc-50 p-5 rounded-[2rem] border border-zinc-100">
-              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Isi Jawaban Siswa</Label>
-              <div className="text-zinc-700 text-sm whitespace-pre-wrap font-medium leading-relaxed italic">
+            <div className="bg-zinc-50 p-6 rounded-[2rem] border border-zinc-100">
+              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Jawaban Lengkap Siswa</Label>
+              <div className="text-zinc-700 text-sm whitespace-pre-wrap font-medium leading-relaxed italic max-h-48 overflow-y-auto pr-2">
                 "{selectedSub?.student_answer}"
               </div>
             </div>
@@ -237,16 +234,16 @@ export default function SubmissionsPage() {
                 <Label className="font-black text-zinc-900 uppercase italic text-xs">Skor (0-100)</Label>
                 <Input 
                   type="number" 
-                  value={feedbackData.material_score}
-                  onChange={(e) => setFeedbackData({...feedbackData, material_score: parseInt(e.target.value) || 0})}
-                  className="h-14 rounded-2xl border-zinc-200 text-xl font-black text-center focus:ring-amber-500"
+                  value={feedbackData.score}
+                  onChange={(e) => setFeedbackData({...feedbackData, score: parseInt(e.target.value) || 0})}
+                  className="h-14 rounded-2xl border-zinc-200 text-2xl font-black text-center focus:ring-amber-500"
                 />
               </div>
               <div className="md:col-span-3 space-y-2">
                 <Label className="font-black text-zinc-900 uppercase italic text-xs">Feedback Mentor</Label>
                 <textarea 
                   className="w-full h-32 p-4 rounded-2xl border border-zinc-200 focus:ring-2 focus:ring-amber-500 outline-none text-sm font-medium"
-                  placeholder="Contoh: Kerja bagus! Pertahankan logikanya..."
+                  placeholder="Beri motivasi atau koreksi teknis..."
                   value={feedbackData.mentor_feedback}
                   onChange={(e) => setFeedbackData({...feedbackData, mentor_feedback: e.target.value})}
                 />
@@ -267,7 +264,7 @@ export default function SubmissionsPage() {
                 className="flex-[2] h-14 bg-amber-500 hover:bg-zinc-900 text-white rounded-2xl font-black uppercase italic tracking-widest shadow-xl shadow-amber-100 transition-all"
               >
                 {isUpdating ? <Loader2 className="animate-spin" /> : (
-                  <>Simpan Penilaian <Send size={18} className="ml-2" /></>
+                  <>Simpan & Kirim Nilai <Send size={18} className="ml-2" /></>
                 )}
               </Button>
             </div>
