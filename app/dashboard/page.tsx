@@ -71,25 +71,17 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Ambil Status Submission & Diskusi (DISESUAIKAN DENGAN BACKEND)
+  // 2. Ambil Status Submission & Diskusi
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
     try {
-      // Endpoint disesuaikan dengan Route::get('/submissions/{material_id}', ...)
-      const res = await fetch(`https://backend.mejatika.com/api/submissions/${activeMaterial.id}`, {
-        headers: { 
-          "Authorization": `Bearer ${token}`, 
-          "Accept": "application/json" 
-        }
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
-      // Jika data.success true, tampilkan data. Jika tidak (misal 404), reset feedback.
-      if (data.success && data.data) {
-        setSubmissionFeedback(data.data)
-      } else {
-        setSubmissionFeedback(null)
-      }
+      // Data sekarang sudah termasuk relasi 'discussions'
+      setSubmissionFeedback(data.data || data)
     } catch (err) {
       console.error("Gagal mengambil status submission")
     }
@@ -126,7 +118,7 @@ export default function StudentDashboard() {
 
       if (res.ok) {
         setReplyText("")
-        await fetchSubmissionStatus()
+        await fetchSubmissionStatus() // Refresh riwayat chat
       } else {
         const result = await res.json()
         alert(result.message || "Gagal mengirim pesan")
@@ -138,22 +130,13 @@ export default function StudentDashboard() {
     }
   }
 
-  // 4. Kirim Tugas (SINKRON DENGAN VALIDASI BACKEND)
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
-    
-    // Cari pendaftaran yang sesuai dengan course yang sedang dibuka
     const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
     if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
 
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
-
-    // Pastikan link memiliki prefix https:// agar lolos validasi 'url' di Laravel
-    const formattedLink = taskLink && !taskLink.startsWith('http') 
-                          ? `https://${taskLink}` 
-                          : taskLink;
-
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions`, {
         method: "POST",
@@ -166,24 +149,17 @@ export default function StudentDashboard() {
           material_id: activeMaterial.id,
           registration_id: currentReg.id,
           student_answer: studentAnswer,
-          project_link: formattedLink 
+          project_link: taskLink 
         })
       })
-
-      const result = await res.json();
-
-      if (res.ok && result.success) {
-        alert("Tugas berhasil disimpan di database!");
+      if (res.ok) {
+        alert("Tugas berhasil dikirim!");
         markStepComplete(activeMaterial.id, "tugas", "feedback");
         setStudentAnswer("");
         setTaskLink("");
-        // Langsung tarik data terbaru dari server untuk tab feedback
-        await fetchSubmissionStatus();
-      } else {
-        alert(result.message || "Gagal menyimpan. Pastikan link project valid (Contoh: https://github.com)");
       }
     } catch (err) {
-      alert("Terjadi kesalahan jaringan.");
+      markStepComplete(activeMaterial.id, "tugas", "feedback")
     } finally {
       setIsSubmittingTask(false)
     }
@@ -262,14 +238,8 @@ export default function StudentDashboard() {
 
   return (
     <div className="flex min-h-screen bg-[#F8F9FB] text-zinc-900 flex-col">
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
-      `}</style>
-
       <div className="flex flex-1">
+        
         {/* SIDEBAR */}
         <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
           <div className="p-8 flex items-center gap-3 font-black italic">
@@ -417,7 +387,7 @@ export default function StudentDashboard() {
                         {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
                         <div className="bg-zinc-50 rounded-[3rem] border border-zinc-100 p-8 md:p-10 shadow-inner overflow-hidden">
                           <div 
-                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium break-words"
+                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium break-words overflow-wrap-anywhere"
                             style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                             dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
                           />
@@ -450,6 +420,7 @@ export default function StudentDashboard() {
                       <div className="space-y-8 animate-in fade-in duration-500">
                          {submissionFeedback ? (
                            <div className="space-y-8">
+                              {/* STATUS SKOR & FEEDBACK MENTOR */}
                               <div className="bg-zinc-900 p-10 rounded-[3.5rem] text-white relative overflow-hidden">
                                 <div className="flex justify-between items-start relative z-10">
                                   <div className="flex items-center gap-3">
@@ -469,10 +440,13 @@ export default function StudentDashboard() {
                                 </div>
                               </div>
 
+                              {/* SISTEM DISKUSI MULTI-CHAT */}
                               <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 flex flex-col h-[500px]">
                                 <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2 mb-6"><MessageSquare size={14}/> Diskusi Modul</h5>
                                 
+                                {/* Area Chat */}
                                 <div className="flex-1 overflow-y-auto space-y-4 pr-4 custom-scrollbar mb-6">
+                                  {/* Bubble Jawaban Siswa (Root) */}
                                   <div className="flex flex-col items-start">
                                     <div className="bg-white border border-zinc-200 text-zinc-700 p-5 rounded-2xl rounded-tl-none max-w-[85%] text-sm italic shadow-sm">
                                       <p className="text-[8px] font-bold text-amber-600 uppercase mb-1">Submission Anda:</p>
@@ -480,6 +454,7 @@ export default function StudentDashboard() {
                                     </div>
                                   </div>
 
+                                  {/* Daftar Diskusi dari Tabel Baru */}
                                   {submissionFeedback.discussions?.map((chat: any) => {
                                     const isAdmin = chat.user?.role === 'admin';
                                     return (
@@ -492,7 +467,7 @@ export default function StudentDashboard() {
                                           {chat.message}
                                         </div>
                                         <span className="text-[8px] font-black uppercase text-zinc-400 mt-2 mx-2">
-                                          {isAdmin ? "Mentor Mejatika" : "Anda"} • {chat.formatted_date || "Baru saja"}
+                                          {isAdmin ? "Mentor Mejatika" : "Anda"} • {chat.formatted_date}
                                         </span>
                                       </div>
                                     )
@@ -500,6 +475,7 @@ export default function StudentDashboard() {
                                   <div ref={chatEndRef} />
                                 </div>
 
+                                {/* Input Chat */}
                                 <div className="relative">
                                   <input 
                                     value={replyText}
