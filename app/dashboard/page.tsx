@@ -80,7 +80,6 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
-      // Data sekarang sudah termasuk relasi 'discussions'
       setSubmissionFeedback(data.data || data)
     } catch (err) {
       console.error("Gagal mengambil status submission")
@@ -118,7 +117,7 @@ export default function StudentDashboard() {
 
       if (res.ok) {
         setReplyText("")
-        await fetchSubmissionStatus() // Refresh riwayat chat
+        await fetchSubmissionStatus()
       } else {
         const result = await res.json()
         alert(result.message || "Gagal mengirim pesan")
@@ -238,8 +237,14 @@ export default function StudentDashboard() {
 
   return (
     <div className="flex min-h-screen bg-[#F8F9FB] text-zinc-900 flex-col">
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
+      `}</style>
+
       <div className="flex flex-1">
-        
         {/* SIDEBAR */}
         <aside className="w-72 bg-zinc-950 text-white fixed h-full flex flex-col z-50">
           <div className="p-8 flex items-center gap-3 font-black italic">
@@ -387,7 +392,7 @@ export default function StudentDashboard() {
                         {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
                         <div className="bg-zinc-50 rounded-[3rem] border border-zinc-100 p-8 md:p-10 shadow-inner overflow-hidden">
                           <div 
-                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium break-words overflow-wrap-anywhere"
+                            className="prose prose-zinc max-w-full text-base text-zinc-800 leading-relaxed italic font-medium break-words"
                             style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
                             dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
                           />
@@ -420,7 +425,6 @@ export default function StudentDashboard() {
                       <div className="space-y-8 animate-in fade-in duration-500">
                          {submissionFeedback ? (
                            <div className="space-y-8">
-                              {/* STATUS SKOR & FEEDBACK MENTOR */}
                               <div className="bg-zinc-900 p-10 rounded-[3.5rem] text-white relative overflow-hidden">
                                 <div className="flex justify-between items-start relative z-10">
                                   <div className="flex items-center gap-3">
@@ -440,13 +444,10 @@ export default function StudentDashboard() {
                                 </div>
                               </div>
 
-                              {/* SISTEM DISKUSI MULTI-CHAT */}
                               <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 flex flex-col h-[500px]">
                                 <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2 mb-6"><MessageSquare size={14}/> Diskusi Modul</h5>
                                 
-                                {/* Area Chat */}
                                 <div className="flex-1 overflow-y-auto space-y-4 pr-4 custom-scrollbar mb-6">
-                                  {/* Bubble Jawaban Siswa (Root) */}
                                   <div className="flex flex-col items-start">
                                     <div className="bg-white border border-zinc-200 text-zinc-700 p-5 rounded-2xl rounded-tl-none max-w-[85%] text-sm italic shadow-sm">
                                       <p className="text-[8px] font-bold text-amber-600 uppercase mb-1">Submission Anda:</p>
@@ -454,7 +455,6 @@ export default function StudentDashboard() {
                                     </div>
                                   </div>
 
-                                  {/* Daftar Diskusi dari Tabel Baru */}
                                   {submissionFeedback.discussions?.map((chat: any) => {
                                     const isAdmin = chat.user?.role === 'admin';
                                     return (
@@ -475,7 +475,6 @@ export default function StudentDashboard() {
                                   <div ref={chatEndRef} />
                                 </div>
 
-                                {/* Input Chat */}
                                 <div className="relative">
                                   <input 
                                     value={replyText}
