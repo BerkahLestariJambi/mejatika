@@ -15,7 +15,8 @@ import {
   RefreshCcw,
   User,
   MessageCircle,
-  Clock
+  Clock,
+  Inbox
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Swal from 'sweetalert2'
@@ -45,10 +46,11 @@ export default function SubmissionsPage() {
       })
       const result = await res.json()
       
-      // DISESUAIKAN: Menangani berbagai format response Laravel
+      // PERBAIKAN: Deteksi otomatis array data
       const finalData = result.data || result;
-      setSubmissions(Array.isArray(finalData) ? finalData : [])
+      const dataArray = Array.isArray(finalData) ? finalData : [];
       
+      setSubmissions(dataArray)
     } catch (err) {
       console.error("Fetch Error:", err)
       Swal.fire('Error', 'Gagal mengambil data dari server', 'error')
@@ -115,7 +117,6 @@ export default function SubmissionsPage() {
       })
       const result = await res.json()
       if (res.ok) {
-        // DISESUAIKAN: Pastikan format result sesuai dengan DiscussionController
         const newChat = result.data || result;
         setSelectedSub({
           ...selectedSub,
@@ -128,13 +129,16 @@ export default function SubmissionsPage() {
     }
   }
 
-  const filteredSubmissions = submissions.filter(sub => 
-    sub.material?.title?.toLowerCase().includes(search.toLowerCase()) || 
-    sub.user?.name?.toLowerCase().includes(search.toLowerCase())
-  )
+  // PERBAIKAN: Filter pencarian lebih aman (handle null/undefined)
+  const filteredSubmissions = submissions.filter(sub => {
+    const q = search.toLowerCase();
+    const title = sub.material?.title?.toLowerCase() || "";
+    const name = sub.user?.name?.toLowerCase() || "";
+    return title.includes(q) || name.includes(q);
+  })
 
   return (
-    <div className="p-6 space-y-8 max-w-7xl mx-auto min-h-screen bg-zinc-50 font-sans">
+    <div className="p-6 space-y-8 max-w-7xl mx-auto min-h-screen bg-zinc-50 font-sans text-zinc-900">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-4xl font-black uppercase italic text-zinc-900 tracking-tighter">
@@ -153,7 +157,7 @@ export default function SubmissionsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Button onClick={fetchData} variant="outline" className="h-12 w-12 rounded-2xl bg-white hover:bg-zinc-100">
+          <Button onClick={fetchData} variant="outline" className="h-12 w-12 rounded-2xl bg-white hover:bg-zinc-100 border-zinc-200">
             <RefreshCcw size={18} className={loading ? "animate-spin" : "text-zinc-900"} />
           </Button>
         </div>
@@ -167,59 +171,66 @@ export default function SubmissionsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
-            {filteredSubmissions.map((sub) => (
-              <motion.div key={sub.id} layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
-                <Card className="border-none shadow-lg rounded-[2.5rem] overflow-hidden bg-white hover:shadow-2xl transition-all group">
-                  <CardHeader className="bg-zinc-900 text-white p-6 group-hover:bg-zinc-800 transition-colors">
-                    <div className="flex justify-between items-center mb-3">
-                      <Badge className="bg-amber-500 text-white border-none text-[8px] font-black px-2 py-0.5">
-                        {sub.material?.course?.title || "MODULE"}
-                      </Badge>
-                      {(sub.discussions?.length || 0) > 0 && (
-                         <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black">
-                            <MessageCircle size={8} /> {sub.discussions.length} PESAN
-                         </div>
-                      )}
-                    </div>
-                    <CardTitle className="text-lg font-black italic uppercase leading-none tracking-tighter min-h-[2.5rem] line-clamp-2">
-                      {sub.material?.title || "Untitled Assignment"}
-                    </CardTitle>
-                    <div className="mt-2 flex items-center gap-2 text-zinc-400 text-[10px] font-bold uppercase italic">
-                        <User size={12} className="text-amber-500" /> {sub.user?.name || "Unknown Student"}
-                    </div>
-                  </CardHeader>
-                  
-                  <CardContent className="p-6 space-y-4 text-zinc-900">
-                    <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
-                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Jawaban Siswa:</span>
-                      <p className="text-xs text-zinc-600 line-clamp-2 font-medium italic">
-                        {sub.student_answer ? `"${sub.student_answer}"` : "Tidak ada jawaban teks."}
-                      </p>
-                    </div>
+            {filteredSubmissions.length > 0 ? (
+              filteredSubmissions.map((sub) => (
+                <motion.div key={sub.id} layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
+                  <Card className="border-none shadow-lg rounded-[2.5rem] overflow-hidden bg-white hover:shadow-2xl transition-all group border border-zinc-100">
+                    <CardHeader className="bg-zinc-900 text-white p-6 group-hover:bg-zinc-800 transition-colors">
+                      <div className="flex justify-between items-center mb-3">
+                        <Badge className="bg-amber-500 text-white border-none text-[8px] font-black px-2 py-0.5">
+                          {sub.material?.course?.title || "MODULE"}
+                        </Badge>
+                        {(sub.discussions?.length || 0) > 0 && (
+                           <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black">
+                              <MessageCircle size={8} /> {sub.discussions.length} PESAN
+                           </div>
+                        )}
+                      </div>
+                      <CardTitle className="text-lg font-black italic uppercase leading-none tracking-tighter min-h-[2.5rem] line-clamp-2">
+                        {sub.material?.title || "Untitled Assignment"}
+                      </CardTitle>
+                      <div className="mt-2 flex items-center gap-2 text-zinc-400 text-[10px] font-bold uppercase italic">
+                          <User size={12} className="text-amber-500" /> {sub.user?.name || "Unknown Student"}
+                      </div>
+                    </CardHeader>
+                    
+                    <CardContent className="p-6 space-y-4">
+                      <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
+                        <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Jawaban Siswa:</span>
+                        <p className="text-xs text-zinc-600 line-clamp-2 font-medium italic">
+                          {sub.student_answer ? `"${sub.student_answer}"` : "Tidak ada jawaban teks."}
+                        </p>
+                      </div>
 
-                    <div className="flex items-center justify-between">
-                       <div className="flex flex-col">
-                         <span className="text-[8px] font-black text-zinc-400 uppercase tracking-tighter">Status Penilaian</span>
-                         <span className={`text-sm font-black ${sub.score > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                           {sub.score > 0 ? `${sub.score}/100` : "PENDING"}
-                         </span>
-                       </div>
-                       <Button 
-                        onClick={() => handleOpenReview(sub)}
-                        className="rounded-xl bg-zinc-900 hover:bg-amber-500 font-black text-[10px] uppercase italic h-9 px-4 transition-colors text-white"
-                       >
-                         Buka Diskusi
-                       </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
+                      <div className="flex items-center justify-between">
+                         <div className="flex flex-col">
+                           <span className="text-[8px] font-black text-zinc-400 uppercase tracking-tighter">Status Penilaian</span>
+                           <span className={`text-sm font-black ${sub.score > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                             {sub.score > 0 ? `${sub.score}/100` : "PENDING"}
+                           </span>
+                         </div>
+                         <Button 
+                          onClick={() => handleOpenReview(sub)}
+                          className="rounded-xl bg-zinc-900 hover:bg-amber-500 font-black text-[10px] uppercase italic h-9 px-4 transition-colors text-white"
+                         >
+                           Buka Diskusi
+                         </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))
+            ) : (
+              <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center">
+                <Inbox className="h-12 w-12 text-zinc-200 mb-2" />
+                <p className="text-zinc-400 font-black uppercase italic">Tidak ada submission ditemukan</p>
+                <p className="text-xs text-zinc-400">Pastikan database `submissions` sudah terisi.</p>
+              </div>
+            )}
           </AnimatePresence>
         </div>
       )}
 
-      {/* MODAL MULTIPLE DISCUSSION */}
       <Dialog open={!!selectedSub} onOpenChange={() => setSelectedSub(null)}>
         <DialogContent className="max-w-2xl rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl bg-white">
           <div className="bg-zinc-900 p-8 text-white flex justify-between items-center">
@@ -238,16 +249,13 @@ export default function SubmissionsPage() {
             </div>
           </div>
           
-          <div 
-            ref={scrollRef}
-            className="p-8 space-y-6 h-[400px] overflow-y-auto bg-zinc-50/50 custom-scrollbar flex flex-col"
-          >
+          <div ref={scrollRef} className="p-8 space-y-6 h-[400px] overflow-y-auto bg-zinc-50/50 flex flex-col">
             <div className="flex flex-col items-start mb-4">
               <div className="bg-white p-5 rounded-[2rem] rounded-tl-none border border-zinc-200 shadow-sm max-w-[85%]">
                 <span className="text-[9px] font-black text-amber-600 uppercase block mb-2 tracking-widest">Submission Awal</span>
                 <p className="text-sm text-zinc-700 font-medium leading-relaxed italic">"{selectedSub?.student_answer}"</p>
                 {selectedSub?.project_link && (
-                  <a href={selectedSub.project_link} target="_blank" className="text-[10px] text-blue-500 font-bold underline mt-2 block">
+                  <a href={selectedSub.project_link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-blue-500 font-bold underline mt-2 block">
                     Lihat Link Project →
                   </a>
                 )}
@@ -285,7 +293,7 @@ export default function SubmissionsPage() {
                       onChange={(e) => setFeedbackData({...feedbackData, score: parseInt(e.target.value) || 0})}
                       className="h-10 rounded-xl font-black text-center text-lg text-zinc-900"
                     />
-                    <Button onClick={submitScoreAndFeedback} size="sm" className="bg-emerald-500 h-10 rounded-xl hover:bg-emerald-600">
+                    <Button onClick={submitScoreAndFeedback} size="sm" className="bg-emerald-500 h-10 rounded-xl hover:bg-emerald-600 text-white">
                       <Star size={14} fill="white" />
                     </Button>
                   </div>
