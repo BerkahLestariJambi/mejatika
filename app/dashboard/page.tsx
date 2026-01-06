@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import {
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
-  Send, UserCircle2 // Tambahkan icon baru
+  Send, UserCircle2 
 } from "lucide-react"
 
 export default function StudentDashboard() {
@@ -32,24 +32,12 @@ export default function StudentDashboard() {
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
   const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
   
-  // State untuk feedback dan fitur reply
   const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
-  const [replyText, setReplyText] = useState("") // State input balasan
-  const [isSendingReply, setIsSendingReply] = useState(false) // State loading kirim balasan
+  const [replyText, setReplyText] = useState("")
+  const [isSendingReply, setIsSendingReply] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-    const saved = localStorage.getItem("mejatika_progress")
-    if (saved) setCourseProgress(JSON.parse(saved))
-  }, [])
-
-  useEffect(() => {
-    if (activeStep === "feedback" && activeMaterial) {
-      fetchSubmissionStatus();
-    }
-  }, [activeStep, activeMaterial])
-
-  const fetchData = async () => {
+  // 1. Fungsi Fetch Data Utama
+  const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
     try {
@@ -70,24 +58,40 @@ export default function StudentDashboard() {
     } finally { 
       setLoading(false) 
     }
-  }
+  }, [router])
 
-  const fetchSubmissionStatus = async () => {
+  // 2. Fungsi Ambil Status Submission & Feedback (Penting untuk Replay)
+  const fetchSubmissionStatus = useCallback(async () => {
+    if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
       const data = await res.json()
+      // Pastikan state submissionFeedback terupdate dengan data terbaru dari database
       setSubmissionFeedback(data.data || data)
     } catch (err) {
       console.error("Gagal mengambil status submission")
     }
-  }
+  }, [activeMaterial])
 
-  // FUNGSI BARU: Mengirim balasan siswa ke mentor
+  useEffect(() => {
+    fetchData()
+    const saved = localStorage.getItem("mejatika_progress")
+    if (saved) setCourseProgress(JSON.parse(saved))
+  }, [fetchData])
+
+  // Trigger fetch feedback setiap kali step berubah ke 'feedback' atau materi berganti
+  useEffect(() => {
+    if (activeStep === "feedback" && activeMaterial) {
+      fetchSubmissionStatus()
+    }
+  }, [activeStep, activeMaterial, fetchSubmissionStatus])
+
+  // 3. Fungsi Kirim Balasan (Disimpan ke DB)
   const handleSendReply = async () => {
-    if (!replyText.trim()) return
+    if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
     const token = localStorage.getItem("token")
     try {
@@ -101,7 +105,8 @@ export default function StudentDashboard() {
       })
       if (res.ok) {
         setReplyText("")
-        fetchSubmissionStatus() // Refresh data feedback agar chat muncul
+        // Refresh data dari server agar pesan yang baru dikirim langsung muncul di UI
+        await fetchSubmissionStatus()
       }
     } catch (err) {
       alert("Gagal mengirim balasan")
@@ -133,7 +138,7 @@ export default function StudentDashboard() {
         })
       })
       if (res.ok) {
-        alert("Tugas berhasil dikirim ke folder submission!");
+        alert("Tugas berhasil dikirim!");
         markStepComplete(activeMaterial.id, "tugas", "feedback");
         setStudentAnswer("");
         setTaskLink("");
@@ -191,7 +196,7 @@ export default function StudentDashboard() {
         body: formData 
       })
       if (res.ok) {
-        alert("Bukti terkirim! Admin akan memverifikasi.");
+        alert("Bukti terkirim!");
         setSelectedProof(null);
         await fetchData();
       }
@@ -277,7 +282,7 @@ export default function StudentDashboard() {
                       <CardContent className="p-12 flex-1 flex flex-col">
                         <h4 className="text-2xl font-black uppercase italic mb-8 leading-tight tracking-tighter">{course.title}</h4>
                         {status === 'success' ? (
-                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); fetchData(); }} className="w-full bg-emerald-500 text-white h-16 rounded-[1.5rem] font-black italic uppercase text-[11px] hover:bg-emerald-600">Lanjutkan Belajar <Zap size={14} className="ml-2 fill-current"/></Button>
+                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white h-16 rounded-[1.5rem] font-black italic uppercase text-[11px] hover:bg-emerald-600">Lanjutkan Belajar <Zap size={14} className="ml-2 fill-current"/></Button>
                         ) : status === 'pending' ? (
                           <div className="space-y-5 bg-amber-50 p-8 rounded-[2.5rem] border-2 border-amber-100">
                              <div className="flex items-center gap-3 text-amber-700 font-black italic uppercase text-[10px] mb-2"><CreditCard size={18}/> Detail Pembayaran BRI</div>
@@ -424,7 +429,7 @@ export default function StudentDashboard() {
                               <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 space-y-6">
                                 <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2"><MessageSquare size={14}/> Diskusi Modul</h5>
                                 
-                                {/* Bubble Chat Balasan Siswa jika sudah ada */}
+                                {/* Bubble Chat Balasan Siswa dari DB */}
                                 {submissionFeedback.student_reply && (
                                   <div className="flex flex-col items-end animate-in slide-in-from-right-4">
                                     <div className="bg-amber-100 text-amber-900 p-6 rounded-t-3xl rounded-bl-3xl max-w-[80%] text-sm italic font-medium shadow-sm">
@@ -434,7 +439,7 @@ export default function StudentDashboard() {
                                   </div>
                                 )}
 
-                                {/* Input Balasan (Hanya muncul jika siswa belum membalas) */}
+                                {/* Input Balasan */}
                                 {!submissionFeedback.student_reply ? (
                                   <div className="relative">
                                     <textarea 
@@ -452,7 +457,9 @@ export default function StudentDashboard() {
                                     </button>
                                   </div>
                                 ) : (
-                                  <p className="text-[9px] text-center font-black uppercase text-zinc-300 italic">Diskusi untuk modul ini telah terkirim</p>
+                                  <div className="text-center py-4 border-t border-zinc-100">
+                                    <p className="text-[9px] font-black uppercase text-zinc-300 italic">Diskusi untuk modul ini telah terkirim</p>
+                                  </div>
                                 )}
                               </div>
                            </div>
