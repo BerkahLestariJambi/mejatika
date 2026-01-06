@@ -29,14 +29,23 @@ export default function StudentDashboard() {
   const [studentAnswer, setStudentAnswer] = useState("")
   const [taskLink, setTaskLink] = useState("")
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
-
   const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
+  
+  // State baru untuk menampung feedback dari tabel submissions
+  const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
 
   useEffect(() => {
     fetchData()
     const saved = localStorage.getItem("mejatika_progress")
     if (saved) setCourseProgress(JSON.parse(saved))
   }, [])
+
+  // Auto-fetch feedback saat masuk ke tab feedback
+  useEffect(() => {
+    if (activeStep === "feedback" && activeMaterial) {
+      fetchSubmissionStatus();
+    }
+  }, [activeStep, activeMaterial])
 
   const fetchData = async () => {
     const token = localStorage.getItem("token")
@@ -61,30 +70,53 @@ export default function StudentDashboard() {
     }
   }
 
+  const fetchSubmissionStatus = async () => {
+    const token = localStorage.getItem("token")
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      const data = await res.json()
+      setSubmissionFeedback(data.data || data)
+    } catch (err) {
+      console.error("Gagal mengambil status submission")
+    }
+  }
+
   const handleSubmitTask = async () => {
-    if (!taskLink && !studentAnswer) return alert("Isi jawaban atau link tugas terlebih dahulu!")
+    if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
+    
+    // Mencari pendaftaran yang aktif untuk kursus ini
+    const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
+    if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
+
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
     
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/materials/${activeMaterial.id}/submit`, {
+      // MENGIRIM KE TABEL SUBMISSIONS (BARU)
+      const res = await fetch(`https://backend.mejatika.com/api/submissions`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
-          "Authorization": `Bearer ${token}` 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
         },
         body: JSON.stringify({ 
+          material_id: activeMaterial.id,
+          registration_id: currentReg.id,
           student_answer: studentAnswer,
           project_link: taskLink 
         })
       })
 
       if (res.ok) {
-        alert("Tugas berhasil dikirim ke database!");
+        alert("Tugas berhasil dikirim ke folder submission!");
         markStepComplete(activeMaterial.id, "tugas", "feedback");
         setStudentAnswer("");
         setTaskLink("");
       } else {
+        // Jika gagal di backend, tetap izinkan lanjut (opsional) atau tampilkan error
         markStepComplete(activeMaterial.id, "tugas", "feedback")
       }
     } catch (err) {
@@ -195,7 +227,6 @@ export default function StudentDashboard() {
 
         <main className="flex-1 ml-72 p-10 flex flex-col">
           
-          {/* DASHBOARD VIEW */}
           {activeMenu === "dashboard" && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="bg-zinc-900 rounded-[3.5rem] p-16 text-white relative overflow-hidden">
@@ -211,7 +242,6 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* COURSES VIEW (Daftar Kursus) */}
           {activeMenu === "courses" && (
             <div className="space-y-10 animate-in fade-in duration-500">
               <h2 className="text-4xl font-black italic uppercase tracking-tighter">Katalog Kursus</h2>
@@ -228,7 +258,7 @@ export default function StudentDashboard() {
                       <CardContent className="p-12 flex-1 flex flex-col">
                         <h4 className="text-2xl font-black uppercase italic mb-8 leading-tight tracking-tighter">{course.title}</h4>
                         {status === 'success' ? (
-                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-emerald-500 text-white h-16 rounded-[1.5rem] font-black italic uppercase text-[11px] hover:bg-emerald-600">Lanjutkan Belajar <Zap size={14} className="ml-2 fill-current"/></Button>
+                          <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); fetchData(); }} className="w-full bg-emerald-500 text-white h-16 rounded-[1.5rem] font-black italic uppercase text-[11px] hover:bg-emerald-600">Lanjutkan Belajar <Zap size={14} className="ml-2 fill-current"/></Button>
                         ) : status === 'pending' ? (
                           <div className="space-y-5 bg-amber-50 p-8 rounded-[2.5rem] border-2 border-amber-100">
                              <div className="flex items-center gap-3 text-amber-700 font-black italic uppercase text-[10px] mb-2"><CreditCard size={18}/> Detail Pembayaran BRI</div>
@@ -259,7 +289,6 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* MATERIALS VIEW */}
           {activeMenu === "materials" && (
             <div className="grid grid-cols-12 gap-10 animate-in fade-in duration-500">
               <div className="col-span-4 space-y-8">
@@ -323,7 +352,6 @@ export default function StudentDashboard() {
                       </div>
                     )}
 
-                    {/* PERBAIKAN DI SINI: Materi Pokok dengan CSS Word-Break */}
                     {activeStep === "materi" && (
                       <div className="space-y-8 w-full max-w-full">
                         {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
@@ -376,12 +404,39 @@ export default function StudentDashboard() {
                     )}
 
                     {activeStep === "feedback" && (
-                      <div className="space-y-8 text-center py-10">
-                         <div className="bg-emerald-50 p-12 rounded-[3.5rem] border-2 border-emerald-100">
-                           <CheckCircle2 className="mx-auto text-emerald-500 mb-6" size={48} />
-                           <h4 className="text-xl font-black italic uppercase mb-2">Tugas Terkirim!</h4>
-                           <p className="text-sm text-zinc-600 italic leading-relaxed max-w-md mx-auto">Data Anda telah tersimpan di kolom student_answer dan project_link.</p>
-                         </div>
+                      <div className="space-y-8 animate-in fade-in duration-500">
+                         {submissionFeedback ? (
+                           <div className="space-y-6">
+                              <div className="bg-zinc-900 p-10 rounded-[3rem] text-white relative overflow-hidden">
+                                <div className="flex justify-between items-start relative z-10">
+                                  <div>
+                                    <p className="text-[10px] font-black uppercase text-amber-500 tracking-widest mb-2">Hasil Penilaian</p>
+                                    <h4 className="text-2xl font-black italic uppercase tracking-tighter">Review Mentor</h4>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">Skor</p>
+                                    <div className="text-5xl font-black italic text-amber-500">{submissionFeedback.score || 0}</div>
+                                  </div>
+                                </div>
+                                <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/10 italic text-zinc-300 text-sm">
+                                  {submissionFeedback.mentor_feedback || "Mentor sedang memeriksa jawabanmu. Sabar ya!"}
+                                </div>
+                              </div>
+                              <div className="bg-emerald-50 p-6 rounded-[2.5rem] border-2 border-emerald-100 flex items-center gap-4">
+                                <CheckCircle2 className="text-emerald-500" size={32} />
+                                <div>
+                                  <p className="text-[10px] font-black uppercase text-emerald-700">Status Modul</p>
+                                  <p className="text-sm font-black italic uppercase">Tugas Sudah Terarsip di Database</p>
+                                </div>
+                              </div>
+                           </div>
+                         ) : (
+                           <div className="bg-emerald-50 p-12 rounded-[3.5rem] border-2 border-emerald-100 text-center">
+                              <CheckCircle2 className="mx-auto text-emerald-500 mb-6" size={48} />
+                              <h4 className="text-xl font-black italic uppercase mb-2">Tugas Terkirim!</h4>
+                              <p className="text-sm text-zinc-600 italic leading-relaxed max-w-md mx-auto">Jawabanmu sedang menunggu feedback dari admin.</p>
+                           </div>
+                         )}
                          <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-zinc-950 text-amber-500 h-16 rounded-[2rem] font-black italic uppercase text-[11px]">Selesaikan Modul</Button>
                       </div>
                     )}
