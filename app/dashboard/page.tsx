@@ -87,34 +87,27 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // 3. Fungsi Kirim Balasan (Perbaikan URL agar sesuai Route Backend)
+  // 3. FIX: Fungsi Kirim Balasan (Gunakan PUT & key message)
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
     const token = localStorage.getItem("token")
     
     try {
-      // Pastikan URL ini sesuai dengan rute yang Anda definisikan di api.php Laravel
-      // Jika di Laravel menggunakan Route::post('submissions/{id}/reply', ...)
       const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
-        method: "POST",
+        method: "PUT", // Sesuai dengan route api.php
         headers: { 
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json"
         },
-        body: JSON.stringify({ student_reply: replyText })
+        body: JSON.stringify({ message: replyText }) // Sesuai dengan $request->message di Controller
       })
-
-      if (res.status === 404) {
-        alert("Error 404: Rute tidak ditemukan di server. Periksa api.php di Backend.")
-        return
-      }
 
       const result = await res.json()
       if (res.ok) {
         setReplyText("")
-        await fetchSubmissionStatus() // Refresh data
+        await fetchSubmissionStatus() // Refresh agar chat muncul
       } else {
         alert(result.message || "Gagal mengirim balasan")
       }
