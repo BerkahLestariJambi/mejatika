@@ -13,7 +13,6 @@ import {
   Star, 
   Search,
   RefreshCcw,
-  AlertCircle,
   User,
   MessageCircle,
   Clock
@@ -25,7 +24,6 @@ export default function SubmissionsPage() {
   const [submissions, setSubmissions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedSub, setSelectedSub] = useState<any>(null)
-  const [isUpdating, setIsUpdating] = useState(false)
   const [search, setSearch] = useState("")
   const [newMessage, setNewMessage] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -46,8 +44,13 @@ export default function SubmissionsPage() {
         }
       })
       const result = await res.json()
-      setSubmissions(result.data || [])
+      
+      // DISESUAIKAN: Menangani berbagai format response Laravel
+      const finalData = result.data || result;
+      setSubmissions(Array.isArray(finalData) ? finalData : [])
+      
     } catch (err) {
+      console.error("Fetch Error:", err)
       Swal.fire('Error', 'Gagal mengambil data dari server', 'error')
     } finally {
       setLoading(false)
@@ -56,17 +59,16 @@ export default function SubmissionsPage() {
 
   useEffect(() => { fetchData() }, [])
 
-  // Auto scroll ke chat paling bawah saat modal dibuka atau diskusi bertambah
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [selectedSub, selectedSub?.discussions])
+  }, [selectedSub?.discussions])
 
   const handleOpenReview = (sub: any) => {
     setSelectedSub(sub)
     setFeedbackData({
-      mentor_feedback: "", // Reset field feedback baru
+      mentor_feedback: sub.mentor_feedback || "",
       score: sub.score || 0
     })
   }
@@ -76,7 +78,6 @@ export default function SubmissionsPage() {
       return Swal.fire('Error', 'Skor harus di antara 0-100', 'warning')
     }
 
-    setIsUpdating(true)
     const token = localStorage.getItem("token")
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions/${selectedSub.id}`, {
@@ -90,14 +91,12 @@ export default function SubmissionsPage() {
       })
 
       if (res.ok) {
-        Swal.fire({ title: 'Berhasil!', text: 'Skor & Feedback awal disimpan.', icon: 'success', timer: 1500, showConfirmButton: false })
+        Swal.fire({ title: 'Berhasil!', text: 'Skor disimpan.', icon: 'success', timer: 1500, showConfirmButton: false })
         fetchData()
         setSelectedSub(null)
       }
     } catch (err) {
       Swal.fire('Gagal', 'Koneksi terputus.', 'error')
-    } finally {
-      setIsUpdating(false)
     }
   }
 
@@ -116,10 +115,11 @@ export default function SubmissionsPage() {
       })
       const result = await res.json()
       if (res.ok) {
-        // Update local state agar chat langsung muncul
+        // DISESUAIKAN: Pastikan format result sesuai dengan DiscussionController
+        const newChat = result.data || result;
         setSelectedSub({
           ...selectedSub,
-          discussions: [...(selectedSub.discussions || []), result.data]
+          discussions: [...(selectedSub.discussions || []), newChat]
         })
         setNewMessage("")
       }
@@ -129,13 +129,12 @@ export default function SubmissionsPage() {
   }
 
   const filteredSubmissions = submissions.filter(sub => 
-    sub.material?.title.toLowerCase().includes(search.toLowerCase()) || 
-    sub.user?.name.toLowerCase().includes(search.toLowerCase())
+    sub.material?.title?.toLowerCase().includes(search.toLowerCase()) || 
+    sub.user?.name?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto min-h-screen bg-zinc-50 font-sans">
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-4xl font-black uppercase italic text-zinc-900 tracking-tighter">
@@ -149,13 +148,13 @@ export default function SubmissionsPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input 
               placeholder="Cari materi atau nama..." 
-              className="pl-10 rounded-2xl bg-white border-zinc-200 h-12 shadow-sm focus:ring-amber-500" 
+              className="pl-10 rounded-2xl bg-white border-zinc-200 h-12 shadow-sm focus:ring-amber-500 text-zinc-900" 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <Button onClick={fetchData} variant="outline" className="h-12 w-12 rounded-2xl bg-white hover:bg-zinc-100">
-            <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
+            <RefreshCcw size={18} className={loading ? "animate-spin" : "text-zinc-900"} />
           </Button>
         </div>
       </div>
@@ -176,24 +175,26 @@ export default function SubmissionsPage() {
                       <Badge className="bg-amber-500 text-white border-none text-[8px] font-black px-2 py-0.5">
                         {sub.material?.course?.title || "MODULE"}
                       </Badge>
-                      {sub.discussions?.length > 0 && (
+                      {(sub.discussions?.length || 0) > 0 && (
                          <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black">
                             <MessageCircle size={8} /> {sub.discussions.length} PESAN
                          </div>
                       )}
                     </div>
                     <CardTitle className="text-lg font-black italic uppercase leading-none tracking-tighter min-h-[2.5rem] line-clamp-2">
-                      {sub.material?.title}
+                      {sub.material?.title || "Untitled Assignment"}
                     </CardTitle>
                     <div className="mt-2 flex items-center gap-2 text-zinc-400 text-[10px] font-bold uppercase italic">
-                       <User size={12} className="text-amber-500" /> {sub.user?.name}
+                        <User size={12} className="text-amber-500" /> {sub.user?.name || "Unknown Student"}
                     </div>
                   </CardHeader>
                   
-                  <CardContent className="p-6 space-y-4">
+                  <CardContent className="p-6 space-y-4 text-zinc-900">
                     <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
                       <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-1">Jawaban Siswa:</span>
-                      <p className="text-xs text-zinc-600 line-clamp-2 font-medium italic">"{sub.student_answer}"</p>
+                      <p className="text-xs text-zinc-600 line-clamp-2 font-medium italic">
+                        {sub.student_answer ? `"${sub.student_answer}"` : "Tidak ada jawaban teks."}
+                      </p>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -205,7 +206,7 @@ export default function SubmissionsPage() {
                        </div>
                        <Button 
                         onClick={() => handleOpenReview(sub)}
-                        className="rounded-xl bg-zinc-900 hover:bg-amber-500 font-black text-[10px] uppercase italic h-9 px-4 transition-colors"
+                        className="rounded-xl bg-zinc-900 hover:bg-amber-500 font-black text-[10px] uppercase italic h-9 px-4 transition-colors text-white"
                        >
                          Buka Diskusi
                        </Button>
@@ -227,7 +228,7 @@ export default function SubmissionsPage() {
                 <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
                 <span className="text-amber-500 text-[10px] font-black uppercase tracking-[0.2em]">Live Mentoring</span>
               </div>
-              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter">
+              <DialogTitle className="text-2xl font-black italic uppercase tracking-tighter text-white">
                 {selectedSub?.user?.name}
               </DialogTitle>
             </DialogHeader>
@@ -237,12 +238,10 @@ export default function SubmissionsPage() {
             </div>
           </div>
           
-          {/* CHAT AREA */}
           <div 
             ref={scrollRef}
             className="p-8 space-y-6 h-[400px] overflow-y-auto bg-zinc-50/50 custom-scrollbar flex flex-col"
           >
-            {/* Jawaban Original */}
             <div className="flex flex-col items-start mb-4">
               <div className="bg-white p-5 rounded-[2rem] rounded-tl-none border border-zinc-200 shadow-sm max-w-[85%]">
                 <span className="text-[9px] font-black text-amber-600 uppercase block mb-2 tracking-widest">Submission Awal</span>
@@ -255,7 +254,6 @@ export default function SubmissionsPage() {
               </div>
             </div>
 
-            {/* Riwayat Diskusi dari Tabel Baru */}
             {selectedSub?.discussions?.map((chat: any) => {
               const isAdmin = chat.user?.role === 'admin';
               return (
@@ -269,17 +267,15 @@ export default function SubmissionsPage() {
                   </div>
                   <div className="flex items-center gap-1 px-1">
                     <Clock size={10} className="text-zinc-400" />
-                    <span className="text-[8px] font-bold text-zinc-400 uppercase">{chat.formatted_date}</span>
+                    <span className="text-[8px] font-bold text-zinc-400 uppercase">{chat.formatted_date || 'Baru saja'}</span>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* INPUT AREA */}
           <div className="p-8 bg-white border-t border-zinc-100 space-y-4">
             <div className="flex gap-4">
-               {/* Update Score & Feedback Awal Section */}
                <div className="w-1/3 space-y-2 border-r border-zinc-100 pr-4">
                   <Label className="font-black text-zinc-900 uppercase italic text-[9px]">Set Skor (0-100)</Label>
                   <div className="flex gap-2">
@@ -287,7 +283,7 @@ export default function SubmissionsPage() {
                       type="number" 
                       value={feedbackData.score}
                       onChange={(e) => setFeedbackData({...feedbackData, score: parseInt(e.target.value) || 0})}
-                      className="h-10 rounded-xl font-black text-center text-lg"
+                      className="h-10 rounded-xl font-black text-center text-lg text-zinc-900"
                     />
                     <Button onClick={submitScoreAndFeedback} size="sm" className="bg-emerald-500 h-10 rounded-xl hover:bg-emerald-600">
                       <Star size={14} fill="white" />
@@ -295,7 +291,6 @@ export default function SubmissionsPage() {
                   </div>
                </div>
 
-               {/* Chat Reply Input */}
                <div className="w-2/3 space-y-2">
                   <Label className="font-black text-zinc-900 uppercase italic text-[9px]">Balas Diskusi</Label>
                   <div className="flex gap-2">
@@ -304,9 +299,9 @@ export default function SubmissionsPage() {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && sendNewMessage()}
-                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200"
+                      className="h-10 rounded-xl bg-zinc-50 border-zinc-200 text-zinc-900"
                     />
-                    <Button onClick={sendNewMessage} className="bg-amber-500 h-10 w-12 rounded-xl hover:bg-zinc-900 transition-all">
+                    <Button onClick={sendNewMessage} className="bg-amber-500 h-10 w-12 rounded-xl hover:bg-zinc-900 transition-all text-white">
                       <Send size={16} />
                     </Button>
                   </div>
