@@ -15,7 +15,8 @@ import {
   Search,
   RefreshCcw,
   AlertCircle,
-  User
+  User,
+  History
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import Swal from 'sweetalert2'
@@ -29,10 +30,9 @@ export default function SubmissionsPage() {
 
   const [feedbackData, setFeedbackData] = useState({
     mentor_feedback: "",
-    score: 0 // Sesuai kolom database baru
+    score: 0
   })
 
-  // 1. FETCH DATA: Mengambil dari tabel submissions
   const fetchData = async () => {
     setLoading(true)
     const token = localStorage.getItem("token")
@@ -44,11 +44,10 @@ export default function SubmissionsPage() {
         }
       })
       const result = await res.json()
-      
-      // Data sudah otomatis terfilter oleh logic "pasti punya jawaban" karena berada di tabel submissions
       setSubmissions(result.data || [])
     } catch (err) {
       console.error("Fetch error:", err)
+      Swal.fire('Error', 'Gagal mengambil data dari server', 'error')
     } finally {
       setLoading(false)
     }
@@ -64,10 +63,10 @@ export default function SubmissionsPage() {
     })
   }
 
-  // 2. SUBMIT: Mengirim ke endpoint submissions/{id}
   const submitFeedback = async () => {
+    // Final check sebelum kirim
     if (feedbackData.score < 0 || feedbackData.score > 100) {
-      return Swal.fire('Error', 'Skor harus antara 0-100', 'warning')
+      return Swal.fire('Error', 'Skor harus di antara 0-100', 'warning')
     }
 
     setIsUpdating(true)
@@ -85,25 +84,24 @@ export default function SubmissionsPage() {
 
       if (res.ok) {
         Swal.fire({
-          title: 'Berhasil!',
-          text: 'Penilaian telah disimpan.',
+          title: 'Tugas Dinilai!',
+          text: `Skor ${feedbackData.score} berhasil dikirim ke ${selectedSub.user?.name}`,
           icon: 'success',
-          timer: 1500,
+          timer: 2000,
           showConfirmButton: false
         })
         setSelectedSub(null)
-        fetchData()
+        fetchData() // Refresh list
       } else {
         throw new Error("Gagal update")
       }
     } catch (err) {
-      Swal.fire('Gagal', 'Terjadi kesalahan saat menyimpan penilaian.', 'error')
+      Swal.fire('Gagal', 'Koneksi terputus atau server error.', 'error')
     } finally {
       setIsUpdating(false)
     }
   }
 
-  // 3. FILTER: Cari berdasarkan judul materi ATAU nama siswa
   const filteredSubmissions = submissions.filter(sub => 
     sub.material?.title.toLowerCase().includes(search.toLowerCase()) || 
     sub.user?.name.toLowerCase().includes(search.toLowerCase())
@@ -111,93 +109,97 @@ export default function SubmissionsPage() {
 
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto min-h-screen bg-zinc-50">
-      {/* HEADER */}
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-4xl font-black uppercase italic text-zinc-900 tracking-tighter">
             Submission <span className="text-amber-500">Review</span>
           </h1>
-          <p className="text-zinc-500 font-medium">Review jawaban dari para siswa Mejatika.</p>
+          <p className="text-zinc-500 font-medium">Sistem penilaian tugas terintegrasi Mejatika.</p>
         </div>
         
         <div className="flex gap-2 w-full md:w-auto">
           <div className="relative flex-1 md:w-72">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
             <Input 
-              placeholder="Cari materi atau nama siswa..." 
-              className="pl-10 rounded-2xl bg-white border-zinc-200 h-12 shadow-sm focus:ring-amber-500" 
+              placeholder="Cari materi atau nama..." 
+              className="pl-10 rounded-2xl bg-white border-zinc-200 h-12 shadow-sm" 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <Button onClick={fetchData} variant="outline" className="h-12 rounded-2xl bg-white border-zinc-200 shadow-sm">
+          <Button onClick={fetchData} variant="outline" className="h-12 w-12 rounded-2xl bg-white">
             <RefreshCcw size={18} className={loading ? "animate-spin" : ""} />
           </Button>
         </div>
       </div>
 
-      {/* GRID DAFTAR TUGAS */}
+      {/* MAIN CONTENT */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-32 space-y-4">
           <Loader2 className="animate-spin text-amber-500 h-12 w-12" />
-          <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-xs">Menghubungkan ke tabel submissions...</p>
+          <p className="text-zinc-400 font-bold uppercase italic tracking-widest text-xs">Syncing Data...</p>
         </div>
       ) : filteredSubmissions.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] shadow-inner border border-zinc-100">
-          <AlertCircle className="h-12 w-12 text-zinc-300 mb-4" />
-          <h3 className="text-zinc-900 font-black uppercase italic">Antrean Kosong</h3>
-          <p className="text-zinc-400 text-sm">Belum ada siswa yang mengirimkan tugas di tabel baru.</p>
+        <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] border border-zinc-100 shadow-sm">
+          <AlertCircle className="h-12 w-12 text-zinc-200 mb-4" />
+          <h3 className="text-zinc-900 font-black uppercase italic">Tidak Ada Data</h3>
+          <p className="text-zinc-400 text-sm">Coba kata kunci lain atau segarkan halaman.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <AnimatePresence>
+          <AnimatePresence mode="popLayout">
             {filteredSubmissions.map((sub) => (
               <motion.div
                 key={sub.id}
                 layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
               >
-                <Card className="border-none shadow-xl rounded-[2rem] overflow-hidden bg-white hover:shadow-2xl transition-all border border-zinc-100 group">
+                <Card className="border-none shadow-lg rounded-[2.5rem] overflow-hidden bg-white hover:shadow-2xl transition-all group">
                   <CardHeader className="bg-zinc-900 text-white p-6 group-hover:bg-zinc-800 transition-colors">
-                    <div className="flex justify-between items-center mb-2">
-                      <Badge className="bg-amber-500 text-white border-none text-[9px] uppercase font-black px-3">
-                        {sub.material?.course?.title || "Materi"}
+                    <div className="flex justify-between items-center mb-3">
+                      <Badge className="bg-amber-500 text-white border-none text-[8px] font-black px-2 py-0.5">
+                        {sub.material?.course?.title || "MODULE"}
                       </Badge>
                       <div className="flex items-center gap-1.5 text-zinc-400">
-                         <User size={12} />
-                         <span className="text-[10px] font-bold uppercase truncate max-w-[100px]">{sub.user?.name}</span>
+                        <User size={12} className="text-amber-500" />
+                        <span className="text-[10px] font-black uppercase truncate max-w-[80px]">{sub.user?.name}</span>
                       </div>
                     </div>
-                    <CardTitle className="text-lg font-black italic uppercase leading-tight tracking-tighter line-clamp-2 min-h-[3rem]">
+                    <CardTitle className="text-lg font-black italic uppercase leading-none tracking-tighter min-h-[2.5rem] line-clamp-2">
                       {sub.material?.title}
                     </CardTitle>
-                    <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-                       <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">Status Penilaian</span>
-                       {sub.score > 0 ? (
-                         <div className="flex items-center text-amber-400 gap-1 text-sm font-black">
-                           <Star size={14} fill="currentColor" /> {sub.score}
-                         </div>
-                       ) : (
-                         <span className="text-[10px] text-rose-400 font-black animate-pulse uppercase">Menunggu</span>
-                       )}
-                    </div>
                   </CardHeader>
-                  <CardContent className="p-6 space-y-5">
-                    <div className="space-y-2">
-                      <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Konten Jawaban:</span>
-                      <p className="text-sm text-zinc-600 line-clamp-3 bg-zinc-50 p-4 rounded-2xl border border-dashed border-zinc-200 font-medium italic">
+                  
+                  <CardContent className="p-6 space-y-4">
+                    <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
+                      <span className="text-[9px] font-black text-zinc-400 uppercase tracking-widest block mb-2">Jawaban:</span>
+                      <p className="text-xs text-zinc-600 line-clamp-3 font-medium italic leading-relaxed">
                         "{sub.student_answer}"
                       </p>
                     </div>
-                    <Button 
-                      onClick={() => handleOpenReview(sub)}
-                      className="w-full bg-zinc-900 hover:bg-amber-500 text-white rounded-2xl font-black uppercase italic text-xs h-14 shadow-lg shadow-zinc-100 transition-all"
-                    >
-                      <MessageSquare size={16} className="mr-2" /> 
-                      Koreksi Tugas
-                    </Button>
+
+                    <div className="flex items-center justify-between px-1">
+                       <div className="flex flex-col">
+                         <span className="text-[8px] font-black text-zinc-400 uppercase">Status</span>
+                         {sub.score > 0 ? (
+                           <div className="flex items-center text-emerald-500 font-black text-sm">
+                             <Star size={12} fill="currentColor" className="mr-1" /> {sub.score}/100
+                           </div>
+                         ) : (
+                           <span className="text-[10px] text-rose-500 font-black animate-pulse">PENDING</span>
+                         )}
+                       </div>
+                       <Button 
+                        onClick={() => handleOpenReview(sub)}
+                        size="sm"
+                        className="rounded-xl bg-zinc-900 hover:bg-amber-500 font-black text-[10px] uppercase italic h-9 px-4"
+                       >
+                         {sub.score > 0 ? "Edit Nilai" : "Beri Nilai"}
+                       </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -206,65 +208,84 @@ export default function SubmissionsPage() {
         </div>
       )}
 
-      {/* MODAL REVIEW */}
+      {/* MODAL REVIEW / REPLY SYSTEM */}
       <Dialog open={!!selectedSub} onOpenChange={() => setSelectedSub(null)}>
         <DialogContent className="max-w-2xl rounded-[3rem] p-0 overflow-hidden border-none shadow-2xl">
-          <div className="bg-zinc-900 p-8 text-white">
+          <div className="bg-zinc-900 p-8 text-white relative">
             <DialogHeader>
-              <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter">
-                Review <span className="text-amber-500">Submission</span>
-              </DialogTitle>
-              <div className="mt-2 flex items-center gap-2">
-                 <Badge variant="outline" className="border-zinc-700 text-amber-500 font-black">{selectedSub?.user?.name}</Badge>
-                 <span className="text-zinc-500 text-xs font-bold uppercase tracking-widest">— {selectedSub?.material?.title}</span>
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-2 w-2 rounded-full bg-amber-500 animate-ping" />
+                <span className="text-amber-500 text-[10px] font-black uppercase tracking-[0.2em]">Live Assessment</span>
               </div>
+              <DialogTitle className="text-3xl font-black italic uppercase tracking-tighter leading-none">
+                {selectedSub?.score > 0 ? "Update" : "Submit"} <span className="text-amber-500">Feedback</span>
+              </DialogTitle>
             </DialogHeader>
           </div>
           
-          <div className="p-8 space-y-6">
-            <div className="bg-zinc-50 p-6 rounded-[2rem] border border-zinc-100">
-              <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-3 block">Jawaban Lengkap Siswa</Label>
-              <div className="text-zinc-700 text-sm whitespace-pre-wrap font-medium leading-relaxed italic max-h-48 overflow-y-auto pr-2">
-                "{selectedSub?.student_answer}"
+          <div className="p-8 space-y-6 bg-white">
+            <div className="space-y-3">
+              <div className="flex justify-between items-end">
+                <Label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Konten Jawaban Siswa</Label>
+                <Badge variant="outline" className="text-[9px] border-zinc-200 text-zinc-400 font-bold italic">
+                   ID: #{selectedSub?.id}
+                </Badge>
+              </div>
+              <div className="bg-zinc-50 p-5 rounded-[1.5rem] border border-zinc-100 max-h-40 overflow-y-auto custom-scrollbar">
+                <p className="text-zinc-600 text-sm font-medium italic leading-relaxed">
+                  "{selectedSub?.student_answer}"
+                </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="md:col-span-1 space-y-2">
-                <Label className="font-black text-zinc-900 uppercase italic text-xs">Skor (0-100)</Label>
+                <Label className="font-black text-zinc-900 uppercase italic text-[10px] flex items-center gap-1">
+                  Skor <Star size={10} className="text-amber-500" />
+                </Label>
                 <Input 
                   type="number" 
+                  min="0"
+                  max="100"
                   value={feedbackData.score}
-                  onChange={(e) => setFeedbackData({...feedbackData, score: parseInt(e.target.value) || 0})}
-                  className="h-14 rounded-2xl border-zinc-200 text-2xl font-black text-center focus:ring-amber-500"
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    if (val > 100) return;
+                    setFeedbackData({...feedbackData, score: isNaN(val) ? 0 : val})
+                  }}
+                  className="h-14 rounded-2xl border-zinc-200 text-2xl font-black text-center focus:ring-amber-500 transition-all"
                 />
               </div>
               <div className="md:col-span-3 space-y-2">
-                <Label className="font-black text-zinc-900 uppercase italic text-xs">Feedback Mentor</Label>
+                <Label className="font-black text-zinc-900 uppercase italic text-[10px] flex items-center gap-1">
+                  Feedback Mentor <MessageSquare size={10} className="text-amber-500" />
+                </Label>
                 <textarea 
-                  className="w-full h-32 p-4 rounded-2xl border border-zinc-200 focus:ring-2 focus:ring-amber-500 outline-none text-sm font-medium"
-                  placeholder="Beri motivasi atau koreksi teknis..."
+                  className="w-full h-32 p-4 rounded-2xl border border-zinc-200 focus:ring-2 focus:ring-amber-500 outline-none text-sm font-medium resize-none transition-all"
+                  placeholder="Contoh: Jawaban sudah bagus, namun perlu diperdalam di bagian implementasi..."
                   value={feedbackData.mentor_feedback}
                   onChange={(e) => setFeedbackData({...feedbackData, mentor_feedback: e.target.value})}
                 />
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-2">
               <Button 
                 variant="ghost" 
                 onClick={() => setSelectedSub(null)}
-                className="flex-1 h-14 rounded-2xl font-bold uppercase italic text-zinc-400"
+                className="flex-1 h-14 rounded-2xl font-black uppercase italic text-zinc-400 hover:bg-zinc-50"
               >
                 Batal
               </Button>
               <Button 
                 onClick={submitFeedback}
                 disabled={isUpdating}
-                className="flex-[2] h-14 bg-amber-500 hover:bg-zinc-900 text-white rounded-2xl font-black uppercase italic tracking-widest shadow-xl shadow-amber-100 transition-all"
+                className="flex-[2] h-14 bg-amber-500 hover:bg-zinc-900 text-white rounded-2xl font-black uppercase italic tracking-widest shadow-xl shadow-amber-100 transition-all disabled:opacity-50"
               >
                 {isUpdating ? <Loader2 className="animate-spin" /> : (
-                  <>Simpan & Kirim Nilai <Send size={18} className="ml-2" /></>
+                  <span className="flex items-center">
+                    Simpan Penilaian <Send size={16} className="ml-2" />
+                  </span>
                 )}
               </Button>
             </div>
