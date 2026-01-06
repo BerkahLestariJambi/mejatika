@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,8 +35,19 @@ export default function StudentDashboard() {
   const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
+  
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
-  // 1. Fungsi Fetch Data Utama
+  // Auto scroll ke pesan terbaru
+  const scrollToBottom = () => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }
+
+  useEffect(() => {
+    if (activeStep === "feedback") scrollToBottom()
+  }, [submissionFeedback, activeStep])
+
+  // 1. Fetch Data Utama
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
@@ -60,7 +71,7 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Fungsi Ambil Status Submission & Feedback
+  // 2. Ambil Status Submission & Diskusi
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
@@ -69,6 +80,7 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
+      // Data sekarang sudah termasuk relasi 'discussions'
       setSubmissionFeedback(data.data || data)
     } catch (err) {
       console.error("Gagal mengambil status submission")
@@ -87,36 +99,29 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // 3. Fungsi Kirim Balasan (Perbaikan URL agar sesuai Route Backend)
+  // 3. Kirim Balasan Diskusi Baru
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
     const token = localStorage.getItem("token")
     
     try {
-      // Pastikan URL ini sesuai dengan rute yang Anda definisikan di api.php Laravel
-      // Jika di Laravel menggunakan Route::post('submissions/{id}/reply', ...)
-      const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/discussion`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json"
         },
-        body: JSON.stringify({ student_reply: replyText })
+        body: JSON.stringify({ message: replyText })
       })
 
-      if (res.status === 404) {
-        alert("Error 404: Rute tidak ditemukan di server. Periksa api.php di Backend.")
-        return
-      }
-
-      const result = await res.json()
       if (res.ok) {
         setReplyText("")
-        await fetchSubmissionStatus() // Refresh data
+        await fetchSubmissionStatus() // Refresh riwayat chat
       } else {
-        alert(result.message || "Gagal mengirim balasan")
+        const result = await res.json()
+        alert(result.message || "Gagal mengirim pesan")
       }
     } catch (err) {
       alert("Terjadi kesalahan koneksi")
@@ -415,7 +420,7 @@ export default function StudentDashboard() {
                       <div className="space-y-8 animate-in fade-in duration-500">
                          {submissionFeedback ? (
                            <div className="space-y-8">
-                              {/* BOX FEEDBACK MENTOR */}
+                              {/* STATUS SKOR & FEEDBACK MENTOR */}
                               <div className="bg-zinc-900 p-10 rounded-[3.5rem] text-white relative overflow-hidden">
                                 <div className="flex justify-between items-start relative z-10">
                                   <div className="flex items-center gap-3">
@@ -435,42 +440,58 @@ export default function StudentDashboard() {
                                 </div>
                               </div>
 
-                              {/* FITUR REPLAY CHAT / DISKUSI */}
-                              <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 space-y-6">
-                                <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2"><MessageSquare size={14}/> Diskusi Modul</h5>
+                              {/* SISTEM DISKUSI MULTI-CHAT */}
+                              <div className="bg-zinc-50 rounded-[3rem] p-8 border border-zinc-100 flex flex-col h-[500px]">
+                                <h5 className="text-[10px] font-black uppercase italic text-zinc-400 tracking-widest flex items-center gap-2 mb-6"><MessageSquare size={14}/> Diskusi Modul</h5>
                                 
-                                {/* Bubble Chat Balasan Siswa dari DB */}
-                                {submissionFeedback.student_reply && (
-                                  <div className="flex flex-col items-end animate-in slide-in-from-right-4">
-                                    <div className="bg-amber-100 text-amber-900 p-6 rounded-t-3xl rounded-bl-3xl max-w-[80%] text-sm italic font-medium shadow-sm">
-                                      {submissionFeedback.student_reply}
+                                {/* Area Chat */}
+                                <div className="flex-1 overflow-y-auto space-y-4 pr-4 custom-scrollbar mb-6">
+                                  {/* Bubble Jawaban Siswa (Root) */}
+                                  <div className="flex flex-col items-start">
+                                    <div className="bg-white border border-zinc-200 text-zinc-700 p-5 rounded-2xl rounded-tl-none max-w-[85%] text-sm italic shadow-sm">
+                                      <p className="text-[8px] font-bold text-amber-600 uppercase mb-1">Submission Anda:</p>
+                                      {submissionFeedback.student_answer}
                                     </div>
-                                    <span className="text-[9px] font-black uppercase text-zinc-400 mt-2 mr-2">Pesan Anda</span>
                                   </div>
-                                )}
 
-                                {/* Input Balasan */}
-                                {!submissionFeedback.student_reply ? (
-                                  <div className="relative">
-                                    <textarea 
-                                      value={replyText}
-                                      onChange={(e) => setReplyText(e.target.value)}
-                                      placeholder="Tanya mentor tentang feedback ini..."
-                                      className="w-full p-6 pr-16 bg-white border-2 border-zinc-100 rounded-[2rem] outline-none text-sm italic focus:border-amber-500 transition-all min-h-[100px]"
-                                    />
-                                    <button 
-                                      onClick={handleSendReply}
-                                      disabled={isSendingReply || !replyText.trim()}
-                                      className="absolute bottom-4 right-4 h-10 w-10 bg-zinc-950 text-amber-500 rounded-full flex items-center justify-center hover:scale-110 transition-transform disabled:opacity-50"
-                                    >
-                                      {isSendingReply ? <Loader2 size={18} className="animate-spin"/> : <Send size={18} />}
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="text-center py-4 border-t border-zinc-100">
-                                    <p className="text-[9px] font-black uppercase text-zinc-300 italic">Diskusi untuk modul ini telah terkirim</p>
-                                  </div>
-                                )}
+                                  {/* Daftar Diskusi dari Tabel Baru */}
+                                  {submissionFeedback.discussions?.map((chat: any) => {
+                                    const isAdmin = chat.user?.role === 'admin';
+                                    return (
+                                      <div key={chat.id} className={`flex flex-col ${isAdmin ? 'items-start' : 'items-end'}`}>
+                                        <div className={`p-5 rounded-2xl max-w-[85%] text-sm shadow-sm ${
+                                          isAdmin 
+                                          ? 'bg-zinc-900 text-white rounded-tl-none' 
+                                          : 'bg-amber-100 text-amber-900 rounded-tr-none italic font-medium'
+                                        }`}>
+                                          {chat.message}
+                                        </div>
+                                        <span className="text-[8px] font-black uppercase text-zinc-400 mt-2 mx-2">
+                                          {isAdmin ? "Mentor Mejatika" : "Anda"} • {chat.formatted_date}
+                                        </span>
+                                      </div>
+                                    )
+                                  })}
+                                  <div ref={chatEndRef} />
+                                </div>
+
+                                {/* Input Chat */}
+                                <div className="relative">
+                                  <input 
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSendReply()}
+                                    placeholder="Tanya mentor tentang modul ini..."
+                                    className="w-full p-6 pr-16 bg-white border-2 border-zinc-100 rounded-full outline-none text-sm italic focus:border-amber-500 transition-all shadow-sm"
+                                  />
+                                  <button 
+                                    onClick={handleSendReply}
+                                    disabled={isSendingReply || !replyText.trim()}
+                                    className="absolute top-1/2 -translate-y-1/2 right-3 h-12 w-12 bg-zinc-950 text-amber-500 rounded-full flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-50"
+                                  >
+                                    {isSendingReply ? <Loader2 size={18} className="animate-spin"/> : <Send size={20} />}
+                                  </button>
+                                </div>
                               </div>
                            </div>
                          ) : (
