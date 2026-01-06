@@ -60,24 +60,16 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Fungsi Ambil Status Submission & Feedback (SINKRONISASI DB)
+  // 2. Fungsi Ambil Status Submission & Feedback
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
     try {
       const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json" 
-        }
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
-      const result = await res.json()
-      // Pastikan data dimasukkan ke state dengan benar
-      if (result.success) {
-        setSubmissionFeedback(result.data)
-      } else {
-        setSubmissionFeedback(null)
-      }
+      const data = await res.json()
+      setSubmissionFeedback(data.data || data)
     } catch (err) {
       console.error("Gagal mengambil status submission")
     }
@@ -95,17 +87,15 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // 3. Fungsi Kirim Balasan (Disimpan ke DB)
+  // 3. Fungsi Kirim Balasan (Perbaikan URL agar sesuai Route Backend)
   const handleSendReply = async () => {
-    // Validasi ID submission harus ada
-    if (!replyText.trim() || !submissionFeedback?.id) {
-      alert("ID Tugas tidak ditemukan. Coba refresh halaman.")
-      return
-    }
-
+    if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
     const token = localStorage.getItem("token")
+    
     try {
+      // Pastikan URL ini sesuai dengan rute yang Anda definisikan di api.php Laravel
+      // Jika di Laravel menggunakan Route::post('submissions/{id}/reply', ...)
       const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
         method: "POST",
         headers: { 
@@ -116,18 +106,20 @@ export default function StudentDashboard() {
         body: JSON.stringify({ student_reply: replyText })
       })
 
-      const result = await res.json()
+      if (res.status === 404) {
+        alert("Error 404: Rute tidak ditemukan di server. Periksa api.php di Backend.")
+        return
+      }
 
-      if (res.ok && result.success) {
+      const result = await res.json()
+      if (res.ok) {
         setReplyText("")
-        // Langsung update state lokal agar UI berubah seketika
-        setSubmissionFeedback(result.data)
-        alert("Balasan berhasil dikirim!")
+        await fetchSubmissionStatus() // Refresh data
       } else {
-        alert(result.message || "Gagal menyimpan balasan ke database")
+        alert(result.message || "Gagal mengirim balasan")
       }
     } catch (err) {
-      alert("Koneksi bermasalah")
+      alert("Terjadi kesalahan koneksi")
     } finally {
       setIsSendingReply(false)
     }
@@ -155,13 +147,11 @@ export default function StudentDashboard() {
           project_link: taskLink 
         })
       })
-      const result = await res.json()
-      if (res.ok && result.success) {
-        alert("Tugas berhasil dikirim!")
-        setSubmissionFeedback(result.data) // Simpan data submission yang baru dibuat
-        markStepComplete(activeMaterial.id, "tugas", "feedback")
-        setStudentAnswer("")
-        setTaskLink("")
+      if (res.ok) {
+        alert("Tugas berhasil dikirim!");
+        markStepComplete(activeMaterial.id, "tugas", "feedback");
+        setStudentAnswer("");
+        setTaskLink("");
       }
     } catch (err) {
       markStepComplete(activeMaterial.id, "tugas", "feedback")
