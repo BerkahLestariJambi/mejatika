@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Camera } from "lucide-react"
+import { Loader2, Camera, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
 export default function MentorProfilePage() {
@@ -19,21 +19,26 @@ export default function MentorProfilePage() {
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
 
-  // URL Base API Mejatika
   const API_BASE = "https://backend.mejatika.com/api"
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem("token")
-        if (!token) return
+        if (!token) {
+          router.push("/login")
+          return
+        }
 
+        // Mengambil data user untuk melihat apakah sudah ada profil mentor
         const res = await fetch(`${API_BASE}/me`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            "Accept": "application/json"
+          },
         })
         const data = await res.json()
         
-        // Pastikan menyesuaikan dengan struktur response API /me Anda
         if (data.mentor_profile) {
           setFormData({
             bio: data.mentor_profile.bio || "",
@@ -43,16 +48,24 @@ export default function MentorProfilePage() {
         }
       } catch (error) {
         console.error("Gagal mengambil profil:", error)
+        toast.error("Gagal memuat data profil lama.")
       } finally {
         setFetching(false)
       }
     }
     fetchProfile()
-  }, [])
+  }, [router])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0]
+      
+      // Validasi ukuran file (2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Ukuran foto terlalu besar. Maksimal 2MB.")
+        return
+      }
+
       setPhoto(file)
       setPreview(URL.createObjectURL(file))
     }
@@ -62,95 +75,119 @@ export default function MentorProfilePage() {
     e.preventDefault()
     setLoading(true)
 
-    const token = localStorage.getItem("token")
-    const data = new FormData()
-    data.append("bio", formData.bio)
-    data.append("specialization", formData.specialization)
-    if (photo) data.append("photo", photo)
-
     try {
+      const token = localStorage.getItem("token")
+      const data = new FormData()
+      
+      data.append("bio", formData.bio)
+      data.append("specialization", formData.specialization)
+      if (photo) {
+        data.append("photo", photo)
+      }
+
       const res = await fetch(`${API_BASE}/mentor/profile`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: data, // FormData secara otomatis mengatur Content-Type menjadi multipart/form-data
+        method: "POST", // Tetap POST untuk multipart
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Accept": "application/json" // Penting untuk menerima pesan error validasi
+        },
+        body: data,
       })
 
       const result = await res.json()
 
       if (res.ok) {
         toast.success("Profil berhasil diperbarui!")
-        router.push("/dashboard/mentor")
+        // Beri jeda sedikit agar user bisa melihat notifikasi sukses
+        setTimeout(() => {
+          router.push("/dashboard/mentor")
+        }, 1500)
       } else {
-        toast.error(result.message || "Gagal memperbarui profil.")
+        // Menampilkan error validasi spesifik dari Laravel jika ada
+        const errorMsg = result.errors 
+          ? Object.values(result.errors).flat().join(", ") 
+          : result.message
+        toast.error(errorMsg || "Gagal memperbarui profil.")
       }
     } catch (error) {
-      toast.error("Terjadi kesalahan sistem.")
+      toast.error("Terjadi kesalahan koneksi ke server.")
     } finally {
       setLoading(false)
     }
   }
 
   if (fetching) return (
-    <div className="flex flex-col items-center justify-center py-20">
-      <Loader2 className="animate-spin text-amber-500 mb-2" size={32} />
-      <p className="text-xs font-bold uppercase tracking-widest text-zinc-400">Memuat Data...</p>
+    <div className="flex flex-col items-center justify-center py-40">
+      <Loader2 className="animate-spin text-amber-500 mb-4" size={40} />
+      <p className="text-xs font-black uppercase tracking-[0.3em] text-zinc-400">Menyiapkan Profil...</p>
     </div>
   )
 
   return (
     <div className="container mx-auto px-4 py-10 max-w-2xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-black uppercase italic tracking-tighter text-zinc-900">
-          Lengkapi <span className="text-amber-500">Profil Mentor</span>
+      <div className="mb-10 text-center md:text-left">
+        <h1 className="text-4xl font-black uppercase italic tracking-tighter text-zinc-900 leading-none">
+          Lengkapi <span className="text-amber-500 text-5xl">Profil</span>
         </h1>
-        <p className="text-zinc-500 text-sm mt-2 font-medium">Data ini akan tampil pada halaman kursus yang Anda ajar.</p>
+        <p className="text-zinc-500 text-xs mt-3 font-bold uppercase tracking-widest">
+          Panel Kontributor Mejatika • Informasi Publik
+        </p>
       </div>
 
-      <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white">
-        <CardContent className="p-10">
-          <form onSubmit={handleSubmit} className="space-y-8">
+      <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white border-t-8 border-t-amber-500">
+        <CardContent className="p-8 md:p-12">
+          <form onSubmit={handleSubmit} className="space-y-10">
             
-            {/* Foto Profil Section */}
-            <div className="flex flex-col items-center justify-center space-y-4">
-              <div className="relative w-36 h-36 rounded-[2.5rem] overflow-hidden bg-zinc-100 border-8 border-zinc-50 shadow-inner group">
-                {preview ? (
-                  <img src={preview} className="w-full h-full object-cover" alt="Preview" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-zinc-300">
-                    <Camera size={48} />
-                  </div>
-                )}
-                <label className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-all duration-300 backdrop-blur-sm">
+            {/* FOTO PROFIL SECTION */}
+            <div className="flex flex-col items-center justify-center space-y-6">
+              <div className="relative group">
+                <div className="w-40 h-40 rounded-[2.5rem] overflow-hidden bg-zinc-100 border-[10px] border-zinc-50 shadow-2xl relative">
+                  {preview ? (
+                    <img src={preview} className="w-full h-full object-cover" alt="Preview" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-zinc-300">
+                      <Camera size={50} />
+                    </div>
+                  )}
+                </div>
+                
+                <label className="absolute -bottom-2 -right-2 bg-zinc-900 text-white p-4 rounded-2xl cursor-pointer hover:bg-amber-500 transition-all shadow-xl group-hover:scale-110 active:scale-95">
                   <Input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
-                  <Camera className="text-white mb-1" size={24} />
-                  <span className="text-white text-[10px] font-black uppercase tracking-tighter">Ganti Foto</span>
+                  <Camera size={20} />
                 </label>
               </div>
               <div className="text-center">
-                <p className="text-[10px] font-black uppercase text-zinc-400 tracking-[0.2em]">Pas Foto Profesional</p>
-                <p className="text-[9px] text-zinc-400 mt-1">Format: JPG, PNG (Maks. 2MB)</p>
+                <span className="bg-zinc-100 text-zinc-500 text-[10px] font-black uppercase px-3 py-1 rounded-full tracking-tighter">
+                  Rasio 1:1 Disarankan
+                </span>
               </div>
             </div>
 
-            <div className="grid gap-6">
-              {/* Spesialisasi */}
+            <div className="grid gap-8">
+              {/* SPESIALISASI */}
               <div className="space-y-3">
-                <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">Bidang Keahlian / Spesialisasi</label>
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Keahlian Utama</label>
+                  <span className="text-[9px] font-bold text-amber-600 uppercase italic">Wajib Diisi</span>
+                </div>
                 <Input 
-                  placeholder="Contoh: Fullstack Web Developer, Desainer Grafis" 
-                  className="rounded-2xl border-zinc-100 h-14 bg-zinc-50/50 focus:bg-white transition-all shadow-sm"
+                  placeholder="Misal: Senior Laravel Developer & DevOps" 
+                  className="rounded-2xl border-zinc-100 h-16 bg-zinc-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all text-sm font-bold shadow-sm"
                   value={formData.specialization}
                   onChange={(e) => setFormData({...formData, specialization: e.target.value})}
                   required
                 />
               </div>
 
-              {/* Bio */}
+              {/* BIO */}
               <div className="space-y-3">
-                <label className="text-[11px] font-black uppercase tracking-widest text-zinc-500 ml-1">Biografi & Pengalaman Singkat</label>
+                <div className="flex items-center justify-between px-1">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Biografi Profesional</label>
+                  <span className="text-[9px] font-bold text-amber-600 uppercase italic">Min. 10 Karakter</span>
+                </div>
                 <Textarea 
-                  placeholder="Tuliskan ringkasan profil dan pengalaman Anda mengajar atau bekerja di bidang tersebut..." 
-                  className="rounded-[2rem] border-zinc-100 min-h-[160px] bg-zinc-50/50 focus:bg-white transition-all shadow-sm p-5"
+                  placeholder="Ceritakan pengalaman mengajar atau proyek terbaik Anda..." 
+                  className="rounded-[2.5rem] border-zinc-100 min-h-[180px] bg-zinc-50/50 focus:bg-white focus:ring-2 focus:ring-amber-500/20 transition-all p-6 text-sm font-medium leading-relaxed shadow-sm"
                   value={formData.bio}
                   onChange={(e) => setFormData({...formData, bio: e.target.value})}
                   required
@@ -158,21 +195,32 @@ export default function MentorProfilePage() {
               </div>
             </div>
 
-            <Button 
-              type="submit" 
-              disabled={loading}
-              className="w-full bg-zinc-900 hover:bg-amber-500 text-white h-16 rounded-[1.5rem] font-black uppercase tracking-[0.2em] transition-all shadow-lg shadow-zinc-200 active:scale-[0.98]"
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="animate-spin" size={20} />
-                  <span>Sedang Menyimpan...</span>
-                </div>
-              ) : "Simpan Profil Mentor"}
-            </Button>
+            <div className="pt-4">
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="w-full bg-zinc-900 hover:bg-amber-600 text-white h-20 rounded-[2rem] font-black uppercase tracking-[0.2em] transition-all shadow-2xl shadow-zinc-200 active:scale-[0.97] group"
+              >
+                {loading ? (
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="animate-spin" size={24} />
+                    <span>Sinkronisasi Data...</span>
+                  </div>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Update Profil Mentor
+                  </span>
+                )}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
+      
+      <div className="mt-8 flex items-center justify-center gap-2 text-zinc-400">
+        <AlertCircle size={14} />
+        <p className="text-[10px] font-bold uppercase italic">Profil Anda akan ditinjau oleh tim kurasi Mejatika</p>
+      </div>
     </div>
   )
 }
