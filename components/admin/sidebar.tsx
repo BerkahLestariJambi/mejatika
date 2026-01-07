@@ -30,6 +30,7 @@ const navigation = [
   { name: "Courses", href: "/admin/courses", icon: GraduationCap },
   { name: "Schedules", href: "/admin/schedules", icon: Calendar },
   { name: "Registrations", href: "/admin/registrations", icon: Award },
+  { name: "Mentor Kursus", href: "/admin/mentor-approval", icon: Award },
   { name: "Materials", href: "/admin/materials", icon: FileText },
   { name: "submissions", href: "/admin/submissions", icon: FileText },
   { name: "Certificates", href: "/admin/certificates", icon: Award },
