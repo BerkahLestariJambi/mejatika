@@ -37,6 +37,9 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
+  // --- TAMBAHAN BARU: STATE UNTUK DOWNLOAD ---
+  const [downloadingCertId, setDownloadingCertId] = useState<number | null>(null)
+
   // 1. Fetch Data Utama
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
@@ -126,7 +129,45 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // --- HANDLERS ---
+  // --- TAMBAHAN BARU: HANDLER DOWNLOAD SERTIFIKAT ---
+  const handleDownloadCertificate = async (reg: any) => {
+    // Cari ID sertifikat. Jika backend menyertakannya di dalam objek reg:
+    const certId = reg.certificate?.id; 
+    
+    if (!certId) {
+      alert("Sertifikat belum diterbitkan atau data tidak ditemukan.");
+      return;
+    }
+
+    setDownloadingCertId(reg.id);
+    const token = localStorage.getItem("token");
+
+    try {
+      const response = await fetch(`https://backend.mejatika.com/api/certificates/${certId}/download`, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error("Gagal generate sertifikat.");
+
+      // Proses file PDF (Blob)
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `Sertifikat-${reg.course?.title || 'Mejatika'}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert("Error: " + err.message);
+    } finally {
+      setDownloadingCertId(null);
+    }
+  };
+
+  // --- HANDLERS LAINNYA ---
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
@@ -232,7 +273,7 @@ export default function StudentDashboard() {
           ))}
         </nav>
         <div className="p-6 border-t border-slate-100">
-           <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-all">
+            <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-all">
             <LogOut size={20} /> Logout
           </button>
         </div>
@@ -422,12 +463,35 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {registrations.filter(r => r.status === 'success').map(reg => {
                 const isFinished = calculateProgress(reg.course_id) === 100;
+                // --- UPDATE: LOGIKA LOADING DOWNLOAD ---
+                const isDownloading = downloadingCertId === reg.id;
+
                 return (
                   <Card key={reg.id} className={`rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none ${isFinished ? 'bg-white' : 'bg-slate-50 opacity-60'}`}>
                     <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${isFinished ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-200 text-slate-400'}`}><Award size={48} /></div>
                     <h4 className="font-bold text-slate-800 mb-2">{reg.course?.title}</h4>
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-8">{isFinished ? "Verified Graduate" : "Kursus Belum Selesai"}</p>
-                    <Button disabled={!isFinished} className={`w-full h-12 rounded-2xl font-bold text-xs ${isFinished ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-200 text-slate-500'}`}>{isFinished ? "Download Sertifikat" : "Progress: " + calculateProgress(reg.course_id) + "%"}</Button>
+                    
+                    {/* --- UPDATE: BUTTON DOWNLOAD DENGAN HANDLER --- */}
+                    <Button 
+                      disabled={!isFinished || isDownloading} 
+                      onClick={() => handleDownloadCertificate(reg)}
+                      className={`w-full h-12 rounded-2xl font-bold text-xs transition-all ${isFinished ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700' : 'bg-slate-200 text-slate-500'}`}
+                    >
+                      {isDownloading ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
+                          Generating...
+                        </>
+                      ) : isFinished ? (
+                        <>
+                          <FileText className="mr-2 h-4 w-4" />
+                          Download Sertifikat
+                        </>
+                      ) : (
+                        "Progress: " + calculateProgress(reg.course_id) + "%"
+                      )}
+                    </Button>
                   </Card>
                 )
               })}
