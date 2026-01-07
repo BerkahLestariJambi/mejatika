@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ShieldCheck, Loader2, Mail, Lock, ArrowRight, Eye, EyeOff, CheckCircle2 } from "lucide-react"
 
-// --- KOMPONEN FORM LOGIN (Logika Utama) ---
 function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -23,11 +22,9 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    // Menangkap pesan sukses dari URL (misal: setelah register)
     const msg = searchParams.get("success")
     if (msg) setSuccess(msg)
 
-    // Cek jika sesi sudah ada
     const token = localStorage.getItem("token")
     const userData = localStorage.getItem("user")
     if (token && userData) {
@@ -36,10 +33,26 @@ function LoginForm() {
     }
   }, [searchParams])
 
+  // --- LOGIKA REDIRECT LENGKAP SEMUA ROLE ---
   const redirectBasedOnRole = (role: string) => {
-    if (role === "admin") router.push("/admin")
-    else if (role === "kontributor") router.push("/kontributor")
-    else router.push("/dashboard")
+    switch (role) {
+      case "admin":
+        router.push("/admin")
+        break
+      case "kontributor":
+      case "mentor":
+        // Keduanya diarahkan ke dashboard mentor yang kita buat
+        router.push("/dashboard/mentor")
+        break
+      case "peserta":
+        // Dashboard utama untuk siswa/peserta
+        router.push("/dashboard")
+        break
+      default:
+        // Fallback jika role tidak dikenal
+        router.push("/")
+        break
+    }
   }
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -66,9 +79,11 @@ function LoginForm() {
         return
       }
 
+      // Simpan data ke localStorage
       localStorage.setItem("user", JSON.stringify(data.user))
       localStorage.setItem("token", data.token)
 
+      // Jalankan pengalihan berdasarkan role dari server
       redirectBasedOnRole(data.user.role)
       
     } catch (err) {
@@ -95,7 +110,7 @@ function LoginForm() {
           <form onSubmit={handleLogin} className="space-y-4">
             {error && (
               <Alert className="bg-red-50 border-red-100 text-red-600 rounded-xl py-3 border">
-                <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider">
+                <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider text-center">
                     {error}
                 </AlertDescription>
               </Alert>
@@ -103,7 +118,7 @@ function LoginForm() {
 
             {success && (
               <Alert className="bg-emerald-50 border-emerald-100 text-emerald-600 rounded-xl py-3 border">
-                <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider flex items-center gap-2">
+                <AlertDescription className="font-bold uppercase italic text-[10px] tracking-wider flex items-center justify-center gap-2">
                     <CheckCircle2 size={14} /> {success}
                 </AlertDescription>
               </Alert>
@@ -156,7 +171,7 @@ function LoginForm() {
               {loading ? (
                 <Loader2 className="animate-spin h-5 w-5" />
               ) : (
-                <span className="flex items-center gap-2">Login Mejatika <ArrowRight size={18} /></span>
+                <span className="flex items-center gap-2 italic">Login Mejatika <ArrowRight size={18} /></span>
               )}
             </Button>
 
@@ -175,7 +190,6 @@ function LoginForm() {
   )
 }
 
-// --- EXPORT DEFAULT DENGAN SUSPENSE BOUNDARY ---
 export default function LoginPage() {
   const [isClient, setIsClient] = useState(false)
 
@@ -183,7 +197,7 @@ export default function LoginPage() {
     setIsClient(true)
   }, [])
 
-  if (!isClient) return null // Menghindari hydration error di level root
+  if (!isClient) return null
 
   return (
     <Suspense fallback={
