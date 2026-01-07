@@ -2,14 +2,13 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, Check, X, User as UserIcon, Book } from "lucide-react"
+import { Loader2, Check, X, User as UserIcon, Book, Calendar } from "lucide-react"
 import { toast } from "sonner"
 
 export default function AdminMentorApprovalPage() {
   const [applications, setApplications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [processing, setProcessing] = useState<string | null>(null) // format: courseId-mentorId
+  const [processing, setProcessing] = useState<string | null>(null)
 
   const API_BASE = "https://backend.mejatika.com/api"
 
@@ -24,6 +23,7 @@ export default function AdminMentorApprovalPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       const data = await res.json()
+      // Mengambil data dari response API
       setApplications(data.data || [])
     } catch (error) {
       toast.error("Gagal mengambil data pengajuan")
@@ -51,7 +51,7 @@ export default function AdminMentorApprovalPage() {
 
       if (res.ok) {
         toast.success(`Berhasil ${status === 'approved' ? 'menyetujui' : 'menolak'} pengajuan`)
-        fetchPendingApplications() // Refresh data
+        fetchPendingApplications()
       } else {
         toast.error("Gagal memperbarui status")
       }
@@ -78,54 +78,54 @@ export default function AdminMentorApprovalPage() {
           Tidak ada pengajuan pending saat ini.
         </div>
       ) : (
-        <div className="grid gap-6">
-          {applications.map((course) => (
-            <div key={course.id} className="space-y-4">
-              <h2 className="flex items-center gap-2 text-lg font-black uppercase text-zinc-700">
-                <Book size={20} className="text-amber-500" /> {course.title}
-              </h2>
-              
-              <div className="grid gap-4 md:grid-cols-2">
-                {course.instructors.map((mentor: any) => (
-                  <Card key={mentor.id} className="border-none shadow-md rounded-3xl overflow-hidden bg-white">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-16 h-16 rounded-2xl bg-zinc-100 overflow-hidden flex-shrink-0">
-                          {mentor.mentor_profile?.photo ? (
-                            <img src={mentor.mentor_profile.photo} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-zinc-400"><UserIcon /></div>
-                          )}
-                        </div>
-                        <div className="flex-grow">
-                          <h4 className="font-bold text-zinc-900">{mentor.name}</h4>
-                          <p className="text-xs text-amber-600 font-bold uppercase mb-2">{mentor.mentor_profile?.specialization || "Keahlian belum diisi"}</p>
-                          <p className="text-xs text-zinc-500 line-clamp-2 italic">"{mentor.mentor_profile?.bio || 'Tidak ada bio'}"</p>
-                        </div>
-                      </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* PERBAIKAN: Melakukan iterasi langsung pada array flat applications */}
+          {applications.map((app) => (
+            <Card key={app.application_id} className="border-none shadow-md rounded-3xl overflow-hidden bg-white">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4 text-xs font-black uppercase text-amber-600 bg-amber-50 w-fit px-3 py-1 rounded-full">
+                   <Book size={14} /> {app.course_title}
+                </div>
 
-                      <div className="flex gap-2 mt-6">
-                        <Button 
-                          onClick={() => handleStatusUpdate(course.id, mentor.id, 'approved')}
-                          disabled={processing === `${course.id}-${mentor.id}`}
-                          className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 font-bold text-xs"
-                        >
-                          {processing === `${course.id}-${mentor.id}` ? <Loader2 className="animate-spin" /> : <><Check size={16} className="mr-1" /> Terima</>}
-                        </Button>
-                        <Button 
-                          onClick={() => handleStatusUpdate(course.id, mentor.id, 'rejected')}
-                          disabled={processing === `${course.id}-${mentor.id}`}
-                          variant="outline"
-                          className="flex-1 border-red-200 text-red-600 hover:bg-red-50 rounded-xl h-10 font-bold text-xs"
-                        >
-                          <X size={16} className="mr-1" /> Tolak
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
+                <div className="flex items-start gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-zinc-100 overflow-hidden flex-shrink-0 border border-zinc-100">
+                    <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                      <UserIcon size={30} />
+                    </div>
+                  </div>
+                  <div className="flex-grow">
+                    <h4 className="font-bold text-zinc-900 leading-tight">{app.mentor_name}</h4>
+                    <p className="text-[10px] text-zinc-400 font-medium mb-2">{app.mentor_email}</p>
+                    <p className="text-xs text-zinc-600 font-bold uppercase">{app.specialization || "Keahlian tidak diisi"}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-zinc-50 flex items-center justify-between">
+                   <div className="flex items-center gap-1 text-zinc-400 text-[10px]">
+                      <Calendar size={12} />
+                      Diajukan: {new Date(app.applied_at).toLocaleDateString('id-ID')}
+                   </div>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <Button 
+                    onClick={() => handleStatusUpdate(app.course_id, app.mentor_id, 'approved')}
+                    disabled={processing === `${app.course_id}-${app.mentor_id}`}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl h-10 font-bold text-xs"
+                  >
+                    {processing === `${app.course_id}-${app.mentor_id}` ? <Loader2 className="animate-spin" /> : <><Check size={16} className="mr-1" /> Terima</>}
+                  </Button>
+                  <Button 
+                    onClick={() => handleStatusUpdate(app.course_id, app.mentor_id, 'rejected')}
+                    disabled={processing === `${app.course_id}-${app.mentor_id}`}
+                    variant="outline"
+                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50 rounded-xl h-10 font-bold text-xs"
+                  >
+                    <X size={16} className="mr-1" /> Tolak
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}
