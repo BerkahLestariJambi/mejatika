@@ -7,16 +7,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/components/ui/use-toast"
 import { Loader2, Save } from "lucide-react"
+// Import SweetAlert2
+import Swal from "sweetalert2"
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, string>>({})
-  const { toast } = useToast()
 
-  // 1. Ambil data dari Backend saat halaman dibuka
+  // 1. Ambil data dari Backend
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -26,27 +26,39 @@ export default function SettingsPage() {
         })
         const result = await res.json()
         
-        // Transformasi array [{key: 'a', value: 'b'}] menjadi object {a: 'b'}
         const settingsMap = Object.fromEntries(
           result.data.map((s: { key: string; value: string }) => [s.key, s.value])
         )
         setFormData(settingsMap)
       } catch (error) {
-        toast({ title: "Gagal memuat pengaturan", variant: "destructive" })
+        console.error("Gagal load settings:", error)
       } finally {
         setLoading(false)
       }
     }
     fetchSettings()
-  }, [toast])
+  }, [])
 
-  // 2. Fungsi untuk handle perubahan input
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }))
   }
 
-  // 3. Simpan data ke Backend (Batch Update)
+  // 2. Simpan data dengan SweetAlert
   const handleSave = async () => {
+    // Tampilkan konfirmasi sebelum simpan (Opsional)
+    const confirm = await Swal.fire({
+      title: "Simpan Perubahan?",
+      text: "Pastikan data yang Anda masukkan sudah benar.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#d33",
+      confirmButtonText: "Ya, Simpan!",
+      cancelButtonText: "Batal"
+    })
+
+    if (!confirm.isConfirmed) return
+
     setSaving(true)
     try {
       const token = localStorage.getItem("token")
@@ -61,12 +73,21 @@ export default function SettingsPage() {
 
       if (!res.ok) throw new Error("Gagal menyimpan ke server")
 
-      toast({ title: "Pengaturan berhasil disimpan", variant: "default" })
+      // Notifikasi Sukses SweetAlert
+      Swal.fire({
+        title: "Berhasil!",
+        text: "Pengaturan aplikasi telah diperbarui.",
+        icon: "success",
+        timer: 2000,
+        showConfirmButton: false,
+      })
+
     } catch (error: any) {
-      toast({ 
-        title: "Gagal menyimpan", 
-        description: error.message, 
-        variant: "destructive" 
+      // Notifikasi Error SweetAlert
+      Swal.fire({
+        title: "Gagal!",
+        text: error.message || "Terjadi kesalahan saat menyimpan data.",
+        icon: "error",
       })
     } finally {
       setSaving(false)
@@ -95,7 +116,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* General Settings */}
         <Card>
           <CardHeader>
             <CardTitle>General Settings</CardTitle>
@@ -127,18 +147,9 @@ export default function SettingsPage() {
                 onChange={(e) => handleChange("contact_email", e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="contact_phone">Contact Phone</Label>
-              <Input 
-                id="contact_phone" 
-                value={formData.contact_phone || ""} 
-                onChange={(e) => handleChange("contact_phone", e.target.value)}
-              />
-            </div>
           </CardContent>
         </Card>
 
-        {/* Homepage Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Homepage Settings</CardTitle>
@@ -153,7 +164,6 @@ export default function SettingsPage() {
                 rows={4} 
                 onChange={(e) => handleChange("running_text", e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Use | to separate multiple messages</p>
             </div>
             <div className="flex items-center justify-between border-t pt-4">
               <div className="space-y-0.5">
