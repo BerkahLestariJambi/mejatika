@@ -12,6 +12,7 @@ import Swal from 'sweetalert2'
 
 export default function CertificatesAdminPage() {
   const [certificates, setCertificates] = useState<any[]>([])
+  const [myCertificates, setMyCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
