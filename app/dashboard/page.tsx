@@ -94,72 +94,7 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // Hitung Progress
-  const calculateProgress = (courseId: number) => {
-    const course = availableCourses.find(c => c.id === courseId)
-    if (!course || !course.materials) return 0
-    const totalSteps = course.materials.length * 4
-    let completedSteps = 0
-    course.materials.forEach((m: any) => {
-      const prog = courseProgress[m.id] || {}
-      if (prog.live) completedSteps++
-      if (prog.materi) completedSteps++
-      if (prog.tugas) completedSteps++
-      if (prog.feedback) completedSteps++
-    })
-    return Math.round((completedSteps / totalSteps) * 100)
-  }
-
-  // Handle Reply Mentor
-  const handleSendReply = async () => {
-    if (!replyText.trim() || !submissionFeedback?.id) return
-    setIsSendingReply(true)
-    const token = localStorage.getItem("token")
-    try {
-      const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-        body: JSON.stringify({ message: replyText })
-      })
-      if (res.ok) { 
-        setReplyText("");
-        await fetchSubmissionStatus(); 
-      }
-    } catch (err) { alert("Gagal membalas") } finally { setIsSendingReply(false) }
-  }
-
-  // Submit/Update Tugas
-  const handleSubmitTask = async () => {
-    if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
-    const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
-    if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
-    
-    setIsSubmittingTask(true)
-    const token = localStorage.getItem("token")
-    const isUpdate = submissionFeedback && submissionFeedback.id
-    const url = isUpdate 
-      ? `https://backend.mejatika.com/api/submissions/${submissionFeedback.id}`
-      : `https://backend.mejatika.com/api/submissions`
-    
-    try {
-      const res = await fetch(url, {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-        body: JSON.stringify({ 
-          material_id: activeMaterial.id, 
-          registration_id: currentReg.id, 
-          student_answer: studentAnswer, 
-          project_link: taskLink 
-        })
-      })
-      
-      if (res.ok) { 
-        alert(isUpdate ? "Tugas diperbarui!" : "Tugas terkirim!")
-        markStepComplete(activeMaterial.id, "tugas", "feedback")
-      }
-    } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
-  }
-
+  // --- LOGIKA PROGRESS FLOW ---
   const markStepComplete = (materialId: number, currentStep: string, nextStep: string | null) => {
     const newProgress = { ...courseProgress, [materialId]: { ...(courseProgress[materialId] || {}), [currentStep]: true } }
     setCourseProgress(newProgress)
@@ -176,7 +111,57 @@ export default function StudentDashboard() {
     return true
   }
 
-  // Handle Video/Drive Embed
+  const calculateProgress = (courseId: number) => {
+    const course = availableCourses.find(c => c.id === courseId)
+    if (!course || !course.materials) return 0
+    const totalSteps = course.materials.length * 4
+    let completedSteps = 0
+    course.materials.forEach((m: any) => {
+      const prog = courseProgress[m.id] || {}
+      if (prog.live) completedSteps++
+      if (prog.materi) completedSteps++
+      if (prog.tugas) completedSteps++
+      if (prog.feedback) completedSteps++
+    })
+    return Math.round((completedSteps / totalSteps) * 100)
+  }
+
+  // --- API HANDLERS ---
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !submissionFeedback?.id) return
+    setIsSendingReply(true)
+    const token = localStorage.getItem("token")
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+        body: JSON.stringify({ message: replyText })
+      })
+      if (res.ok) { setReplyText(""); await fetchSubmissionStatus(); }
+    } catch (err) { alert("Gagal membalas") } finally { setIsSendingReply(false) }
+  }
+
+  const handleSubmitTask = async () => {
+    if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
+    const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
+    if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
+    setIsSubmittingTask(true)
+    const token = localStorage.getItem("token")
+    const isUpdate = submissionFeedback && submissionFeedback.id
+    const url = isUpdate ? `https://backend.mejatika.com/api/submissions/${submissionFeedback.id}` : `https://backend.mejatika.com/api/submissions`
+    try {
+      const res = await fetch(url, {
+        method: isUpdate ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
+        body: JSON.stringify({ material_id: activeMaterial.id, registration_id: currentReg.id, student_answer: studentAnswer, project_link: taskLink })
+      })
+      if (res.ok) { 
+        alert(isUpdate ? "Tugas diperbarui!" : "Tugas terkirim!");
+        markStepComplete(activeMaterial.id, "tugas", "feedback");
+      }
+    } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
+  }
+
   const renderEmbed = (url: string) => {
     if (!url) return null;
     let embedUrl = url;
@@ -266,13 +251,12 @@ export default function StudentDashboard() {
       <main className={`flex-1 lg:ml-64 p-6 lg:p-10 flex flex-col mt-16 lg:mt-0`}>
         
         {activeMenu === "dashboard" && (
-          <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="space-y-10 animate-in fade-in duration-700">
             <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2.5rem] p-8 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
               <div className="absolute top-0 right-0 p-10 opacity-10 hidden lg:block"><Zap size={200} /></div>
               <h2 className="text-4xl lg:text-5xl font-bold mb-4">Hello, {user?.name?.split(' ')[0]}!</h2>
               <p className="text-indigo-100 font-medium">Lanjutkan progress belajarmu hari ini.</p>
             </div>
-            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="p-8 rounded-3xl bg-white border-none shadow-sm">
                 <p className="text-[10px] font-bold uppercase text-slate-400 mb-2">Total Katalog</p>
@@ -377,7 +361,6 @@ export default function StudentDashboard() {
                       </span>
                       {activeStep.toUpperCase()}
                     </h3>
-                    <div className="px-4 py-2 bg-slate-100 rounded-full text-[10px] font-bold text-slate-500 uppercase tracking-wider">{activeMaterial.title}</div>
                   </div>
 
                   {activeStep === "live" && (
@@ -389,7 +372,7 @@ export default function StudentDashboard() {
 
                   {activeStep === "materi" && (
                     <div className="space-y-8">
-                      {activeMaterial.content && !activeMaterial.content.includes('<iframe') && renderEmbed(activeMaterial.file)}
+                      {renderEmbed(activeMaterial.file)}
                       <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 prose prose-indigo max-w-full">
                         <div dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                       </div>
@@ -403,79 +386,49 @@ export default function StudentDashboard() {
                           <h4 className="text-xs font-bold text-indigo-700 mb-3 uppercase tracking-widest flex items-center gap-2"><Flame size={16}/> Instruksi Tugas:</h4>
                           <div className="text-sm text-slate-700 leading-relaxed font-medium">{activeMaterial.quiz_task || "Silahkan kerjakan tugas sesuai arahan."}</div>
                        </div>
-                       
-                       {submissionFeedback && (
-                         <div className="text-[10px] font-bold text-emerald-600 px-4 py-2 bg-emerald-50 rounded-full w-fit flex items-center gap-2">
-                           <RefreshCw size={12} className="animate-spin-slow" /> Mode Edit Aktif
-                         </div>
-                       )}
-
-                       <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tulis jawaban atau catatan tugas..." className="w-full h-40 p-6 rounded-3xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all" />
-                       <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="URL Project (GitHub / Google Drive)" className="w-full p-5 rounded-2xl bg-slate-50 border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500/20 text-sm transition-all" />
-
-                       <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full h-16 bg-slate-900 text-white rounded-3xl font-bold shadow-xl">
-                         {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Jawaban Tugas" : "Kirim Jawaban Tugas")}
+                       <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tulis jawaban..." className="w-full h-40 p-6 rounded-3xl bg-slate-50 border outline-none text-sm" />
+                       <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="URL Project Link" className="w-full p-5 rounded-2xl bg-slate-50 border text-sm" />
+                       <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full h-16 bg-slate-900 text-white rounded-3xl font-bold">
+                         {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Jawaban" : "Kirim Jawaban")}
                        </Button>
                     </div>
                   )}
 
                   {activeStep === "feedback" && (
-                    <div className="space-y-6 animate-in fade-in">
+                    <div className="space-y-6">
                        {submissionFeedback ? (
                          <div className="space-y-6">
-                            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white shadow-2xl">
+                            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
                                <div className="flex justify-between items-start mb-6">
                                   <div className="flex items-center gap-4">
-                                     <div className="h-12 w-12 bg-indigo-500 rounded-2xl flex items-center justify-center text-white"><UserCircle2 size={30}/></div>
-                                     <div>
-                                        <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest">Feedback Mentor</p>
-                                        <h4 className="text-xl font-bold">Review Hasil Tugas</h4>
-                                     </div>
+                                     <div className="h-12 w-12 bg-indigo-500 rounded-2xl flex items-center justify-center"><UserCircle2 size={30}/></div>
+                                     <h4 className="text-xl font-bold">Review Mentor</h4>
                                   </div>
-                                  <div className="bg-slate-800 px-6 py-3 rounded-2xl text-center">
-                                     <p className="text-[10px] font-bold text-slate-500 uppercase">Skor</p>
-                                     <div className="text-3xl font-bold text-indigo-400">{submissionFeedback.score || "—"}</div>
-                                  </div>
+                                  <div className="bg-slate-800 px-6 py-3 rounded-2xl text-3xl font-bold text-indigo-400">{submissionFeedback.score || "—"}</div>
                                </div>
-                               <div className="p-6 bg-slate-800/50 rounded-2xl italic text-slate-300 text-sm leading-relaxed border border-slate-700">
-                                  "{submissionFeedback.mentor_feedback || "Menunggu review mentor..."}"
+                               <div className="p-6 bg-slate-800/50 rounded-2xl italic text-slate-300 text-sm border border-slate-700">
+                                 "{submissionFeedback.mentor_feedback || "Menunggu review..."}"
                                </div>
                             </div>
-
-                            <Button variant="outline" onClick={() => setActiveStep("tugas")} className="w-full border-2 border-slate-200 rounded-2xl font-bold text-xs h-12 hover:bg-slate-50">
-                               <RefreshCw size={14} className="mr-2" /> Perbaiki Lagi
-                            </Button>
-
-                            <div className="bg-slate-100/50 p-6 rounded-3xl border border-slate-100 space-y-4">
-                               {submissionFeedback.student_reply && (
-                                 <div className="flex flex-col items-end">
-                                    <div className="bg-indigo-600 text-white p-4 rounded-2xl rounded-tr-none text-sm font-medium max-w-[80%] shadow-md">{submissionFeedback.student_reply}</div>
-                                    <span className="text-[9px] font-bold text-slate-400 mt-2 uppercase">Pesan Anda</span>
-                                 </div>
-                               )}
+                            <div className="bg-slate-100/50 p-6 rounded-3xl space-y-4">
+                               {submissionFeedback.student_reply && <div className="bg-indigo-600 text-white p-4 rounded-2xl ml-auto w-fit text-sm">{submissionFeedback.student_reply}</div>}
                                {!submissionFeedback.student_reply && (
                                  <div className="relative">
-                                    <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Balas feedback atau tanya mentor..." className="w-full p-5 pr-14 bg-white border border-slate-200 rounded-3xl outline-none text-sm font-medium" />
-                                    <button onClick={handleSendReply} disabled={isSendingReply} className="absolute bottom-4 right-4 h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center hover:bg-indigo-700 transition-colors">
-                                      {isSendingReply ? <Loader2 size={16} className="animate-spin" /> : <Send size={16}/>}
-                                    </button>
+                                    <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Tanya mentor..." className="w-full p-5 pr-14 bg-white border rounded-3xl text-sm" />
+                                    <button onClick={handleSendReply} className="absolute bottom-4 right-4 h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center"><Send size={16}/></button>
                                  </div>
                                )}
                             </div>
                          </div>
                        ) : (
-                         <div className="bg-emerald-50 p-12 rounded-[2.5rem] text-center border border-emerald-100 shadow-sm shadow-emerald-50">
-                            <CheckCircle2 className="mx-auto text-emerald-500 mb-4" size={50} />
-                            <h4 className="text-xl font-bold text-emerald-800">Tugas Terkirim!</h4>
-                            <p className="text-sm text-emerald-600 mt-2">Mentor akan segera memeriksa pekerjaanmu.</p>
-                         </div>
+                         <div className="bg-emerald-50 p-12 rounded-[2.5rem] text-center border border-emerald-100 text-emerald-800 font-bold">Tugas Terkirim! Mohon tunggu review.</div>
                        )}
                        <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-slate-900 text-white h-16 rounded-3xl font-bold">Selesaikan Modul</Button>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="h-[60vh] flex flex-col items-center justify-center text-slate-200 border-4 border-dashed border-slate-100 rounded-[3rem] bg-white/50">
+                <div className="h-[60vh] flex flex-col items-center justify-center text-slate-200 border-4 border-dashed rounded-[3rem] bg-white">
                   <PlayCircle size={80} className="opacity-10 mb-4" />
                   <p className="font-bold uppercase text-xs tracking-widest opacity-40">Pilih Modul Belajar</p>
                 </div>
@@ -484,9 +437,8 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* CERTIFICATES */}
         {activeMenu === "certificates" && (
-          <div className="space-y-10 animate-in fade-in duration-500">
+          <div className="space-y-10 animate-in fade-in">
             <h2 className="text-3xl font-bold text-slate-800 tracking-tight">E-Sertifikat</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {registrations.filter(r => r.status === 'success').map(reg => {
@@ -498,20 +450,17 @@ export default function StudentDashboard() {
                     </div>
                     <h4 className="font-bold text-slate-800 mb-2">{reg.course?.title}</h4>
                     <p className="text-[10px] font-bold text-slate-400 uppercase mb-8">{isFinished ? "Verified Graduate" : "Selesaikan modul untuk klaim"}</p>
-                    <Button disabled={!isFinished} className={`w-full h-12 rounded-2xl font-bold text-xs transition-all ${isFinished ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100' : 'bg-slate-200 text-slate-500'}`}>
+                    <Button disabled={!isFinished} className={`w-full h-12 rounded-2xl font-bold text-xs ${isFinished ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-200'}`}>
                       {isFinished ? "Download Sertifikat" : "Progress: " + calculateProgress(reg.course_id) + "%"}
                     </Button>
                   </Card>
                 )
               })}
-              {registrations.filter(r => r.status === 'success').length === 0 && (
-                 <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase tracking-widest text-sm">Belum ada kursus yang aktif.</div>
-              )}
             </div>
           </div>
         )}
 
-        <footer className="py-12 border-t border-slate-200 mt-auto text-center">
+        <footer className="py-12 border-t mt-auto text-center">
           <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">© 2026 MEJATIKA LMS — PLATFORM BELAJAR MODERN</p>
         </footer>
       </main>
