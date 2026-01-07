@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
@@ -10,9 +9,8 @@ import {
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
-  Send, UserCircle2, Menu, X, Star, RefreshCw, AlertCircle, Download
+  Send, UserCircle2, Menu, X, Star, RefreshCw, AlertCircle
 } from "lucide-react"
-import Swal from 'sweetalert2' // Pastikan sudah install sweetalert2
 
 // --- TYPES ---
 interface Material {
@@ -52,8 +50,6 @@ export default function StudentDashboard() {
   const [isSendingReply, setIsSendingReply] = useState(false)
   const [downloadingCertId, setDownloadingCertId] = useState<number | null>(null)
 
-  const API_URL = "https://backend.mejatika.com/api"
-
   // 1. Fetch Data Utama
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
@@ -67,9 +63,9 @@ export default function StudentDashboard() {
       }
       
       const [resReg, resUser, resAll] = await Promise.all([
-        fetch(`${API_URL}/registrations`, { headers }),
-        fetch(`${API_URL}/me`, { headers }),
-        fetch(`${API_URL}/courses`, { headers })
+        fetch("https://backend.mejatika.com/api/registrations", { headers }),
+        fetch("https://backend.mejatika.com/api/me", { headers }),
+        fetch("https://backend.mejatika.com/api/courses", { headers })
       ])
 
       if (resReg.status === 401) throw new Error("Unauthorized")
@@ -98,7 +94,7 @@ export default function StudentDashboard() {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch(`${API_URL}/submissions/check/${activeMaterial.id}`, {
+      const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
@@ -162,57 +158,29 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // --- LOGIKA DOWNLOAD SERTIFIKAT TERBARU ---
+  // --- HANDLERS ---
   const handleDownloadCertificate = async (reg: any) => {
     const certData = reg.certificate;
-    if (!certData?.id) return Swal.fire("Belum Tersedia", "Sertifikat belum diterbitkan oleh Admin.", "info");
+    if (!certData) return alert("Sertifikat belum diterbitkan.");
     
     setDownloadingCertId(reg.id);
     const token = localStorage.getItem("token");
-
     try {
-      const response = await fetch(`${API_URL}/certificates/${certData.id}/download`, {
+      const response = await fetch(`https://backend.mejatika.com/api/certificates/${certData.id}/download`, {
         method: "GET",
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/pdf"
-        }
+        headers: { "Authorization": `Bearer ${token}` }
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Gagal mengunduh file." }));
-        throw new Error(errorData.message || "Akses ditolak atau file tidak ditemukan.");
-      }
-
+      if (!response.ok) throw new Error("Gagal mengunduh file.");
       const blob = await response.blob();
-      
-      // Validasi apakah benar PDF
-      if (blob.type !== "application/pdf") {
-        throw new Error("Format file yang diterima bukan PDF. Hubungi Admin.");
-      }
-
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
       link.setAttribute("download", `Sertifikat-${reg.course?.title || 'Mejatika'}.pdf`);
       document.body.appendChild(link);
       link.click();
-      
-      // Cleanup
-      window.URL.revokeObjectURL(url);
       link.remove();
-
-      Swal.fire({
-        icon: 'success',
-        title: 'Berhasil',
-        text: 'Sertifikat berhasil diunduh.',
-        timer: 1500,
-        showConfirmButton: false
-      });
-
     } catch (err: any) {
-      console.error("Download Error:", err);
-      Swal.fire("Gagal Unduh", err.message, "error");
+      alert(err.message);
     } finally {
       setDownloadingCertId(null);
     }
@@ -226,7 +194,7 @@ export default function StudentDashboard() {
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
     const isUpdate = submissionFeedback && submissionFeedback.id
-    const url = isUpdate ? `${API_URL}/submissions/${submissionFeedback.id}` : `${API_URL}/submissions`
+    const url = isUpdate ? `https://backend.mejatika.com/api/submissions/${submissionFeedback.id}` : `https://backend.mejatika.com/api/submissions`
     
     try {
       const res = await fetch(url, {
@@ -349,7 +317,7 @@ export default function StudentDashboard() {
             </section>
           )}
 
-          {/* RUANG BELAJAR */}
+          {/* RUANG BELAJAR (Simplified view for logic) */}
           {activeMenu === "materials" && (
             <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
               {/* Sidebar Materi */}
@@ -511,7 +479,7 @@ export default function StudentDashboard() {
             </section>
           )}
 
-          {/* SERTIFIKAT SECTION (UPGRADED) */}
+          {/* SERTIFIKAT SECTION */}
           {activeMenu === "certificates" && (
             <section className="space-y-8 animate-in fade-in duration-500">
               <h2 className="text-3xl font-black text-slate-800">E-Sertifikat</h2>
@@ -525,7 +493,7 @@ export default function StudentDashboard() {
 
                     return (
                       <Card key={reg.id} className="rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none bg-white hover:shadow-xl transition-all duration-300 group">
-                        <div className={`h-24 w-24 rounded-3xl flex items-center justify-center mb-6 shadow-inner transition-transform group-hover:rotate-6 ${hasCertificate ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-300'}`}>
+                        <div className={`h-24 w-24 rounded-3xl flex items-center justify-center mb-6 shadow-inner transition-transform group-hover:rotate-6 ${hasCertificate ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-50 text-slate-300'}`}>
                           <Award size={48} />
                         </div>
                         <h4 className="font-black text-slate-800 mb-2">{reg.course?.title}</h4>
@@ -549,12 +517,12 @@ export default function StudentDashboard() {
                         <Button 
                           disabled={!hasCertificate || isDownloading} 
                           onClick={() => handleDownloadCertificate(reg)}
-                          className={`w-full h-14 rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 ${hasCertificate ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700' : 'bg-slate-200 text-slate-400'}`}
+                          className={`w-full h-14 rounded-2xl font-black text-xs transition-all ${hasCertificate ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700' : 'bg-slate-200 text-slate-400'}`}
                         >
                           {isDownloading ? (
-                            <><RefreshCw className="h-4 w-4 animate-spin" /> Menyiapkan...</>
+                            <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Menyiapkan...</>
                           ) : hasCertificate ? (
-                            <><Download className="h-4 w-4" /> Download PDF</>
+                            <><FileText className="mr-2 h-4 w-4" /> Download PDF</>
                           ) : (
                             "Selesaikan Kursus"
                           )}
@@ -562,13 +530,6 @@ export default function StudentDashboard() {
                       </Card>
                     );
                   })}
-                
-                {registrations.filter(r => r.status === 'success' || r.status === 'aktif').length === 0 && (
-                  <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed">
-                    <Award className="mx-auto text-slate-200 mb-4" size={60} />
-                    <p className="text-slate-400 font-bold">Belum ada kursus aktif.</p>
-                  </div>
-                )}
               </div>
             </section>
           )}
@@ -582,7 +543,7 @@ export default function StudentDashboard() {
         </footer>
       </main>
 
-      {/* Overlay sidebar mobile */}
+      {/* Overlay untuk sidebar mobile */}
       {sidebarOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
