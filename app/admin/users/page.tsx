@@ -1,101 +1,235 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+"use client"
+
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Plus } from "lucide-react"
-import { cookies } from "next/headers"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Plus, Pencil, Trash2 } from "lucide-react"
 
-// 1. Fungsi untuk ambil data dari Laravel
-async function getUsers() {
-  const cookieStore = cookies();
-  const token = cookieStore.get("auth_token")?.value; // Ambil token dari cookie
-
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users`, {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "Accept": "application/json",
-      },
-      next: { revalidate: 0 }, // Agar data selalu terbaru (tidak di-cache)
-    });
-
-    if (!response.ok) {
-      throw new Error("Gagal mengambil data user");
-    }
-
-    const result = await response.json();
-    return result.data || []; // Karena controller kita membungkusnya dalam 'data'
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    return [];
-  }
+type User = {
+  id: number
+  name: string
+  email: string
+  role: string
 }
 
-export default async function UsersPage() {
-  // 2. Panggil fungsi getUsers
-  const users = await getUsers();
+export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([])
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [role, setRole] = useState("peserta")
+  const [editing, setEditing] = useState<User | null>(null)
+  const [open, setOpen] = useState(false)
+  const [deleteId, setDeleteId] = useState<number | null>(null)
+
+  const { toast } = useToast()
+
+  // Ambil data dari Laravel
+  const fetchUsers = async () => {
+    const res = await fetch("https://backend.mejatika.com/api/users", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    const data = await res.json()
+    // Karena Laravel kita membungkus dalam { data: [...] }
+    setUsers(data.data || data) 
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    const payload: any = { name, email, role }
+    if (password) payload.password = password
+
+    let url = "https://backend.mejatika.com/api/users"
+    let method = "POST"
+
+    if (editing) {
+      url = `https://backend.mejatika.com/api/users/${editing.id}`
+      method = "PUT"
+    }
+
+    const res = await fetch(url, {
+      method,
+      headers: { 
+        "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      const err = await res.json()
+      toast({
+        title: "Gagal Simpan",
+        description: "Pastikan email unik dan password minimal 6 karakter.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Reset form
+    setName("")
+    setEmail("")
+    setPassword("")
+    setRole("peserta")
+    setEditing(null)
+    setOpen(false)
+    fetchUsers()
+
+    toast({
+      title: editing ? "User diperbarui!" : "User berhasil dibuat!",
+      description: "Database telah diperbarui.",
+    })
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteId) return
+    const res = await fetch(`https://backend.mejatika.com/api/users/${deleteId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+    
+    if (res.ok) {
+      fetchUsers()
+      toast({ title: "User dihapus!" })
+    }
+    setDeleteId(null)
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold lg:text-3xl">Users</h1>
-          <p className="text-muted-foreground">Manage user accounts and roles from Laravel API</p>
-        </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add User
-        </Button>
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Kelola User</h1>
+        
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => {
+              setEditing(null)
+              setName("")
+              setEmail("")
+              setRole("peserta")
+            }}>
+              <Plus className="mr-2 h-4 w-4" /> Tambah User
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{editing ? "Edit User" : "Tambah User Baru"}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <Label>Nama Lengkap</Label>
+                <Input value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div>
+                <Label>Email</Label>
+                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </div>
+              {!editing && (
+                <div>
+                  <Label>Password</Label>
+                  <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                </div>
+              )}
+              <div>
+                <Label>Role</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pilih Role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="kontributor">Kontributor</SelectItem>
+                    <SelectItem value="peserta">Peserta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button type="submit" className="w-full">
+                {editing ? "Update User" : "Simpan User"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Users</CardTitle>
-          <CardDescription>Total terdaftar: {users.length} user</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {users.length > 0 ? (
-              users.map((user: any) => (
-                <div key={user.id} className="flex items-center justify-between border-b pb-4 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      {/* Avatar bisa dikosongkan jika belum ada logic upload foto */}
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{user.name}</p>
-                      <p className="text-sm text-muted-foreground">{user.email}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        user.role === "admin" 
-                          ? "default" 
-                          : user.role === "kontributor" 
-                          ? "secondary" 
-                          : "outline"
-                      }
-                    >
-                      {user.role}
-                    </Badge>
-                    <Button variant="ghost" size="sm">
-                      Edit
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center py-4 text-muted-foreground">
-                Data user tidak ditemukan atau Anda bukan Admin.
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full text-left">
+          <thead className="bg-gray-50 border-b">
+            <tr>
+              <th className="p-3 font-semibold">Nama & Email</th>
+              <th className="p-3 font-semibold">Role</th>
+              <th className="p-3 font-semibold">Aksi</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {users.map((u) => (
+              <tr key={u.id} className="hover:bg-gray-50">
+                <td className="p-3">
+                  <p className="font-medium">{u.name}</p>
+                  <p className="text-sm text-gray-500">{u.email}</p>
+                </td>
+                <td className="p-3">
+                  <Badge variant={u.role === "admin" ? "default" : "outline"}>
+                    {u.role}
+                  </Badge>
+                </td>
+                <td className="p-3 space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditing(u)
+                      setName(u.name)
+                      setEmail(u.email)
+                      setRole(u.role)
+                      setOpen(true)
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setDeleteId(u.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Hapus user {u.name}?</AlertDialogTitle>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Batal</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
+                          Ya, Hapus
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
