@@ -7,8 +7,10 @@ import { Clock, Tag, Loader2, Info, X } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { useRouter } from "next/navigation" // Import useRouter untuk navigasi
 
 export default function KursusPage() {
+  const router = useRouter() // Inisialisasi router
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null)
@@ -36,6 +38,12 @@ export default function KursusPage() {
     fetchCourses()
   }, [])
 
+  // Fungsi untuk menangani pendaftaran
+  const handleEnroll = (courseId: number) => {
+    // Mengarahkan ke login dengan parameter redirect agar setelah login bisa kembali ke kursus ini
+    router.push(`/login?redirect=/kursus&course_id=${courseId}`)
+  }
+
   return (
     <div className="min-h-screen bg-[#fcfcf9] flex flex-col">
       <Navigation />
@@ -51,7 +59,9 @@ export default function KursusPage() {
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-amber-500" /></div>
+          <div className="flex justify-center py-20">
+            <Loader2 className="animate-spin text-amber-500" />
+          </div>
         ) : (
           <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-3">
             {courses.map((course) => (
@@ -99,7 +109,7 @@ export default function KursusPage() {
         )}
       </main>
 
-      {/* MODAL DETAIL KURSUS - PERBAIKAN TOTAL DI SINI */}
+      {/* MODAL DETAIL KURSUS */}
       <Dialog open={!!selectedCourse} onOpenChange={() => setSelectedCourse(null)}>
         <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2rem] border-none bg-white shadow-2xl max-h-[90vh] flex flex-col z-[9999]">
           {selectedCourse && (
@@ -111,7 +121,6 @@ export default function KursusPage() {
                 <X size={20} />
               </button>
 
-              {/* flex-grow dan overflow-y-auto memastikan scroll hanya di dalam modal */}
               <div className="overflow-y-auto custom-scrollbar flex-grow bg-[#fcfcf9]">
                 <div className="relative h-64 md:h-80 w-full">
                   <img src={selectedCourse.thumbnail || "/placeholder.svg"} className="w-full h-full object-cover" alt="" />
@@ -139,12 +148,10 @@ export default function KursusPage() {
                       </div>
                     </div>
 
-                    {/* Pembungkus Deskripsi: max-w-full dan overflow-hidden penting di sini */}
                     <div className="prose-content mb-10 w-full max-w-full overflow-hidden">
                       <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-4 flex items-center gap-2">
                         <span className="w-6 h-[1px] bg-zinc-300"></span> Deskripsi Kurikulum
                       </h4>
-                      {/* break-words memaksa kata panjang (link/tabel) untuk patah baris */}
                       <div 
                         className="text-zinc-600 leading-relaxed text-sm md:text-base break-words overflow-x-auto"
                         dangerouslySetInnerHTML={{ __html: selectedCourse.description }}
@@ -152,10 +159,17 @@ export default function KursusPage() {
                     </div>
 
                     <div className="flex flex-col md:flex-row gap-4 pt-4 border-t border-zinc-100">
-                      <Button className="flex-1 bg-zinc-900 hover:bg-amber-600 text-white h-14 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg transition-all">
+                      <Button 
+                        onClick={() => handleEnroll(selectedCourse.id)}
+                        className="flex-1 bg-zinc-900 hover:bg-amber-600 text-white h-14 rounded-xl font-black uppercase tracking-[0.2em] shadow-lg transition-all"
+                      >
                         Daftar Sekarang
                       </Button>
-                      <Button variant="outline" onClick={() => setSelectedCourse(null)} className="flex-1 h-14 rounded-xl border-2 border-zinc-100 font-black uppercase tracking-[0.2em] text-zinc-400 hover:bg-zinc-50">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setSelectedCourse(null)} 
+                        className="flex-1 h-14 rounded-xl border-2 border-zinc-100 font-black uppercase tracking-[0.2em] text-zinc-400 hover:bg-zinc-50"
+                      >
                         Kembali
                       </Button>
                     </div>
