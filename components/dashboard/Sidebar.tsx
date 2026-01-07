@@ -30,6 +30,11 @@ export default function DashboardSidebar() {
       href: "/dashboard/mentor/apply-course",
       icon: BookPlus,
     },
+     {
+      title: "Penilaian",
+      href: "/dashboard/mentor/submissions",
+      icon: BookPlus,
+    },
   ]
 
   return (
