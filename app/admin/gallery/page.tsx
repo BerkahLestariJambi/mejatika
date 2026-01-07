@@ -8,7 +8,7 @@ import { Plus, Edit, Trash2, Loader2, ImageIcon, X, ChevronLeft, ChevronRight } 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useToast } from "@/components/ui/use-toast"
 
 type GalleryItem = {
@@ -16,6 +16,49 @@ type GalleryItem = {
   title: string
   description: string
   image: string[] | string
+}
+
+// --- KOMPONEN SLIDER UNTUK CARD ---
+function CardSlider({ images, title }: { images: string[] | string, title: string }) {
+  const [current, setCurrent] = useState(0)
+  const imgArray = Array.isArray(images) ? images : [images]
+
+  useEffect(() => {
+    if (imgArray.length <= 1) return
+    const interval = setInterval(() => {
+      setCurrent((prev) => (prev + 1) % imgArray.length)
+    }, 4000) // Slide otomatis tiap 4 detik
+    return () => clearInterval(interval)
+  }, [imgArray.length])
+
+  return (
+    <div className="relative h-52 w-full overflow-hidden bg-muted">
+      {imgArray.map((img, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-all duration-700 ease-in-out ${
+            index === current ? "opacity-100 scale-100" : "opacity-0 scale-105"
+          }`}
+        >
+          <img
+            src={img.startsWith('http') ? img : `https://backend.mejatika.com/storage/${img}`}
+            alt={title}
+            className="h-full w-full object-cover"
+          />
+        </div>
+      ))}
+      
+      {/* Indikator Dots Kecil */}
+      {imgArray.length > 1 && (
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20">
+          {imgArray.map((_, i) => (
+            <div key={i} className={`h-1 rounded-full transition-all ${i === current ? "bg-white w-4" : "bg-white/40 w-1"}`} />
+          ))}
+        </div>
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+    </div>
+  )
 }
 
 export default function GalleryManagementPage() {
@@ -28,43 +71,35 @@ export default function GalleryManagementPage() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [imageFiles, setImageFiles] = useState<File[]>([])
-  const [previews, setPreviews] = useState<string[]>([]) // Untuk preview sebelum upload
+  const [previews, setPreviews] = useState<string[]>([]) 
   const [submitting, setSubmitting] = useState(false)
 
   const { toast } = useToast()
 
-  // Handle Preview Gambar
+  // Handle Preview Gambar Lokal
   useEffect(() => {
     if (imageFiles.length === 0) {
       setPreviews([])
       return
     }
-    const objectUrls = imageFiles.map(file => URL.createObjectURL(file))
-    setPreviews(objectUrls)
-
-    // Cleanup memori
-    return () => objectUrls.forEach(url => URL.revokeObjectURL(url))
+    const urls = imageFiles.map(file => URL.createObjectURL(file))
+    setPreviews(urls)
+    return () => urls.forEach(url => URL.revokeObjectURL(url))
   }, [imageFiles])
 
   const fetchGallery = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem("token")
       const res = await fetch("https://backend.mejatika.com/api/galleries", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
       })
       const result = await res.json()
       setGallery(result.data || [])
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setLoading(false)
-    }
+    } catch (error) { console.error(error) } 
+    finally { setLoading(false) }
   }
 
-  useEffect(() => {
-    fetchGallery()
-  }, [])
+  useEffect(() => { fetchGallery() }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,170 +108,105 @@ export default function GalleryManagementPage() {
     formData.append("title", title)
     formData.append("description", description || "")
     imageFiles.forEach(file => formData.append("images[]", file))
-
     if (editing) formData.append("_method", "PUT")
 
     try {
-      const url = editing 
-        ? `https://backend.mejatika.com/api/galleries/${editing.id}`
-        : "https://backend.mejatika.com/api/galleries"
-
+      const url = editing ? `https://backend.mejatika.com/api/galleries/${editing.id}` : "https://backend.mejatika.com/api/galleries"
       const res = await fetch(url, {
         method: "POST",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         body: formData,
       })
-
-      if (!res.ok) throw new Error("Gagal memproses data")
-      
-      toast({ title: "Berhasil disimpan" })
+      if (!res.ok) throw new Error("Gagal menyimpan")
       setOpen(false)
       fetchGallery()
       resetForm()
+      toast({ title: "Success!" })
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" })
-    } finally {
-      setSubmitting(false)
-    }
+    } finally { setSubmitting(false) }
   }
 
   const resetForm = () => {
-    setTitle("")
-    setDescription("")
-    setImageFiles([])
-    setPreviews([])
-    setEditing(null)
-  }
-
-  // Komponen Slider Internal
-  const ImageSlider = ({ images }: { images: string | string[] }) => {
-    const imageArray = Array.isArray(images) ? images : [images]
-    
-    return (
-      <div className="relative group overflow-hidden h-48 w-full bg-muted">
-        <div className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full">
-          {imageArray.map((img, idx) => (
-            <div key={idx} className="flex-none w-full h-full snap-center">
-              <img 
-                src={img.startsWith('blob') ? img : (img.startsWith('http') ? img : `https://backend.mejatika.com/storage/${img}`)} 
-                alt="gallery" 
-                className="w-full h-full object-cover"
-              />
-            </div>
-          ))}
-        </div>
-        {imageArray.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-            {imageArray.map((_, i) => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/50" />
-            ))}
-          </div>
-        )}
-      </div>
-    )
+    setTitle(""); setDescription(""); setImageFiles([]); setPreviews([]); setEditing(null)
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Gallery Management</h1>
-        <Button onClick={() => { resetForm(); setOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> Add Photos
+    <div className="p-6 space-y-8">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold">Gallery</h1>
+        <Button onClick={() => { resetForm(); setOpen(true) }}>
+          <Plus className="mr-2 h-4 w-4" /> Add Gallery
         </Button>
       </div>
 
-      <Dialog open={open} onOpenChange={(v) => { setOpen(v); if(!v) resetForm(); }}>
-        <DialogContent className="max-w-2xl overflow-y-auto max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>{editing ? "Edit Gallery" : "Upload New Photos"}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div>
-                  <Label>Judul</Label>
-                  <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
-                </div>
-                <div>
-                  <Label>Deskripsi</Label>
-                  <Textarea value={description} onChange={(e) => setDescription(e.target.value)} className="h-32" />
-                </div>
-                <div>
-                  <Label>Pilih Gambar</Label>
-                  <Input 
-                    type="file" 
-                    accept="image/*" 
-                    multiple 
-                    onChange={(e) => e.target.files && setImageFiles(Array.from(e.target.files))} 
-                  />
-                </div>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle>{editing ? "Edit Gallery" : "Create New Gallery"}</DialogTitle></DialogHeader>
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div>
+                <Label>Title</Label>
+                <Input value={title} onChange={e => setTitle(e.target.value)} required />
               </div>
-
-              {/* Preview Section */}
-              <div className="bg-muted rounded-lg p-4">
-                <Label className="mb-2 block text-center">Preview ({previews.length})</Label>
-                {previews.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1">
-                    {previews.map((url, i) => (
-                      <div key={i} className="relative aspect-square rounded-md overflow-hidden border">
-                        <img src={url} className="w-full h-full object-cover" />
-                        <button 
-                          type="button"
-                          onClick={() => setImageFiles(prev => prev.filter((_, idx) => idx !== i))}
-                          className="absolute top-1 right-1 bg-red-500 rounded-full p-0.5 text-white"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground opacity-50">
-                    <ImageIcon className="h-10 w-10" />
-                    <p className="text-xs">Belum ada gambar</p>
-                  </div>
-                )}
+              <div>
+                <Label>Description</Label>
+                <Textarea value={description} onChange={e => setDescription(e.target.value)} className="h-24" />
               </div>
+              <div>
+                <Label>Upload Images</Label>
+                <Input type="file" multiple accept="image/*" onChange={e => e.target.files && setImageFiles(Array.from(e.target.files))} />
+              </div>
+              <Button className="w-full" disabled={submitting}>
+                {submitting ? <Loader2 className="animate-spin mr-2" /> : "Save Gallery"}
+              </Button>
             </div>
 
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? <Loader2 className="animate-spin" /> : editing ? "Update Gallery" : "Upload Gallery"}
-            </Button>
+            {/* Preview Grid */}
+            <div className="bg-muted rounded-xl p-4 overflow-y-auto max-h-[350px]">
+              <p className="text-sm font-medium mb-3">Preview ({previews.length} images)</p>
+              {previews.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {previews.map((url, i) => (
+                    <div key={i} className="relative aspect-square rounded-lg overflow-hidden border">
+                      <img src={url} className="w-full h-full object-cover" />
+                      <button onClick={() => setImageFiles(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5"><X size={12}/></button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground"><ImageIcon size={40} className="opacity-20"/></div>
+              )}
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
       {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
+        <div className="flex justify-center"><Loader2 className="animate-spin" /></div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {gallery.map((item) => (
-            <Card key={item.id} className="overflow-hidden border-muted-foreground/10">
-              <ImageSlider images={item.image} />
+            <Card key={item.id} className="overflow-hidden group">
+              <CardSlider images={item.image} title={item.title} />
               <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-bold text-lg leading-tight">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.description}</p>
-                  </div>
-                  <Badge variant="secondary">{Array.isArray(item.image) ? item.image.length : 1} Pic</Badge>
+                <div className="flex justify-between">
+                  <h3 className="font-bold text-lg">{item.title}</h3>
+                  <Badge variant="outline">{Array.isArray(item.image) ? item.image.length : 1} Photos</Badge>
                 </div>
+                <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{item.description}</p>
                 <div className="flex justify-end gap-2 mt-4 border-t pt-3">
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => {
-                    setEditing(item);
-                    setTitle(item.title);
-                    setDescription(item.description);
-                    setOpen(true);
-                  }}><Edit className="h-4 w-4" /></Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 text-red-500" onClick={() => {
-                    if(confirm("Hapus galeri ini?")) {
-                      const token = localStorage.getItem("token")
+                  <Button size="icon" variant="ghost" onClick={() => {
+                    setEditing(item); setTitle(item.title); setDescription(item.description); setOpen(true)
+                  }}><Edit size={16}/></Button>
+                  <Button size="icon" variant="ghost" className="text-destructive" onClick={() => {
+                    if(confirm("Delete this gallery?")) {
                       fetch(`https://backend.mejatika.com/api/galleries/${item.id}`, {
                         method: "DELETE",
-                        headers: { Authorization: `Bearer ${token}` }
+                        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
                       }).then(() => fetchGallery())
                     }
-                  }}><Trash2 className="h-4 w-4" /></Button>
+                  }}><Trash2 size={16}/></Button>
                 </div>
               </CardContent>
             </Card>
