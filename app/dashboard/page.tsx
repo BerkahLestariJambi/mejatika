@@ -529,7 +529,7 @@ export default function StudentDashboard() {
                   )}
                 </div>
               ) : (
-                <div className="h-[60vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[3rem] lg:rounded-[5rem] bg-white/50">
+                <div className="h-[60vh] flex flex-col items-center justify-center text-zinc-200 border-4 border-dashed border-zinc-100 rounded-[3rem] lg:rounded-[5rem] bg-white/20">
                   <PlayCircle size={80} className="opacity-10 mb-4" />
                   <p className="font-black italic uppercase text-[10px] tracking-[0.3em] opacity-40">Pilih Modul Belajar</p>
                 </div>
