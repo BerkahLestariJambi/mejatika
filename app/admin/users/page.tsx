@@ -1,7 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Plus, Pencil, Trash2, Loader2 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -17,139 +21,166 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Plus, Pencil, Trash2 } from "lucide-react"
 
 type User = {
   id: number
   name: string
   email: string
   role: string
+  avatar?: string
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [open, setOpen] = useState(false)
+  const [editing, setEditing] = useState<User | null>(null)
+  
+  // Form State
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [role, setRole] = useState("peserta")
-  const [editing, setEditing] = useState<User | null>(null)
-  const [open, setOpen] = useState(false)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const { toast } = useToast()
 
-  // Ambil data dari Laravel
+  // 1. Ambil Data User (Client Side)
   const fetchUsers = async () => {
-    const res = await fetch("https://backend.mejatika.com/api/users", {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    const data = await res.json()
-    // Karena Laravel kita membungkus dalam { data: [...] }
-    setUsers(data.data || data) 
+    setLoading(true)
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch("https://backend.mejatika.com/api/users", {
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        },
+      })
+      const result = await res.json()
+      setUsers(result.data || [])
+    } catch (error) {
+      console.error("Fetch error:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     fetchUsers()
   }, [])
 
+  // 2. Simpan atau Update User
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+    setSubmitting(true)
+
+    const token = localStorage.getItem("token")
     const payload: any = { name, email, role }
     if (password) payload.password = password
 
-    let url = "https://backend.mejatika.com/api/users"
-    let method = "POST"
+    const url = editing 
+      ? `https://backend.mejatika.com/api/users/${editing.id}` 
+      : `https://backend.mejatika.com/api/users`
+    
+    const method = editing ? "PUT" : "POST"
 
-    if (editing) {
-      url = `https://backend.mejatika.com/api/users/${editing.id}`
-      method = "PUT"
-    }
-
-    const res = await fetch(url, {
-      method,
-      headers: { 
-        "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!res.ok) {
-      const err = await res.json()
-      toast({
-        title: "Gagal Simpan",
-        description: "Pastikan email unik dan password minimal 6 karakter.",
-        variant: "destructive",
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(payload)
       })
-      return
-    }
 
-    // Reset form
+      if (res.ok) {
+        toast({ title: editing ? "User diperbarui" : "User berhasil ditambah" })
+        setOpen(false)
+        setEditing(null)
+        resetForm()
+        fetchUsers()
+      } else {
+        const errorData = await res.json()
+        toast({ 
+          title: "Gagal", 
+          description: errorData.message || "Terjadi kesalahan",
+          variant: "destructive" 
+        })
+      }
+    } catch (err) {
+      toast({ title: "Error koneksi", variant: "destructive" })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // 3. Hapus User
+  const confirmDelete = async (id: number) => {
+    const token = localStorage.getItem("token")
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/users/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      if (res.ok) {
+        toast({ title: "User berhasil dihapus" })
+        fetchUsers()
+      }
+    } catch (error) {
+      toast({ title: "Gagal menghapus", variant: "destructive" })
+    }
+  }
+
+  const resetForm = () => {
     setName("")
     setEmail("")
     setPassword("")
     setRole("peserta")
-    setEditing(null)
-    setOpen(false)
-    fetchUsers()
-
-    toast({
-      title: editing ? "User diperbarui!" : "User berhasil dibuat!",
-      description: "Database telah diperbarui.",
-    })
-  }
-
-  const confirmDelete = async () => {
-    if (!deleteId) return
-    const res = await fetch(`https://backend.mejatika.com/api/users/${deleteId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    })
-    
-    if (res.ok) {
-      fetchUsers()
-      toast({ title: "User dihapus!" })
-    }
-    setDeleteId(null)
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Kelola User</h1>
-        
-        <Dialog open={open} onOpenChange={setOpen}>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold lg:text-3xl">Users</h1>
+          <p className="text-muted-foreground">Manage user accounts and roles from Laravel API</p>
+        </div>
+
+        {/* DIALOG TAMBAH/EDIT */}
+        <Dialog open={open} onOpenChange={(val) => {
+          setOpen(val)
+          if(!val) setEditing(null)
+        }}>
           <DialogTrigger asChild>
             <Button onClick={() => {
+              resetForm()
               setEditing(null)
-              setName("")
-              setEmail("")
-              setRole("peserta")
             }}>
-              <Plus className="mr-2 h-4 w-4" /> Tambah User
+              <Plus className="mr-2 h-4 w-4" /> Add User
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editing ? "Edit User" : "Tambah User Baru"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label>Nama Lengkap</Label>
+            <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Nama</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Email</Label>
                 <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </div>
               {!editing && (
-                <div>
+                <div className="space-y-2">
                   <Label>Password</Label>
                   <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                 </div>
               )}
-              <div>
+              <div className="space-y-2">
                 <Label>Role</Label>
                 <Select value={role} onValueChange={setRole}>
                   <SelectTrigger>
@@ -162,7 +193,8 @@ export default function UsersPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full">
+              <Button type="submit" className="w-full" disabled={submitting}>
+                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editing ? "Update User" : "Simpan User"}
               </Button>
             </form>
@@ -170,66 +202,71 @@ export default function UsersPage() {
         </Dialog>
       </div>
 
-      <div className="border rounded-lg overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-gray-50 border-b">
-            <tr>
-              <th className="p-3 font-semibold">Nama & Email</th>
-              <th className="p-3 font-semibold">Role</th>
-              <th className="p-3 font-semibold">Aksi</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50">
-                <td className="p-3">
-                  <p className="font-medium">{u.name}</p>
-                  <p className="text-sm text-gray-500">{u.email}</p>
-                </td>
-                <td className="p-3">
-                  <Badge variant={u.role === "admin" ? "default" : "outline"}>
-                    {u.role}
-                  </Badge>
-                </td>
-                <td className="p-3 space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setEditing(u)
-                      setName(u.name)
-                      setEmail(u.email)
-                      setRole(u.role)
+      <Card>
+        <CardHeader>
+          <CardTitle>All Users</CardTitle>
+          <CardDescription>Total terdaftar: {users.length} user</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {loading ? (
+               <div className="flex justify-center py-10"><Loader2 className="animate-spin text-primary" /></div>
+            ) : users.length > 0 ? (
+              users.map((user) => (
+                <div key={user.id} className="flex items-center justify-between border-b pb-4 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={user.avatar} alt={user.name} />
+                      <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={user.role === "admin" ? "default" : user.role === "kontributor" ? "secondary" : "outline"}>
+                      {user.role}
+                    </Badge>
+                    
+                    {/* EDIT */}
+                    <Button variant="ghost" size="sm" onClick={() => {
+                      setEditing(user)
+                      setName(user.name)
+                      setEmail(user.email)
+                      setRole(user.role)
                       setOpen(true)
-                    }}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
+                    }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-red-500" onClick={() => setDeleteId(u.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Hapus user {u.name}?</AlertDialogTitle>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Batal</AlertDialogCancel>
-                        <AlertDialogAction onClick={confirmDelete} className="bg-red-500 hover:bg-red-600">
-                          Ya, Hapus
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                    {/* DELETE */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Hapus User?</AlertDialogTitle>
+                          <p className="text-sm text-muted-foreground">User <b>{user.name}</b> akan dihapus permanen.</p>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Batal</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => confirmDelete(user.id)} className="bg-red-500">Hapus</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-10 text-muted-foreground">Data tidak ditemukan.</div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
