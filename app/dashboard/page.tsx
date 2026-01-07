@@ -94,7 +94,7 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // --- LOGIKA PROGRESS FLOW ---
+  // --- LOGIKA PROGRESS FLOW (TERKUNCI) ---
   const markStepComplete = (materialId: number, currentStep: string, nextStep: string | null) => {
     const newProgress = { ...courseProgress, [materialId]: { ...(courseProgress[materialId] || {}), [currentStep]: true } }
     setCourseProgress(newProgress)
@@ -126,7 +126,7 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // --- API HANDLERS ---
+  // --- HANDLERS ---
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
@@ -212,15 +212,6 @@ export default function StudentDashboard() {
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
       
-      {/* MOBILE HEADER */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-slate-200 p-4 z-[60] flex justify-between items-center">
-        <div className="flex items-center gap-2 font-bold text-indigo-600">
-          <div className="h-8 w-8 bg-indigo-600 rounded flex items-center justify-center text-white text-xs">M</div>
-          <span>Mejatika</span>
-        </div>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-600"><Menu /></button>
-      </div>
-
       {/* SIDEBAR */}
       <aside className={`w-64 bg-white border-r border-slate-200 fixed h-full flex flex-col z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="p-6 flex items-center gap-3 border-b border-slate-100">
@@ -249,7 +240,16 @@ export default function StudentDashboard() {
 
       {/* MAIN CONTENT */}
       <main className={`flex-1 lg:ml-64 p-6 lg:p-10 flex flex-col mt-16 lg:mt-0`}>
-        
+        {/* MOBILE HEADER */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-slate-200 p-4 z-[60] flex justify-between items-center">
+          <div className="flex items-center gap-2 font-bold text-indigo-600">
+            <div className="h-8 w-8 bg-indigo-600 rounded flex items-center justify-center text-white text-xs">M</div>
+            <span>Mejatika</span>
+          </div>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-600"><Menu /></button>
+        </div>
+
+        {/* DASHBOARD */}
         {activeMenu === "dashboard" && (
           <div className="space-y-10 animate-in fade-in duration-700">
             <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2.5rem] p-8 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
@@ -258,25 +258,17 @@ export default function StudentDashboard() {
               <p className="text-indigo-100 font-medium">Lanjutkan progress belajarmu hari ini.</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm">
-                <p className="text-[10px] font-bold uppercase text-slate-400 mb-2">Total Katalog</p>
-                <h3 className="text-4xl font-bold text-slate-800">{availableCourses.length}</h3>
-              </Card>
-              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm">
-                <p className="text-[10px] font-bold uppercase text-slate-400 mb-2">Pendaftaran</p>
-                <h3 className="text-4xl font-bold text-indigo-600">{registrations.length}</h3>
-              </Card>
-              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm border-b-4 border-emerald-500">
-                <p className="text-[10px] font-bold uppercase text-slate-400 mb-2">Kursus Aktif</p>
-                <h3 className="text-4xl font-bold text-emerald-600">{registrations.filter(r => r.status === 'success').length}</h3>
-              </Card>
+              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Katalog</p><h3 className="text-4xl font-bold">{availableCourses.length}</h3></Card>
+              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Pendaftaran</p><h3 className="text-4xl font-bold text-indigo-600">{registrations.length}</h3></Card>
+              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm border-b-4 border-emerald-500"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Aktif</p><h3 className="text-4xl font-bold text-emerald-600">{registrations.filter(r => r.status === 'success').length}</h3></Card>
             </div>
           </div>
         )}
 
+        {/* KATALOG */}
         {activeMenu === "courses" && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            <h2 className="text-3xl font-bold text-slate-800 tracking-tight">Katalog Kursus</h2>
+            <h2 className="text-3xl font-bold text-slate-800">Katalog Kursus</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {availableCourses.map((course) => {
                 const reg = registrations.find(r => Number(r.course_id) === Number(course.id));
@@ -290,22 +282,18 @@ export default function StudentDashboard() {
                     <CardContent className="p-10 flex-1 flex flex-col">
                       <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
                       {status === 'success' ? (
-                        <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 rounded-2xl font-bold">Buka Modul</Button>
+                        <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
                       ) : status === 'pending' ? (
                         <div className="space-y-4 bg-indigo-50 p-6 rounded-3xl">
-                           <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm mb-2"><CreditCard size={18}/> BRI: 0021-01-234567-53-1</div>
+                           <div className="text-indigo-700 font-bold text-sm mb-2">BRI: 0021-01-234567-53-1</div>
                            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-indigo-200 rounded-2xl bg-white cursor-pointer hover:bg-indigo-100 transition-colors">
-                             {selectedProof ? <span className="text-xs font-bold text-emerald-600 truncate px-4">{selectedProof.name}</span> : <UploadCloud className="text-indigo-300" size={24} />}
-                             <input type="file" className="hidden" accept="image/*" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
+                             {selectedProof ? <span className="text-xs font-bold text-emerald-600">{selectedProof.name}</span> : <UploadCloud className="text-indigo-300" size={24} />}
+                             <input type="file" className="hidden" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
                            </label>
-                           <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
-                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Pembayaran"}
-                           </Button>
+                           <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">Konfirmasi Bayar</Button>
                         </div>
                       ) : (
-                        <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">
-                          {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar Kursus"}
-                        </Button>
+                        <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -315,6 +303,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
+        {/* RUANG BELAJAR */}
         {activeMenu === "materials" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
             <div className="lg:col-span-4 space-y-6">
@@ -322,21 +311,15 @@ export default function StudentDashboard() {
               <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
                 {registrations.filter(r => r.status === 'success').map((reg) => (
                   <div key={reg.id} className="space-y-3">
-                    <button onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all ${expandedCourse === reg.course_id ? 'bg-slate-900 text-white shadow-xl' : 'bg-white shadow-sm border border-slate-100'}`}>
+                    <button onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all ${expandedCourse === reg.course_id ? 'bg-slate-900 text-white shadow-xl' : 'bg-white border border-slate-100'}`}>
                       <span className="text-sm font-bold truncate pr-4">{reg.course?.title}</span>
                       <ChevronDown size={18} className={`${expandedCourse === reg.course_id ? 'rotate-180' : ''}`} />
                     </button>
                     {expandedCourse === reg.course_id && reg.course?.materials?.map((m: any) => (
                       <div key={m.id} className="ml-4 pl-4 border-l-2 border-slate-200 space-y-2">
                         <p className="text-[10px] font-bold text-indigo-600 uppercase mb-1">{m.title}</p>
-                        {[
-                          { id: "live", label: "Live Session", icon: Video },
-                          { id: "materi", label: "Materi Pokok", icon: MonitorPlay },
-                          { id: "tugas", label: "Tugas Praktik", icon: Flame },
-                          { id: "feedback", label: "Feedback Mentor", icon: MessageSquare }
-                        ].map((step) => {
-                          const locked = isStepLocked(m.id, step.id)
-                          const done = courseProgress[m.id]?.[step.id]
+                        {[{ id: "live", label: "Live Session", icon: Video }, { id: "materi", label: "Materi Pokok", icon: MonitorPlay }, { id: "tugas", label: "Tugas Praktik", icon: Flame }, { id: "feedback", label: "Feedback", icon: MessageSquare }].map((step) => {
+                          const locked = isStepLocked(m.id, step.id); const done = courseProgress[m.id]?.[step.id];
                           return (
                             <button key={step.id} disabled={locked} onClick={() => { setActiveMaterial(m); setActiveStep(step.id); }} className={`w-full flex items-center justify-between p-3 rounded-xl text-[11px] font-bold transition-all ${activeMaterial?.id === m.id && activeStep === step.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-white'} ${locked ? 'opacity-30 cursor-not-allowed' : ''}`}>
                               <span className="flex items-center gap-2">{locked ? <Lock size={14} /> : <step.icon size={14} />} {step.label}</span>
@@ -354,8 +337,8 @@ export default function StudentDashboard() {
             <div className="lg:col-span-8">
               {activeMaterial ? (
                 <div className="bg-white p-6 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8 animate-in zoom-in-95 duration-500">
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-50 pb-6">
-                    <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-4">
+                  <div className="flex justify-between items-center border-b pb-6">
+                    <h3 className="text-2xl font-bold flex items-center gap-4">
                       <span className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-sm">
                         {activeStep === "live" ? "01" : activeStep === "materi" ? "02" : activeStep === "tugas" ? "03" : "04"}
                       </span>
@@ -373,10 +356,13 @@ export default function StudentDashboard() {
                   {activeStep === "materi" && (
                     <div className="space-y-8">
                       {renderEmbed(activeMaterial.file)}
-                      <div className="bg-slate-50 rounded-3xl p-8 border border-slate-100 prose prose-indigo max-w-full">
-                        <div dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
+                      <div className="bg-slate-50 rounded-3xl p-6 lg:p-8 border border-slate-100 max-w-full overflow-hidden">
+                        <div 
+                          className="prose prose-indigo max-w-full prose-img:rounded-2xl prose-img:mx-auto break-words overflow-x-auto" 
+                          dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
+                        />
                       </div>
-                      <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-16 rounded-3xl font-bold">Lanjut Ke Tugas</Button>
+                      <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-indigo-600 text-white h-16 rounded-3xl font-bold">Lanjut Ke Tugas</Button>
                     </div>
                   )}
 
@@ -384,7 +370,7 @@ export default function StudentDashboard() {
                     <div className="space-y-6">
                        <div className="p-8 bg-indigo-50/50 rounded-3xl border border-indigo-100">
                           <h4 className="text-xs font-bold text-indigo-700 mb-3 uppercase tracking-widest flex items-center gap-2"><Flame size={16}/> Instruksi Tugas:</h4>
-                          <div className="text-sm text-slate-700 leading-relaxed font-medium">{activeMaterial.quiz_task || "Silahkan kerjakan tugas sesuai arahan."}</div>
+                          <div className="text-sm text-slate-700 leading-relaxed font-medium">{activeMaterial.quiz_task || "Sesuai arahan mentor."}</div>
                        </div>
                        <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tulis jawaban..." className="w-full h-40 p-6 rounded-3xl bg-slate-50 border outline-none text-sm" />
                        <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="URL Project Link" className="w-full p-5 rounded-2xl bg-slate-50 border text-sm" />
@@ -400,15 +386,10 @@ export default function StudentDashboard() {
                          <div className="space-y-6">
                             <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
                                <div className="flex justify-between items-start mb-6">
-                                  <div className="flex items-center gap-4">
-                                     <div className="h-12 w-12 bg-indigo-500 rounded-2xl flex items-center justify-center"><UserCircle2 size={30}/></div>
-                                     <h4 className="text-xl font-bold">Review Mentor</h4>
-                                  </div>
+                                  <div className="flex items-center gap-4"><UserCircle2 size={30}/><h4 className="text-xl font-bold">Mentor Review</h4></div>
                                   <div className="bg-slate-800 px-6 py-3 rounded-2xl text-3xl font-bold text-indigo-400">{submissionFeedback.score || "—"}</div>
                                </div>
-                               <div className="p-6 bg-slate-800/50 rounded-2xl italic text-slate-300 text-sm border border-slate-700">
-                                 "{submissionFeedback.mentor_feedback || "Menunggu review..."}"
-                               </div>
+                               <div className="p-6 bg-slate-800/50 rounded-2xl italic text-slate-300 text-sm border border-slate-700">"{submissionFeedback.mentor_feedback || "Menunggu review..."}"</div>
                             </div>
                             <div className="bg-slate-100/50 p-6 rounded-3xl space-y-4">
                                {submissionFeedback.student_reply && <div className="bg-indigo-600 text-white p-4 rounded-2xl ml-auto w-fit text-sm">{submissionFeedback.student_reply}</div>}
@@ -428,31 +409,25 @@ export default function StudentDashboard() {
                   )}
                 </div>
               ) : (
-                <div className="h-[60vh] flex flex-col items-center justify-center text-slate-200 border-4 border-dashed rounded-[3rem] bg-white">
-                  <PlayCircle size={80} className="opacity-10 mb-4" />
-                  <p className="font-bold uppercase text-xs tracking-widest opacity-40">Pilih Modul Belajar</p>
-                </div>
+                <div className="h-[60vh] flex flex-col items-center justify-center text-slate-200 border-4 border-dashed rounded-[3rem] bg-white"><PlayCircle size={80} className="opacity-10 mb-4" /><p className="font-bold uppercase text-xs tracking-widest opacity-40">Pilih Modul Belajar</p></div>
               )}
             </div>
           </div>
         )}
 
+        {/* SERTIFIKAT */}
         {activeMenu === "certificates" && (
           <div className="space-y-10 animate-in fade-in">
-            <h2 className="text-3xl font-bold text-slate-800 tracking-tight">E-Sertifikat</h2>
+            <h2 className="text-3xl font-bold text-slate-800">E-Sertifikat</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {registrations.filter(r => r.status === 'success').map(reg => {
                 const isFinished = calculateProgress(reg.course_id) === 100;
                 return (
                   <Card key={reg.id} className={`rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none ${isFinished ? 'bg-white' : 'bg-slate-50 opacity-60'}`}>
-                    <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${isFinished ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-200 text-slate-400'}`}>
-                      <Award size={48} />
-                    </div>
+                    <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${isFinished ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-200 text-slate-400'}`}><Award size={48} /></div>
                     <h4 className="font-bold text-slate-800 mb-2">{reg.course?.title}</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-8">{isFinished ? "Verified Graduate" : "Selesaikan modul untuk klaim"}</p>
-                    <Button disabled={!isFinished} className={`w-full h-12 rounded-2xl font-bold text-xs ${isFinished ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-200'}`}>
-                      {isFinished ? "Download Sertifikat" : "Progress: " + calculateProgress(reg.course_id) + "%"}
-                    </Button>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-8">{isFinished ? "Verified Graduate" : "Kursus Belum Selesai"}</p>
+                    <Button disabled={!isFinished} className={`w-full h-12 rounded-2xl font-bold text-xs ${isFinished ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-200 text-slate-500'}`}>{isFinished ? "Download Sertifikat" : "Progress: " + calculateProgress(reg.course_id) + "%"}</Button>
                   </Card>
                 )
               })}
@@ -460,9 +435,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        <footer className="py-12 border-t mt-auto text-center">
-          <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">© 2026 MEJATIKA LMS — PLATFORM BELAJAR MODERN</p>
-        </footer>
+        <footer className="py-12 border-t mt-auto text-center"><p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">© 2026 MEJATIKA LMS — PLATFORM BELAJAR MODERN</p></footer>
       </main>
     </div>
   )
