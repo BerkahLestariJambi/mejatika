@@ -11,12 +11,14 @@ import {
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
   Send, UserCircle2, Menu, X, Star, RefreshCw
 } from "lucide-react"
+import Swal from 'sweetalert2'
 
 export default function StudentDashboard() {
   const router = useRouter()
   const [activeMenu, setActiveMenu] = useState("dashboard")
   const [registrations, setRegistrations] = useState<any[]>([])
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
+  const [myCertificates, setMyCertificates] = useState<any[]>([]) // Ambil langsung dari tabel certificates
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [registeringId, setRegisteringId] = useState<number | null>(null)
@@ -37,26 +39,29 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
-  // STATE UNTUK DOWNLOAD
-  const [downloadingCertId, setDownloadingCertId] = useState<number | null>(null)
+  const API_URL = "https://backend.mejatika.com/api"
 
-  // 1. Fetch Data Utama
+  // 1. Fetch Data Utama & Sertifikat Langsung
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
     try {
-      const [resReg, resUser, resAll] = await Promise.all([
-        fetch("https://backend.mejatika.com/api/registrations", { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch("https://backend.mejatika.com/api/me", { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch("https://backend.mejatika.com/api/courses", { headers: { "Authorization": `Bearer ${token}` } })
+      const [resReg, resUser, resAll, resCert] = await Promise.all([
+        fetch(`${API_URL}/registrations`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${API_URL}/me`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${API_URL}/courses`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${API_URL}/my-certificates`, { headers: { "Authorization": `Bearer ${token}` } }) // Langsung ke tabel certificates
       ])
+      
       const dataReg = await resReg.json()
       const dataUser = await resUser.json()
       const dataAll = await resAll.json()
+      const dataCert = await resCert.json()
 
       setRegistrations(Array.isArray(dataReg) ? dataReg : dataReg.data || [])
       setUser(dataUser)
       setAvailableCourses(Array.isArray(dataAll) ? dataAll : dataAll.data || [])
+      setMyCertificates(Array.isArray(dataCert) ? dataCert : dataCert.data || [])
     } catch (err) { 
       console.error("Fetch Error:", err) 
     } finally { 
@@ -69,7 +74,7 @@ export default function StudentDashboard() {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/submissions/check/${activeMaterial.id}`, {
+      const res = await fetch(`${API_URL}/submissions/check/${activeMaterial.id}`, {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
       const data = await res.json()
@@ -129,51 +134,52 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // --- HANDLER DOWNLOAD SERTIFIKAT ---
-  const handleDownloadCertificate = async (reg: any) => {
-    // Ambil certificate_number dari data pendaftaran (pastikan API sudah menyertakan 'certificate')
-    const certData = reg.certificate;
+  // --- LOGIKA DOWNLOAD SERTIFIKAT (SINKRON DENGAN ADMIN) ---
+  const handleDownloadCertificate = async (certId: number, certNumber: string) => {
+    const token = localStorage.getItem("token")
     
-    if (!certData) {
-      alert("Sertifikat belum diterbitkan oleh Admin.");
-      return;
-    }
-
-    setDownloadingCertId(reg.id);
-    const token = localStorage.getItem("token");
+    Swal.fire({
+      title: 'Menyiapkan Sertifikat',
+      html: 'Sedang membuat file PDF...',
+      allowOutsideClick: false,
+      didOpen: () => { Swal.showLoading() }
+    })
 
     try {
-      // Endpoint ini harus sesuai dengan route di Laravel lo
-      const response = await fetch(`https://backend.mejatika.com/api/certificates/${certData.id}/download`, {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${token}` }
-      });
+      const res = await fetch(`${API_URL}/certificates/${certId}/download`, {
+        method: 'GET',
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/pdf"
+        }
+      })
 
-      if (!response.ok) throw new Error("Gagal mengambil file sertifikat.");
+      if (!res.ok) throw new Error("Gagal mengunduh sertifikat.")
+      const blob = await res.blob()
+      if (blob.type !== "application/pdf") throw new Error("File yang diterima bukan PDF.")
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `Sertifikat-${reg.course?.title || 'Mejatika'}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode?.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Sertifikat-${certNumber}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      a.remove()
+      
+      Swal.fire({ icon: 'success', title: 'Berhasil', timer: 1500, showConfirmButton: false })
     } catch (err: any) {
-      alert("Error: " + err.message);
-    } finally {
-      setDownloadingCertId(null);
+      Swal.fire("Gagal", err.message, "error")
     }
-  };
+  }
 
-  // --- HANDLERS LAINNYA ---
+  // --- HANDLERS TUGAS ---
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/submissions/${submissionFeedback.id}/reply`, {
+      const res = await fetch(`${API_URL}/submissions/${submissionFeedback.id}/reply`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
         body: JSON.stringify({ message: replyText })
@@ -189,7 +195,7 @@ export default function StudentDashboard() {
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
     const isUpdate = submissionFeedback && submissionFeedback.id
-    const url = isUpdate ? `https://backend.mejatika.com/api/submissions/${submissionFeedback.id}` : `https://backend.mejatika.com/api/submissions`
+    const url = isUpdate ? `${API_URL}/submissions/${submissionFeedback.id}` : `${API_URL}/submissions`
     try {
       const res = await fetch(url, {
         method: isUpdate ? "PUT" : "POST",
@@ -223,7 +229,7 @@ export default function StudentDashboard() {
     setRegisteringId(courseId)
     try {
       const token = localStorage.getItem("token")
-      const res = await fetch("https://backend.mejatika.com/api/registrations", {
+      const res = await fetch(`${API_URL}/registrations`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ course_id: courseId })
@@ -239,7 +245,7 @@ export default function StudentDashboard() {
     formData.append("proof", selectedProof)
     try {
       const token = localStorage.getItem("token")
-      const res = await fetch(`https://backend.mejatika.com/api/registrations/${regId}/upload`, {
+      const res = await fetch(`${API_URL}/registrations/${regId}/upload`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` },
         body: formData 
@@ -279,7 +285,6 @@ export default function StudentDashboard() {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
       <main className={`flex-1 lg:ml-64 p-6 lg:p-10 flex flex-col mt-16 lg:mt-0`}>
         {/* MOBILE HEADER */}
         <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-slate-200 p-4 z-[60] flex justify-between items-center">
@@ -290,7 +295,7 @@ export default function StudentDashboard() {
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-600"><Menu /></button>
         </div>
 
-        {/* DASHBOARD */}
+        {/* --- MENU DASHBOARD --- */}
         {activeMenu === "dashboard" && (
           <div className="space-y-10 animate-in fade-in duration-700">
             <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2.5rem] p-8 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
@@ -306,7 +311,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* KATALOG */}
+        {/* --- MENU KATALOG --- */}
         {activeMenu === "courses" && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <h2 className="text-3xl font-bold text-slate-800">Katalog Kursus</h2>
@@ -315,10 +320,10 @@ export default function StudentDashboard() {
                 const reg = registrations.find(r => Number(r.course_id) === Number(course.id));
                 const status = reg?.status;
                 return (
-                  <Card key={course.id} className="rounded-[2.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:shadow-xl transition-all">
+                  <Card key={course.id} className="rounded-[2.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:shadow-xl transition-all relative">
                     <div className="h-48 bg-slate-50 flex items-center justify-center border-b border-slate-100">
                       <BookOpen className="text-slate-200" size={60} />
-                      {(status === 'success' || status === 'aktif') && <div className="absolute top-6 right-6 bg-emerald-500 text-white p-2 rounded-full"><CheckCircle2 size={20}/></div>}
+                      {(status === 'success' || status === 'aktif') && <div className="absolute top-6 right-6 bg-emerald-500 text-white p-2 rounded-full shadow-lg"><CheckCircle2 size={20}/></div>}
                     </div>
                     <CardContent className="p-10 flex-1 flex flex-col">
                       <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
@@ -326,12 +331,14 @@ export default function StudentDashboard() {
                         <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
                       ) : status === 'pending' ? (
                         <div className="space-y-4 bg-indigo-50 p-6 rounded-3xl">
-                           <div className="text-indigo-700 font-bold text-sm mb-2">BRI: 0021-01-234567-53-1</div>
+                           <div className="text-indigo-700 font-bold text-sm mb-2 text-center">Rek: 0021-01-234567-53-1 (BRI)</div>
                            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-indigo-200 rounded-2xl bg-white cursor-pointer hover:bg-indigo-100 transition-colors">
-                             {selectedProof ? <span className="text-xs font-bold text-emerald-600">{selectedProof.name}</span> : <UploadCloud className="text-indigo-300" size={24} />}
+                             {selectedProof ? <span className="text-xs font-bold text-emerald-600 truncate px-4">{selectedProof.name}</span> : <UploadCloud className="text-indigo-300" size={24} />}
                              <input type="file" className="hidden" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
                            </label>
-                           <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">Konfirmasi Bayar</Button>
+                           <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
+                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Bayar"}
+                           </Button>
                         </div>
                       ) : (
                         <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
@@ -344,7 +351,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* RUANG BELAJAR */}
+        {/* --- MENU RUANG BELAJAR --- */}
         {activeMenu === "materials" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
             <div className="lg:col-span-4 space-y-6">
@@ -378,14 +385,12 @@ export default function StudentDashboard() {
             <div className="lg:col-span-8">
               {activeMaterial ? (
                 <div className="bg-white p-6 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8 animate-in zoom-in-95 duration-500">
-                  <div className="flex justify-between items-center border-b pb-6">
-                    <h3 className="text-2xl font-bold flex items-center gap-4">
-                      <span className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-sm">
-                        {activeStep === "live" ? "01" : activeStep === "materi" ? "02" : activeStep === "tugas" ? "03" : "04"}
-                      </span>
-                      {activeStep.toUpperCase()}
-                    </h3>
-                  </div>
+                  <h3 className="text-2xl font-bold flex items-center gap-4">
+                    <span className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-sm">
+                      {activeStep === "live" ? "01" : activeStep === "materi" ? "02" : activeStep === "tugas" ? "03" : "04"}
+                    </span>
+                    {activeStep.toUpperCase()}
+                  </h3>
 
                   {activeStep === "live" && (
                     <div className="space-y-8">
@@ -397,11 +402,8 @@ export default function StudentDashboard() {
                   {activeStep === "materi" && (
                     <div className="space-y-8">
                       {renderEmbed(activeMaterial.file)}
-                      <div className="bg-slate-50 rounded-3xl p-6 lg:p-8 border border-slate-100 max-w-full overflow-hidden">
-                        <div 
-                          className="prose prose-indigo max-w-full prose-img:rounded-2xl prose-img:mx-auto break-words overflow-x-auto" 
-                          dangerouslySetInnerHTML={{ __html: activeMaterial.content }} 
-                        />
+                      <div className="bg-slate-50 rounded-3xl p-6 lg:p-8 border border-slate-100 max-w-full">
+                        <div className="prose prose-indigo max-w-full prose-img:rounded-2xl" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                       </div>
                       <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-indigo-600 text-white h-16 rounded-3xl font-bold">Lanjut Ke Tugas</Button>
                     </div>
@@ -433,11 +435,11 @@ export default function StudentDashboard() {
                                <div className="p-6 bg-slate-800/50 rounded-2xl italic text-slate-300 text-sm border border-slate-700">"{submissionFeedback.mentor_feedback || "Menunggu review..."}"</div>
                             </div>
                             <div className="bg-slate-100/50 p-6 rounded-3xl space-y-4">
-                               {submissionFeedback.student_reply && <div className="bg-indigo-600 text-white p-4 rounded-2xl ml-auto w-fit text-sm">{submissionFeedback.student_reply}</div>}
+                               {submissionFeedback.student_reply && <div className="bg-indigo-600 text-white p-4 rounded-2xl ml-auto w-fit text-sm shadow-sm">{submissionFeedback.student_reply}</div>}
                                {!submissionFeedback.student_reply && (
                                  <div className="relative">
                                     <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Tanya mentor..." className="w-full p-5 pr-14 bg-white border rounded-3xl text-sm" />
-                                    <button onClick={handleSendReply} className="absolute bottom-4 right-4 h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center"><Send size={16}/></button>
+                                    <button onClick={handleSendReply} className="absolute bottom-4 right-4 h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center transition-transform active:scale-90"><Send size={16}/></button>
                                  </div>
                                )}
                             </div>
@@ -456,66 +458,49 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* SERTIFIKAT */}
+        {/* --- MENU SERTIFIKAT (LOGIKA BARU DARI TABEL) --- */}
         {activeMenu === "certificates" && (
-          <div className="space-y-10 animate-in fade-in">
-            <h2 className="text-3xl font-bold text-slate-800">E-Sertifikat</h2>
+          <div className="space-y-10 animate-in fade-in duration-500">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-800">Sertifikat Saya</h2>
+              <p className="text-slate-500 font-medium">Download sertifikat resmi atas pencapaian belajarmu.</p>
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {registrations
-                .filter(r => r.status === 'success' || r.status === 'aktif')
-                .map(reg => {
-                  const progress = calculateProgress(reg.course_id);
-                  const isFinished = progress === 100;
-                  // Logika Sertifikat: Muncul jika DATA SERTIFIKAT ada dari Backend
-                  const hasCertificate = reg.certificate !== null;
-                  const isDownloading = downloadingCertId === reg.id;
-
-                  return (
-                    <Card key={reg.id} className={`rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none bg-white`}>
-                      <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${hasCertificate ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-100 text-slate-300'}`}>
-                        <Award size={48} />
-                      </div>
-                      <h4 className="font-bold text-slate-800 mb-2">{reg.course?.title}</h4>
-                      
-                      {/* Status Badge */}
-                      <div className="mb-8">
-                        {hasCertificate ? (
-                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-wider">
-                            Tersedia
-                          </span>
-                        ) : (
-                          <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full uppercase tracking-wider">
-                             Progress: {progress}%
-                          </span>
-                        )}
-                      </div>
-                      
+              {myCertificates.length > 0 ? (
+                myCertificates.map((cert) => (
+                  <Card key={cert.id} className="rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none bg-white hover:shadow-xl transition-all group relative">
+                    <div className="h-24 w-24 rounded-[2rem] bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                      <Award size={48} />
+                    </div>
+                    
+                    <h4 className="font-bold text-slate-800 mb-1 leading-tight">{cert.course?.title}</h4>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">ID: {cert.certificate_number}</p>
+                    
+                    <div className="w-full pt-6 border-t border-slate-50">
                       <Button 
-                        disabled={!hasCertificate || isDownloading} 
-                        onClick={() => handleDownloadCertificate(reg)}
-                        className={`w-full h-12 rounded-2xl font-bold text-xs transition-all ${hasCertificate ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700' : 'bg-slate-200 text-slate-500'}`}
+                        onClick={() => handleDownloadCertificate(cert.id, cert.certificate_number)}
+                        className="w-full bg-slate-900 hover:bg-indigo-600 text-white h-12 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-200"
                       >
-                        {isDownloading ? (
-                          <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
-                        ) : hasCertificate ? (
-                          <><FileText className="mr-2 h-4 w-4" /> Download Sertifikat</>
-                        ) : (
-                          "Belum Terbit"
-                        )}
+                        <FileText size={16} /> Download PDF
                       </Button>
-                    </Card>
-                  );
-                })}
-              {registrations.filter(r => r.status === 'success' || r.status === 'aktif').length === 0 && (
-                <div className="col-span-full py-20 text-center text-slate-400 font-medium bg-white rounded-[2.5rem] border-2 border-dashed">
-                   Anda belum memiliki kursus yang aktif.
+                    </div>
+                  </Card>
+                ))
+              ) : (
+                <div className="col-span-full py-24 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
+                  <Award size={60} className="opacity-10 mb-4" />
+                  <p className="font-bold uppercase text-xs tracking-widest opacity-40">Belum ada sertifikat terbit</p>
+                  <p className="text-[10px] mt-2 italic text-slate-400 max-w-xs text-center px-6">Sertifikat akan muncul di sini secara otomatis setelah admin memvalidasi kelulusanmu.</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        <footer className="py-12 border-t mt-auto text-center"><p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">© 2026 MEJATIKA LMS — PLATFORM BELAJAR MODERN</p></footer>
+        <footer className="py-12 border-t mt-auto text-center">
+          <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">© 2026 MEJATIKA LMS — PLATFORM BELAJAR MODERN</p>
+        </footer>
       </main>
     </div>
   )
