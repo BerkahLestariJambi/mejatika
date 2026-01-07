@@ -11,7 +11,7 @@ import {
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
   Send, UserCircle2, Menu, X, Star, RefreshCw, AlertCircle, Download
 } from "lucide-react"
-import Swal from 'sweetalert2' // Pastikan sudah install sweetalert2
+import Swal from 'sweetalert2'
 
 // --- TYPES ---
 interface Material {
@@ -33,12 +33,9 @@ export default function StudentDashboard() {
   const [error, setError] = useState<string | null>(null)
   
   // State Operasional
-  const [registeringId, setRegisteringId] = useState<number | null>(null)
-  const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [activeMaterial, setActiveMaterial] = useState<Material | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [selectedProof, setSelectedProof] = useState<File | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
   
   // State Tugas
@@ -47,13 +44,11 @@ export default function StudentDashboard() {
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
   const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
   const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
-  const [replyText, setReplyText] = useState("")
-  const [isSendingReply, setIsSendingReply] = useState(false)
   const [downloadingCertId, setDownloadingCertId] = useState<number | null>(null)
 
   const API_URL = "https://backend.mejatika.com/api"
 
-  // 1. Fetch Data Utama
+  // 1. Fetch Data Utama (Updated for Auth Handling)
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
@@ -71,7 +66,10 @@ export default function StudentDashboard() {
         fetch(`${API_URL}/courses`, { headers })
       ])
 
-      if (resReg.status === 401) throw new Error("Unauthorized")
+      // Jika ada salah satu yang 401, lempar error unauthorized
+      if (resReg.status === 401 || resUser.status === 401) {
+        throw new Error("Unauthorized");
+      }
 
       const dataReg = await resReg.json()
       const dataUser = await resUser.json()
@@ -85,14 +83,15 @@ export default function StudentDashboard() {
       if (err.message === "Unauthorized") {
         localStorage.clear()
         router.push("/login")
+      } else {
+        setError("Gagal memuat data. Silakan refresh halaman.")
       }
-      setError("Gagal memuat data. Silakan refresh halaman.")
     } finally { 
       setLoading(false) 
     }
   }, [router])
 
-  // 2. Fetch Status Tugas & Feedback
+  // 2. Fetch Status Tugas
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
@@ -134,7 +133,6 @@ export default function StudentDashboard() {
     setCourseProgress(newProgress)
     localStorage.setItem("mejatika_progress", JSON.stringify(newProgress))
     if (nextStep) setActiveStep(nextStep)
-    else alert("Selamat! Kamu telah menyelesaikan modul ini.")
   }
 
   const isStepLocked = (materialId: number, step: string) => {
@@ -161,13 +159,15 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // --- LOGIKA DOWNLOAD SERTIFIKAT TERBARU ---
+  // --- LOGIKA DOWNLOAD SERTIFIKAT (FIXED AUTH) ---
   const handleDownloadCertificate = async (reg: any) => {
     const certData = reg.certificate;
-    if (!certData?.id) return Swal.fire("Belum Tersedia", "Sertifikat belum diterbitkan oleh Admin.", "info");
+    if (!certData?.id) return Swal.fire("Belum Tersedia", "Sertifikat belum diterbitkan.", "info");
     
-    setDownloadingCertId(reg.id);
     const token = localStorage.getItem("token");
+    if (!token) return router.push("/login");
+
+    setDownloadingCertId(reg.id);
 
     try {
       const response = await fetch(`${API_URL}/certificates/${certData.id}/download`, {
@@ -178,16 +178,17 @@ export default function StudentDashboard() {
         }
       });
 
+      if (response.status === 401) {
+        throw new Error("Sesi login Anda berakhir. Silakan login kembali.");
+      }
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ message: "Gagal mengunduh file." }));
-        throw new Error(errorData.message || "Akses ditolak atau file tidak ditemukan.");
+        throw new Error("Gagal mengunduh file sertifikat.");
       }
 
       const blob = await response.blob();
-      
-      // Validasi apakah benar PDF
       if (blob.type !== "application/pdf") {
-        throw new Error("Format file yang diterima bukan PDF. Hubungi Admin.");
+        throw new Error("File yang diterima bukan PDF.");
       }
 
       const url = window.URL.createObjectURL(blob);
@@ -197,7 +198,6 @@ export default function StudentDashboard() {
       document.body.appendChild(link);
       link.click();
       
-      // Cleanup
       window.URL.revokeObjectURL(url);
       link.remove();
 
@@ -212,15 +212,19 @@ export default function StudentDashboard() {
     } catch (err: any) {
       console.error("Download Error:", err);
       Swal.fire("Gagal Unduh", err.message, "error");
+      if (err.message.includes("login")) {
+        localStorage.clear();
+        router.push("/login");
+      }
     } finally {
       setDownloadingCertId(null);
     }
   };
 
   const handleSubmitTask = async () => {
-    if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
+    if (!studentAnswer && !taskLink) return Swal.fire("Input Kosong", "Isi jawaban atau link tugas!", "warning");
     const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
-    if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
+    if (!currentReg) return;
     
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
@@ -238,11 +242,19 @@ export default function StudentDashboard() {
           project_link: taskLink 
         })
       })
+
+      if (res.status === 401) throw new Error("Unauthorized");
+
       if (res.ok) { 
-        alert(isUpdate ? "Tugas diperbarui!" : "Tugas berhasil dikirim!");
+        Swal.fire("Berhasil", "Tugas telah dikirim!", "success");
         markStepComplete(activeMaterial!.id, "tugas", "feedback");
       }
-    } catch (err) { alert("Gagal mengirim tugas") } finally { setIsSubmittingTask(false) }
+    } catch (err: any) { 
+        if(err.message === "Unauthorized") {
+            localStorage.clear();
+            router.push("/login");
+        }
+    } finally { setIsSubmittingTask(false) }
   }
 
   const renderEmbed = (url: string | undefined) => {
@@ -261,7 +273,6 @@ export default function StudentDashboard() {
     )
   }
 
-  // --- UI RENDER ---
   if (loading) return (
     <div className="h-screen flex flex-col items-center justify-center bg-slate-50">
       <Loader2 className="h-12 w-12 text-indigo-600 animate-spin mb-4" />
@@ -321,7 +332,7 @@ export default function StudentDashboard() {
             </div>
           )}
 
-          {/* DASHBOARD SECTION */}
+          {/* DASHBOARD */}
           {activeMenu === "dashboard" && (
             <section className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 rounded-[2.5rem] p-8 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
@@ -351,7 +362,6 @@ export default function StudentDashboard() {
           {/* RUANG BELAJAR */}
           {activeMenu === "materials" && (
             <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-              {/* Sidebar Materi */}
               <div className="lg:col-span-4 space-y-6">
                 <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
                    <MonitorPlay className="text-indigo-600" /> Ruang Belajar
@@ -401,7 +411,6 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              {/* Viewer Konten */}
               <div className="lg:col-span-8">
                 {activeMaterial ? (
                   <div className="bg-white p-6 lg:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 animate-in zoom-in-95 duration-500">
@@ -417,21 +426,19 @@ export default function StudentDashboard() {
                       </div>
                     </div>
 
-                    {/* Step: Live */}
                     {activeStep === "live" && (
                       <div className="space-y-6">
                         {renderEmbed(activeMaterial.live_link)}
-                        <Button onClick={() => markStepComplete(activeMaterial.id, "live", "materi")} className="w-full bg-slate-900 hover:bg-black text-white h-16 rounded-[1.5rem] font-bold shadow-lg transition-transform active:scale-[0.98]">
+                        <Button onClick={() => markStepComplete(activeMaterial.id, "live", "materi")} className="w-full bg-slate-900 hover:bg-black text-white h-16 rounded-[1.5rem] font-bold shadow-lg">
                           Saya Sudah Menonton <CheckCircle2 className="ml-2" size={20}/>
                         </Button>
                       </div>
                     )}
 
-                    {/* Step: Materi */}
                     {activeStep === "materi" && (
                       <div className="space-y-6">
                         {activeMaterial.file && renderEmbed(activeMaterial.file)}
-                        <article className="prose prose-slate max-w-none bg-slate-50 p-8 rounded-3xl border border-slate-100 overflow-hidden">
+                        <article className="prose prose-slate max-w-none bg-slate-50 p-8 rounded-3xl border border-slate-100">
                           <div dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
                         </article>
                         <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-16 rounded-[1.5rem] font-bold shadow-lg">
@@ -440,7 +447,6 @@ export default function StudentDashboard() {
                       </div>
                     )}
 
-                    {/* Step: Tugas */}
                     {activeStep === "tugas" && (
                       <div className="space-y-6">
                         <div className="p-8 bg-amber-50 rounded-3xl border border-amber-100">
@@ -450,26 +456,22 @@ export default function StudentDashboard() {
                         <textarea 
                           value={studentAnswer} 
                           onChange={(e) => setStudentAnswer(e.target.value)} 
-                          placeholder="Tuliskan jawaban atau laporan hasil praktikmu di sini..." 
-                          className="w-full h-48 p-6 rounded-3xl bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-50 outline-none text-sm transition-all" 
+                          placeholder="Tuliskan jawaban di sini..." 
+                          className="w-full h-48 p-6 rounded-3xl bg-slate-50 border border-slate-200 focus:border-indigo-400 outline-none text-sm transition-all" 
                         />
-                        <div className="relative">
-                           <MonitorPlay className="absolute left-5 top-5 text-slate-400" size={18} />
-                           <input 
-                            type="text" 
-                            value={taskLink} 
-                            onChange={(e) => setTaskLink(e.target.value)} 
-                            placeholder="Link Project (Google Drive / GitHub / Figma)" 
-                            className="w-full p-5 pl-14 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-sm" 
-                           />
-                        </div>
-                        <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full h-16 bg-slate-900 text-white rounded-[1.5rem] font-bold shadow-xl">
+                        <input 
+                          type="text" 
+                          value={taskLink} 
+                          onChange={(e) => setTaskLink(e.target.value)} 
+                          placeholder="Link Project (G-Drive / GitHub)" 
+                          className="w-full p-5 rounded-2xl bg-slate-50 border border-slate-200 outline-none text-sm" 
+                        />
+                        <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full h-16 bg-slate-900 text-white rounded-[1.5rem] font-bold">
                           {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Simpan Perubahan" : "Kirim Tugas Sekarang")}
                         </Button>
                       </div>
                     )}
 
-                    {/* Step: Feedback */}
                     {activeStep === "feedback" && (
                       <div className="space-y-6">
                         {submissionFeedback ? (
@@ -480,7 +482,7 @@ export default function StudentDashboard() {
                                 <div className="bg-indigo-600 px-6 py-2 rounded-xl text-2xl font-black">{submissionFeedback.score || "—"}</div>
                               </div>
                               <div className="p-6 bg-white/5 rounded-2xl border border-white/10 italic text-slate-300 text-sm">
-                                "{submissionFeedback.mentor_feedback || "Mentor sedang memeriksa tugasmu. Mohon tunggu sejenak."}"
+                                "{submissionFeedback.mentor_feedback || "Mentor sedang memeriksa tugasmu."}"
                               </div>
                             </div>
                             <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-indigo-600 text-white h-16 rounded-[1.5rem] font-bold">
@@ -491,7 +493,6 @@ export default function StudentDashboard() {
                           <div className="text-center py-20 bg-emerald-50 rounded-[2rem] border-2 border-dashed border-emerald-200">
                              <CheckCircle2 className="mx-auto mb-4 text-emerald-500" size={48} />
                              <p className="text-emerald-800 font-bold">Tugas berhasil dikirim!</p>
-                             <p className="text-emerald-600 text-xs mt-1">Kami akan memberitahumu setelah mentor memberikan feedback.</p>
                           </div>
                         )}
                       </div>
@@ -499,10 +500,7 @@ export default function StudentDashboard() {
                   </div>
                 ) : (
                   <div className="h-full min-h-[500px] flex flex-col items-center justify-center text-slate-200 border-4 border-dashed rounded-[3rem] bg-white group hover:border-indigo-100 transition-colors">
-                    <div className="relative">
-                      <PlayCircle size={100} className="opacity-10 group-hover:scale-110 transition-transform" />
-                      <div className="absolute inset-0 bg-indigo-500/5 blur-3xl rounded-full" />
-                    </div>
+                    <PlayCircle size={100} className="opacity-10 group-hover:scale-110 transition-transform" />
                     <p className="font-black uppercase text-xs tracking-[0.3em] opacity-40 mt-6">Pilih Modul Untuk Memulai</p>
                   </div>
                 )}
@@ -510,7 +508,7 @@ export default function StudentDashboard() {
             </section>
           )}
 
-          {/* SERTIFIKAT SECTION (UPGRADED) */}
+          {/* SERTIFIKAT */}
           {activeMenu === "certificates" && (
             <section className="space-y-8 animate-in fade-in duration-500">
               <h2 className="text-3xl font-black text-slate-800">E-Sertifikat</h2>
@@ -561,19 +559,11 @@ export default function StudentDashboard() {
                       </Card>
                     );
                   })}
-                
-                {registrations.filter(r => r.status === 'success' || r.status === 'aktif').length === 0 && (
-                  <div className="col-span-full py-20 text-center bg-white rounded-[3rem] border-2 border-dashed">
-                    <Award className="mx-auto text-slate-200 mb-4" size={60} />
-                    <p className="text-slate-400 font-bold">Belum ada kursus aktif.</p>
-                  </div>
-                )}
               </div>
             </section>
           )}
         </div>
 
-        {/* FOOTER */}
         <footer className="py-12 border-t mt-12 text-center">
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.4em]">
             © 2026 MEJATIKA LMS — Built with Precision
@@ -581,7 +571,6 @@ export default function StudentDashboard() {
         </footer>
       </main>
 
-      {/* Overlay sidebar mobile */}
       {sidebarOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
