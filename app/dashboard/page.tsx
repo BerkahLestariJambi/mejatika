@@ -37,7 +37,7 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
-  // --- TAMBAHAN BARU: STATE UNTUK DOWNLOAD ---
+  // STATE UNTUK DOWNLOAD
   const [downloadingCertId, setDownloadingCertId] = useState<number | null>(null)
 
   // 1. Fetch Data Utama
@@ -97,7 +97,7 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // --- LOGIKA PROGRESS FLOW (TERKUNCI) ---
+  // --- LOGIKA PROGRESS FLOW ---
   const markStepComplete = (materialId: number, currentStep: string, nextStep: string | null) => {
     const newProgress = { ...courseProgress, [materialId]: { ...(courseProgress[materialId] || {}), [currentStep]: true } }
     setCourseProgress(newProgress)
@@ -115,8 +115,8 @@ export default function StudentDashboard() {
   }
 
   const calculateProgress = (courseId: number) => {
-    const course = availableCourses.find(c => c.id === courseId)
-    if (!course || !course.materials) return 0
+    const course = availableCourses.find(c => Number(c.id) === Number(courseId))
+    if (!course || !course.materials || course.materials.length === 0) return 0
     const totalSteps = course.materials.length * 4
     let completedSteps = 0
     course.materials.forEach((m: any) => {
@@ -129,13 +129,13 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // --- TAMBAHAN BARU: HANDLER DOWNLOAD SERTIFIKAT ---
+  // --- HANDLER DOWNLOAD SERTIFIKAT ---
   const handleDownloadCertificate = async (reg: any) => {
-    // Cari ID sertifikat. Jika backend menyertakannya di dalam objek reg:
-    const certId = reg.certificate?.id; 
+    // Ambil certificate_number dari data pendaftaran (pastikan API sudah menyertakan 'certificate')
+    const certData = reg.certificate;
     
-    if (!certId) {
-      alert("Sertifikat belum diterbitkan atau data tidak ditemukan.");
+    if (!certData) {
+      alert("Sertifikat belum diterbitkan oleh Admin.");
       return;
     }
 
@@ -143,14 +143,14 @@ export default function StudentDashboard() {
     const token = localStorage.getItem("token");
 
     try {
-      const response = await fetch(`https://backend.mejatika.com/api/certificates/${certId}/download`, {
+      // Endpoint ini harus sesuai dengan route di Laravel lo
+      const response = await fetch(`https://backend.mejatika.com/api/certificates/${certData.id}/download`, {
         method: "GET",
         headers: { "Authorization": `Bearer ${token}` }
       });
 
-      if (!response.ok) throw new Error("Gagal generate sertifikat.");
+      if (!response.ok) throw new Error("Gagal mengambil file sertifikat.");
 
-      // Proses file PDF (Blob)
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -301,7 +301,7 @@ export default function StudentDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <Card className="p-8 rounded-3xl bg-white border-none shadow-sm"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Katalog</p><h3 className="text-4xl font-bold">{availableCourses.length}</h3></Card>
               <Card className="p-8 rounded-3xl bg-white border-none shadow-sm"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Pendaftaran</p><h3 className="text-4xl font-bold text-indigo-600">{registrations.length}</h3></Card>
-              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm border-b-4 border-emerald-500"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Aktif</p><h3 className="text-4xl font-bold text-emerald-600">{registrations.filter(r => r.status === 'success').length}</h3></Card>
+              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm border-b-4 border-emerald-500"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Aktif</p><h3 className="text-4xl font-bold text-emerald-600">{registrations.filter(r => r.status === 'success' || r.status === 'aktif').length}</h3></Card>
             </div>
           </div>
         )}
@@ -318,11 +318,11 @@ export default function StudentDashboard() {
                   <Card key={course.id} className="rounded-[2.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:shadow-xl transition-all">
                     <div className="h-48 bg-slate-50 flex items-center justify-center border-b border-slate-100">
                       <BookOpen className="text-slate-200" size={60} />
-                      {status === 'success' && <div className="absolute top-6 right-6 bg-emerald-500 text-white p-2 rounded-full"><CheckCircle2 size={20}/></div>}
+                      {(status === 'success' || status === 'aktif') && <div className="absolute top-6 right-6 bg-emerald-500 text-white p-2 rounded-full"><CheckCircle2 size={20}/></div>}
                     </div>
                     <CardContent className="p-10 flex-1 flex flex-col">
                       <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
-                      {status === 'success' ? (
+                      {(status === 'success' || status === 'aktif') ? (
                         <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
                       ) : status === 'pending' ? (
                         <div className="space-y-4 bg-indigo-50 p-6 rounded-3xl">
@@ -350,7 +350,7 @@ export default function StudentDashboard() {
             <div className="lg:col-span-4 space-y-6">
               <h2 className="text-2xl font-bold text-slate-800">Ruang Belajar</h2>
               <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                {registrations.filter(r => r.status === 'success').map((reg) => (
+                {registrations.filter(r => r.status === 'success' || r.status === 'aktif').map((reg) => (
                   <div key={reg.id} className="space-y-3">
                     <button onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all ${expandedCourse === reg.course_id ? 'bg-slate-900 text-white shadow-xl' : 'bg-white border border-slate-100'}`}>
                       <span className="text-sm font-bold truncate pr-4">{reg.course?.title}</span>
@@ -461,40 +461,56 @@ export default function StudentDashboard() {
           <div className="space-y-10 animate-in fade-in">
             <h2 className="text-3xl font-bold text-slate-800">E-Sertifikat</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {registrations.filter(r => r.status === 'success').map(reg => {
-                const isFinished = calculateProgress(reg.course_id) === 100;
-                // --- UPDATE: LOGIKA LOADING DOWNLOAD ---
-                const isDownloading = downloadingCertId === reg.id;
+              {registrations
+                .filter(r => r.status === 'success' || r.status === 'aktif')
+                .map(reg => {
+                  const progress = calculateProgress(reg.course_id);
+                  const isFinished = progress === 100;
+                  // Logika Sertifikat: Muncul jika DATA SERTIFIKAT ada dari Backend
+                  const hasCertificate = reg.certificate !== null;
+                  const isDownloading = downloadingCertId === reg.id;
 
-                return (
-                  <Card key={reg.id} className={`rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none ${isFinished ? 'bg-white' : 'bg-slate-50 opacity-60'}`}>
-                    <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${isFinished ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-200 text-slate-400'}`}><Award size={48} /></div>
-                    <h4 className="font-bold text-slate-800 mb-2">{reg.course?.title}</h4>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-8">{isFinished ? "Verified Graduate" : "Kursus Belum Selesai"}</p>
-                    
-                    {/* --- UPDATE: BUTTON DOWNLOAD DENGAN HANDLER --- */}
-                    <Button 
-                      disabled={!isFinished || isDownloading} 
-                      onClick={() => handleDownloadCertificate(reg)}
-                      className={`w-full h-12 rounded-2xl font-bold text-xs transition-all ${isFinished ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700' : 'bg-slate-200 text-slate-500'}`}
-                    >
-                      {isDownloading ? (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
-                          Generating...
-                        </>
-                      ) : isFinished ? (
-                        <>
-                          <FileText className="mr-2 h-4 w-4" />
-                          Download Sertifikat
-                        </>
-                      ) : (
-                        "Progress: " + calculateProgress(reg.course_id) + "%"
-                      )}
-                    </Button>
-                  </Card>
-                )
-              })}
+                  return (
+                    <Card key={reg.id} className={`rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none bg-white`}>
+                      <div className={`h-24 w-24 rounded-full flex items-center justify-center mb-6 shadow-inner ${hasCertificate ? 'bg-indigo-50 text-indigo-500' : 'bg-slate-100 text-slate-300'}`}>
+                        <Award size={48} />
+                      </div>
+                      <h4 className="font-bold text-slate-800 mb-2">{reg.course?.title}</h4>
+                      
+                      {/* Status Badge */}
+                      <div className="mb-8">
+                        {hasCertificate ? (
+                          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-wider">
+                            Tersedia
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-3 py-1 rounded-full uppercase tracking-wider">
+                             Progress: {progress}%
+                          </span>
+                        )}
+                      </div>
+                      
+                      <Button 
+                        disabled={!hasCertificate || isDownloading} 
+                        onClick={() => handleDownloadCertificate(reg)}
+                        className={`w-full h-12 rounded-2xl font-bold text-xs transition-all ${hasCertificate ? 'bg-indigo-600 text-white shadow-lg hover:bg-indigo-700' : 'bg-slate-200 text-slate-500'}`}
+                      >
+                        {isDownloading ? (
+                          <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Generating...</>
+                        ) : hasCertificate ? (
+                          <><FileText className="mr-2 h-4 w-4" /> Download Sertifikat</>
+                        ) : (
+                          "Belum Terbit"
+                        )}
+                      </Button>
+                    </Card>
+                  );
+                })}
+              {registrations.filter(r => r.status === 'success' || r.status === 'aktif').length === 0 && (
+                <div className="col-span-full py-20 text-center text-slate-400 font-medium bg-white rounded-[2.5rem] border-2 border-dashed">
+                   Anda belum memiliki kursus yang aktif.
+                </div>
+              )}
             </div>
           </div>
         )}
