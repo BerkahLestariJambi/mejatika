@@ -5,13 +5,13 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
-import { Loader2, ImageIcon, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader2, X, ChevronLeft, ChevronRight, Layers } from "lucide-react"
 
 type GalleryItem = {
   id: number
   title: string
   description: string
-  image: string
+  image: string | string[] // Bisa string tunggal atau array URL
   category?: string
 }
 
@@ -20,7 +20,8 @@ export default function GaleriPage() {
   const [loading, setLoading] = useState(true)
   
   // State untuk Lightbox
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
+  const [selectedFolderIndex, setSelectedFolderIndex] = useState<number | null>(null)
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0)
 
   useEffect(() => {
     const fetchGallery = async () => {
@@ -37,21 +38,37 @@ export default function GaleriPage() {
     fetchGallery()
   }, [])
 
+  // Fungsi Helper untuk mendapatkan URL Gambar tunggal
+  const getImageUrl = (imgData: string | string[], index = 0) => {
+    if (Array.isArray(imgData)) {
+      return imgData[index] || imgData[0]
+    }
+    return imgData
+  }
+
   // Fungsi Navigasi Lightbox
-  const openLightbox = (index: number) => setSelectedIndex(index)
-  const closeLightbox = () => setSelectedIndex(null)
+  const openLightbox = (index: number) => {
+    setSelectedFolderIndex(index)
+    setCurrentPhotoIndex(0) // Mulai dari foto pertama di folder tersebut
+  }
+
+  const closeLightbox = () => setSelectedFolderIndex(null)
   
   const showNext = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (selectedIndex !== null) {
-      setSelectedIndex((selectedIndex + 1) % gallery.length)
+    if (selectedFolderIndex !== null) {
+      const currentFolder = gallery[selectedFolderIndex]
+      const totalPhotos = Array.isArray(currentFolder.image) ? currentFolder.image.length : 1
+      setCurrentPhotoIndex((currentPhotoIndex + 1) % totalPhotos)
     }
   }
 
   const showPrev = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (selectedIndex !== null) {
-      setSelectedIndex((selectedIndex - 1 + gallery.length) % gallery.length)
+    if (selectedFolderIndex !== null) {
+      const currentFolder = gallery[selectedFolderIndex]
+      const totalPhotos = Array.isArray(currentFolder.image) ? currentFolder.image.length : 1
+      setCurrentPhotoIndex((currentPhotoIndex - 1 + totalPhotos) % totalPhotos)
     }
   }
 
@@ -70,75 +87,97 @@ export default function GaleriPage() {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {gallery.map((item, index) => (
-              <Card 
-                key={item.id} 
-                className="group cursor-pointer overflow-hidden border-none shadow-md"
-                onClick={() => openLightbox(index)}
-              >
-                <CardContent className="p-0">
-                  <div className="relative h-64 w-full overflow-hidden">
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
-                       <span className="text-white font-medium border border-white px-4 py-2 rounded-full">Lihat Foto</span>
+            {gallery.map((item, index) => {
+              const photoCount = Array.isArray(item.image) ? item.image.length : 1
+              
+              return (
+                <Card 
+                  key={item.id} 
+                  className="group cursor-pointer overflow-hidden border-none shadow-md"
+                  onClick={() => openLightbox(index)}
+                >
+                  <CardContent className="p-0">
+                    <div className="relative h-64 w-full overflow-hidden bg-muted">
+                      <img
+                        src={getImageUrl(item.image)}
+                        alt={item.title}
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://placehold.co/600x400?text=Gambar+Error"
+                        }}
+                      />
+                      
+                      {/* Badge Jumlah Foto jika lebih dari 1 */}
+                      {photoCount > 1 && (
+                        <div className="absolute top-3 right-3 bg-black/60 text-white text-xs py-1 px-2 rounded-md flex items-center gap-1">
+                          <Layers className="h-3 w-3" />
+                          {photoCount} Foto
+                        </div>
+                      )}
+
+                      <div className="absolute inset-0 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100 flex items-center justify-center">
+                         <span className="text-white font-medium border border-white px-4 py-2 rounded-full">Buka Galeri</span>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-bold line-clamp-1">{item.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                    <div className="p-4">
+                      {item.category && <Badge variant="outline" className="mb-2">{item.category}</Badge>}
+                      <h3 className="font-bold line-clamp-1">{item.title}</h3>
+                      <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         )}
 
         {/* --- LIGHTBOX OVERLAY --- */}
-        {selectedIndex !== null && (
+        {selectedFolderIndex !== null && (
           <div 
             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 animate-in fade-in duration-300"
             onClick={closeLightbox}
           >
             {/* Tombol Close */}
-            <button className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors">
+            <button className="absolute top-6 right-6 text-white/70 hover:text-white transition-colors z-[110]">
               <X className="h-8 w-8" />
             </button>
 
-            {/* Tombol Prev */}
-            <button 
-              onClick={showPrev}
-              className="absolute left-4 p-2 text-white/50 hover:text-white transition-colors bg-white/10 rounded-full"
-            >
-              <ChevronLeft className="h-10 w-10" />
-            </button>
+            {/* Tombol Navigasi hanya muncul jika foto > 1 */}
+            {(Array.isArray(gallery[selectedFolderIndex].image) && gallery[selectedFolderIndex].image.length > 1) && (
+              <>
+                <button 
+                  onClick={showPrev}
+                  className="absolute left-4 p-2 text-white/50 hover:text-white transition-colors bg-white/10 rounded-full z-[110]"
+                >
+                  <ChevronLeft className="h-10 w-10" />
+                </button>
+
+                <button 
+                  onClick={showNext}
+                  className="absolute right-4 p-2 text-white/50 hover:text-white transition-colors bg-white/10 rounded-full z-[110]"
+                >
+                  <ChevronRight className="h-10 w-10" />
+                </button>
+              </>
+            )}
 
             {/* Konten Gambar */}
             <div className="max-w-5xl w-full flex flex-col items-center gap-4" onClick={(e) => e.stopPropagation()}>
-              <img 
-                src={gallery[selectedIndex].image} 
-                alt={gallery[selectedIndex].title}
-                className="max-h-[80vh] object-contain shadow-2xl rounded-sm"
-              />
-              <div className="text-center text-white">
-                <h2 className="text-xl font-bold">{gallery[selectedIndex].title}</h2>
-                <p className="text-white/70">{gallery[selectedIndex].description}</p>
-                <p className="text-xs text-white/40 mt-2">
-                  {selectedIndex + 1} dari {gallery.length}
-                </p>
+              <div className="relative">
+                <img 
+                  src={getImageUrl(gallery[selectedFolderIndex].image, currentPhotoIndex)} 
+                  alt={gallery[selectedFolderIndex].title}
+                  className="max-h-[75vh] object-contain shadow-2xl rounded-sm transition-all duration-300"
+                />
+              </div>
+              <div className="text-center text-white max-w-2xl">
+                <h2 className="text-xl font-bold">{gallery[selectedFolderIndex].title}</h2>
+                <p className="text-white/70 text-sm mt-1">{gallery[selectedFolderIndex].description}</p>
+                <div className="inline-block bg-white/10 px-3 py-1 rounded-full text-xs text-white/60 mt-4">
+                  Foto {currentPhotoIndex + 1} dari {Array.isArray(gallery[selectedFolderIndex].image) ? gallery[selectedFolderIndex].image.length : 1}
+                </div>
               </div>
             </div>
-
-            {/* Tombol Next */}
-            <button 
-              onClick={showNext}
-              className="absolute right-4 p-2 text-white/50 hover:text-white transition-colors bg-white/10 rounded-full"
-            >
-              <ChevronRight className="h-10 w-10" />
-            </button>
           </div>
         )}
       </main>
