@@ -130,12 +130,12 @@ export default function StudentDashboard() {
   }
 
   // --- HANDLER DOWNLOAD SERTIFIKAT ---
-  const handleDownloadCertificate = async (reg: any) => {
-    // Ambil certificate_number dari data pendaftaran (pastikan API sudah menyertakan 'certificate')
+ const handleDownloadCertificate = async (reg: any) => {
+    // Pastikan data sertifikat ada di dalam objek registrasi
     const certData = reg.certificate;
     
     if (!certData) {
-      alert("Sertifikat belum diterbitkan oleh Admin.");
+      alert("Sertifikat belum diterbitkan oleh Admin. Selesaikan semua modul dan tunggu verifikasi.");
       return;
     }
 
@@ -143,24 +143,38 @@ export default function StudentDashboard() {
     const token = localStorage.getItem("token");
 
     try {
-      // Endpoint ini harus sesuai dengan route di Laravel lo
+      // PENTING: Gunakan certData.id (ID dari tabel certificates), bukan reg.id (ID pendaftaran)
       const response = await fetch(`https://backend.mejatika.com/api/certificates/${certData.id}/download`, {
         method: "GET",
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/pdf" // Pastikan meminta tipe file PDF
+        }
       });
 
-      if (!response.ok) throw new Error("Gagal mengambil file sertifikat.");
+      if (!response.ok) {
+        const errorMsg = await response.json();
+        throw new Error(errorMsg.message || "Gagal mengambil file sertifikat.");
+      }
 
+      // Proses konversi response menjadi file unduhan
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `Sertifikat-${reg.course?.title || 'Mejatika'}.pdf`);
+      
+      // Nama file yang akan muncul saat diunduh
+      const fileName = `Sertifikat-${reg.course?.title || 'Mejatika'}.pdf`.replace(/\s+/g, '-');
+      link.setAttribute("download", fileName);
+      
       document.body.appendChild(link);
       link.click();
+      
+      // Cleanup setelah download
       link.parentNode?.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
+      console.error("Download Error:", err);
       alert("Error: " + err.message);
     } finally {
       setDownloadingCertId(null);
