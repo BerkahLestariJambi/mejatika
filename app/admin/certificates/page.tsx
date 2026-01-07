@@ -1,193 +1,158 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
-  CheckCircle2, ChevronDown, Loader2, Flame, MessageSquare, 
-  Video, MonitorPlay, Zap, Lock, UploadCloud,
-  Send, Menu, Calendar, Download, Star
+  Award, Download, Calendar, Plus, Search, 
+  Eye, MoreVertical, Loader2, AlertCircle 
 } from "lucide-react"
 
-export default function StudentDashboard() {
-  const router = useRouter()
-  const [activeMenu, setActiveMenu] = useState("dashboard")
-  const [registrations, setRegistrations] = useState<any[]>([])
-  const [availableCourses, setAvailableCourses] = useState<any[]>([])
-  const [certificates, setCertificates] = useState<any[]>([]) // State Baru untuk API Certificate
-  const [user, setUser] = useState<any>(null)
+export default function CertificatesAdminPage() {
+  const [certificates, setCertificates] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [activeStep, setActiveStep] = useState<string>("live")
-  const [activeMaterial, setActiveMaterial] = useState<any>(null)
-  const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
-  // 1. Fetch Data dari Backend (Termasuk Certificate Controller)
-  const fetchData = useCallback(async () => {
-    const token = localStorage.getItem("token")
-    if (!token) return router.push("/login")
-    
+  // 1. Fungsi Fetch Data dari Backend Laravel
+  const fetchCertificates = useCallback(async () => {
+    const token = localStorage.getItem("token") // Pastikan token admin tersimpan
+    setLoading(true)
     try {
-      const [resReg, resUser, resAll, resCert] = await Promise.all([
-        fetch("https://backend.mejatika.com/api/registrations", { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch("https://backend.mejatika.com/api/me", { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch("https://backend.mejatika.com/api/courses", { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch("https://backend.mejatika.com/api/certificates", { headers: { "Authorization": `Bearer ${token}` } }) // Endpoint PHP kamu
-      ])
-
-      const dataReg = await resReg.json()
-      const dataUser = await resUser.json()
-      const dataAll = await resAll.json()
-      const dataCert = await resCert.json()
-
-      setRegistrations(Array.isArray(dataReg) ? dataReg : dataReg.data || [])
-      setUser(dataUser)
-      setAvailableCourses(Array.isArray(dataAll) ? dataAll : dataAll.data || [])
-      setCertificates(Array.isArray(dataCert) ? dataCert : dataCert.data || [])
-    } catch (err) {
-      console.error("Fetch Error:", err)
+      const response = await fetch("https://backend.mejatika.com/api/certificates", {
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        }
+      })
+      
+      if (!response.ok) throw new Error("Gagal mengambil data sertifikat")
+      
+      const data = await response.json()
+      // Sesuaikan jika Laravel mengembalikan data di dalam object 'data'
+      setCertificates(Array.isArray(data) ? data : data.data || [])
+    } catch (err: any) {
+      setError(err.message)
     } finally {
       setLoading(false)
     }
-  }, [router])
+  }, [])
 
   useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    fetchCertificates()
+  }, [fetchCertificates])
 
-  // --- RENDER HALAMAN SERTIFIKAT (MENGGUNAKAN DATA CONTROLLER PHP) ---
-  const renderCertificatesPage = () => (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">Sertifikat Saya</h1>
-          <p className="text-slate-500">Daftar sertifikat resmi yang telah diterbitkan oleh Mejatika.</p>
-        </div>
-        <div className="bg-indigo-50 px-4 py-2 rounded-2xl border border-indigo-100 flex items-center gap-2">
-          <Award className="text-indigo-600" size={20} />
-          <span className="text-sm font-bold text-indigo-700">{certificates.length} Sertifikat Terbit</span>
-        </div>
-      </div>
-
-      <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
-        <CardHeader className="p-8 border-b border-slate-50">
-          <CardTitle className="text-xl font-bold">Semua Sertifikat</CardTitle>
-        </CardHeader>
-        <CardContent className="p-8">
-          <div className="space-y-4">
-            {certificates.length > 0 ? (
-              certificates.map((cert) => (
-                <div
-                  key={cert.id}
-                  className="flex flex-col gap-4 rounded-[2rem] border border-slate-100 p-6 md:flex-row md:items-center md:justify-between hover:bg-slate-50 transition-all"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Award className="h-5 w-5 text-amber-500" />
-                      <h3 className="font-bold text-slate-800">{cert.user?.name || user?.name}</h3>
-                      <Badge className="bg-emerald-500 hover:bg-emerald-600 uppercase text-[10px]">Issued</Badge>
-                    </div>
-                    <p className="text-sm font-semibold text-indigo-600">{cert.course?.title || "Course Name"}</p>
-                    <div className="flex items-center gap-3 text-xs font-medium text-slate-400">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>Diterbitkan: {new Date(cert.issued_at).toLocaleDateString('id-ID')}</span>
-                      </div>
-                      <span>•</span>
-                      <span>No: {cert.certificate_number}</span>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" className="h-11 rounded-xl font-bold border-slate-200 hover:text-indigo-600">
-                      <Download className="mr-2 h-4 w-4" />
-                      Download PDF
-                    </Button>
-                    <Button className="h-11 rounded-xl font-bold bg-slate-900 text-white px-6">
-                      Lihat
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-20 text-center space-y-4">
-                <div className="bg-slate-50 w-20 h-20 rounded-full flex items-center justify-center mx-auto">
-                  <Award className="text-slate-200" size={40} />
-                </div>
-                <p className="text-slate-400 font-bold italic uppercase text-xs tracking-widest">Belum ada sertifikat yang diterbitkan.</p>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Info Card */}
-      <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-8 rounded-[2.5rem] text-white flex items-center gap-6">
-        <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
-          <Star className="text-amber-400" fill="currentColor" />
-        </div>
-        <div>
-          <h4 className="font-bold text-lg">Validasi Sertifikat</h4>
-          <p className="text-slate-400 text-sm">Setiap sertifikat memiliki nomor unik yang dapat divalidasi oleh perusahaan melalui sistem verifikasi kami.</p>
-        </div>
-      </div>
-    </div>
+  // 2. Filter data berdasarkan search bar
+  const filteredCertificates = certificates.filter(cert => 
+    cert.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cert.certificate_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cert.course?.title?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
-
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      {/* SIDEBAR */}
-      <aside className={`w-64 bg-white border-r border-slate-200 fixed h-full flex flex-col z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="p-6 flex items-center gap-3 border-b border-slate-100">
-          <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold">M</div>
-          <h1 className="text-xl font-bold text-slate-800">Mejatika.</h1>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      
+      {/* HEADER SECTION */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-800">Manajemen Sertifikat</h1>
+          <p className="text-slate-500 font-medium">Verifikasi dan kelola sertifikat siswa dari database.</p>
         </div>
-        <nav className="flex-1 px-4 py-8 space-y-2">
-          {[
-            { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-            { id: "courses", label: "Katalog Kursus", icon: BookOpen },
-            { id: "materials", label: "Ruang Belajar", icon: FileCheck },
-            { id: "certificates", label: "Sertifikat", icon: Award },
-          ].map((item) => (
-            <button key={item.id} onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }} 
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === item.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <item.icon size={20} /> {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="p-6">
-           <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl">
-            <LogOut size={20} /> Logout
-          </button>
+        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 h-12 rounded-2xl font-bold shadow-lg shadow-indigo-100 flex items-center gap-2 transition-all active:scale-95">
+          <Plus className="h-5 w-5" />
+          Terbitkan Manual
+        </Button>
+      </div>
+
+      {/* SEARCH BAR */}
+      <div className="flex items-center gap-4 bg-white p-4 rounded-3xl shadow-sm border border-slate-100">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+          <input 
+            type="text" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari nama siswa, nomor sertifikat, atau judul kursus..." 
+            className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all"
+          />
         </div>
-      </aside>
+        <Button onClick={fetchCertificates} variant="ghost" className="rounded-2xl h-12 w-12 p-0">
+          <Loader2 className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 lg:ml-64 p-6 lg:p-10">
-        {/* MOBILE HEADER */}
-        <div className="lg:hidden flex justify-between items-center mb-6">
-           <h1 className="font-bold text-indigo-600">Mejatika.</h1>
-           <button onClick={() => setSidebarOpen(true)}><Menu /></button>
-        </div>
+      {/* TABLE CARD */}
+      <Card className="rounded-[2.5rem] border-none shadow-sm overflow-hidden bg-white">
+        <CardHeader className="p-8 border-b border-slate-50">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-bold text-slate-800">Daftar Sertifikat Terbit</CardTitle>
+            <Badge className="bg-emerald-50 text-emerald-600 border-none px-4 py-1.5 rounded-xl font-bold">
+              {filteredCertificates.length} Data Ditemukan
+            </Badge>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="py-20 flex flex-col items-center justify-center text-slate-400">
+              <Loader2 className="h-10 w-10 animate-spin mb-4 text-indigo-600" />
+              <p className="font-bold animate-pulse">Menghubungkan ke Backend...</p>
+            </div>
+          ) : error ? (
+            <div className="py-20 flex flex-col items-center justify-center text-red-500">
+              <AlertCircle className="h-12 w-12 mb-4" />
+              <p className="font-bold">{error}</p>
+              <Button onClick={fetchCertificates} variant="outline" className="mt-4 rounded-xl">Coba Lagi</Button>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-50">
+              {filteredCertificates.map((cert) => (
+                <div
+                  key={cert.id}
+                  className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between hover:bg-slate-50/50 transition-all group"
+                >
+                  <div className="flex items-start gap-5">
+                    <div className="h-14 w-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all duration-300">
+                      <Award size={28} />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="font-bold text-lg text-slate-800">{cert.user?.name || "Nama Tidak Tersedia"}</h3>
+                      <p className="text-sm font-semibold text-indigo-600">{cert.course?.title || "Kursus Terhapus"}</p>
+                      <div className="flex items-center gap-4 text-xs font-bold text-slate-400 uppercase tracking-tighter">
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" />
+                          <span>Issued: {new Date(cert.issued_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                        </div>
+                        <span className="text-slate-200">|</span>
+                        <span>ID: {cert.certificate_number}</span>
+                      </div>
+                    </div>
+                  </div>
 
-        {/* Dashboard Area */}
-        {activeMenu === "dashboard" && (
-           <div className="bg-indigo-600 rounded-[2.5rem] p-10 text-white">
-              <h2 className="text-4xl font-bold mb-2">Welcome Back, {user?.name?.split(' ')[0]}!</h2>
-              <p className="opacity-80">Kamu memiliki {certificates.length} sertifikat yang sudah terbit.</p>
-           </div>
-        )}
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" className="h-11 border-slate-200 hover:border-indigo-600 hover:text-indigo-600 rounded-xl font-bold px-5">
+                      <Download className="mr-2 h-4 w-4" /> PDF
+                    </Button>
+                    <Button className="h-11 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold px-5">
+                      <Eye className="mr-2 h-4 w-4" /> Detail
+                    </Button>
+                    <Button variant="ghost" className="h-11 w-11 p-0 rounded-xl text-slate-300">
+                      <MoreVertical size={20} />
+                    </Button>
+                  </div>
+                </div>
+              ))}
 
-        {/* Render Certificates Page */}
-        {activeMenu === "certificates" && renderCertificatesPage()}
-
-        {/* Material & Courses Logic tetap ada di sini (seperti file sebelumnya) */}
-        {/* ... */}
-      </main>
+              {filteredCertificates.length === 0 && (
+                <div className="py-20 text-center">
+                   <p className="text-slate-400 font-bold italic">Tidak ada data yang cocok dengan pencarian.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
