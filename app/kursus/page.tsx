@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Tag, Loader2, Info, X, User } from "lucide-react" // Tambah ikon User
+import { Clock, Tag, Loader2, Info, X } from "lucide-react"
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
@@ -19,7 +19,7 @@ export default function KursusPage() {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
-      minimumFractionDigits: 2,
+      minimumFractionDigits: 0, // Diganti 0 agar lebih bersih untuk rupiah
     }).format(number);
   };
 
@@ -71,7 +71,12 @@ export default function KursusPage() {
                 <CardContent className="p-0 flex flex-col h-full">
                   <div className="p-4">
                     <div className="relative h-56 w-full rounded-[2rem] overflow-hidden bg-zinc-100">
-                      <img src={course.thumbnail_url || "/placeholder.svg"} alt={course.title} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      {/* Menggunakan thumbnail_url dari accessor Laravel */}
+                      <img 
+                        src={course.thumbnail_url || "/placeholder.svg"} 
+                        alt={course.title} 
+                        className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      />
                       <div className="absolute top-4 right-4 bg-white/90 backdrop-blur p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                          <Info size={18} className="text-amber-600" />
                       </div>
@@ -79,7 +84,7 @@ export default function KursusPage() {
                   </div>
 
                   <div className="p-8 pt-2 flex flex-col flex-grow">
-                    <h3 className="text-2xl font-black italic uppercase text-zinc-900 mb-3 group-hover:text-amber-500 transition-colors">
+                    <h3 className="text-2xl font-black italic uppercase text-zinc-900 mb-3 group-hover:text-amber-500 transition-colors leading-tight">
                       {course.title}
                     </h3>
                     
@@ -96,7 +101,7 @@ export default function KursusPage() {
                       </div>
                     </div>
 
-                    {/* MENAMPILKAN MENTOR DI CARD */}
+                    {/* FOTO MENTOR & SPESIALISASI DI CARD */}
                     {course.main_mentor && (
                       <div className="flex items-center gap-3 mb-6 px-2">
                         <img 
@@ -105,8 +110,11 @@ export default function KursusPage() {
                           className="w-10 h-10 rounded-full border-2 border-amber-500 object-cover"
                         />
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-black uppercase text-amber-600 tracking-tighter">Instructor</span>
-                          <span className="text-xs font-bold text-zinc-900 leading-none">{course.main_mentor.name}</span>
+                          <span className="text-[10px] font-bold text-zinc-900 leading-none mb-1">{course.main_mentor.name}</span>
+                          <span className="text-[9px] font-black uppercase text-amber-600 tracking-tighter">
+                            {/* Menarik data specialist dari accessor User */}
+                            {course.active_instructors?.[0]?.specialist || "Mentor Mejatika"}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -147,7 +155,7 @@ export default function KursusPage() {
                         {selectedCourse.category?.name || "Premium Course"}
                       </Badge>
                       
-                      {/* MENTOR DI DALAM MODAL (Desktop/Tablet) */}
+                      {/* MENTOR DI MODAL (Desktop) */}
                       {selectedCourse.main_mentor && (
                         <div className="hidden md:flex items-center gap-3 bg-zinc-50 p-2 pr-4 rounded-full border border-zinc-100">
                            <img 
@@ -155,7 +163,12 @@ export default function KursusPage() {
                             className="w-8 h-8 rounded-full border border-amber-500 object-cover" 
                             alt="" 
                           />
-                          <span className="text-[10px] font-black uppercase tracking-tight">{selectedCourse.main_mentor.name}</span>
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase leading-none">{selectedCourse.main_mentor.name}</span>
+                            <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">
+                              {selectedCourse.active_instructors?.[0]?.specialist || "Mentor"}
+                            </span>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -164,17 +177,21 @@ export default function KursusPage() {
                       {selectedCourse.title}
                     </h2>
 
-                    {/* MENTOR DI DALAM MODAL (Mobile Only) */}
+                    {/* MENTOR DI MODAL (Mobile Only) */}
                     {selectedCourse.main_mentor && (
-                      <div className="flex md:hidden items-center gap-3 mb-6 p-3 bg-zinc-50 rounded-2xl">
+                      <div className="flex md:hidden items-center gap-4 mb-6 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                          <img 
                           src={selectedCourse.main_mentor.avatar} 
-                          className="w-10 h-10 rounded-full border-2 border-amber-500 object-cover" 
+                          className="w-12 h-12 rounded-full border-2 border-amber-500 object-cover shadow-sm" 
                           alt="" 
                         />
                         <div className="flex flex-col">
-                          <span className="text-[9px] font-black text-amber-600 uppercase">Instructor</span>
-                          <span className="text-sm font-bold">{selectedCourse.main_mentor.name}</span>
+                          <span className="text-sm font-black text-zinc-900 uppercase italic leading-none mb-1">
+                            {selectedCourse.main_mentor.name}
+                          </span>
+                          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                            {selectedCourse.active_instructors?.[0]?.specialist || "Professional Instructor"}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -186,11 +203,13 @@ export default function KursusPage() {
                       </div>
                       <div className="flex flex-col text-right md:text-left">
                         <span className="text-[10px] font-black uppercase text-zinc-400 tracking-widest mb-1">Investasi</span>
-                        <span className="font-bold text-amber-600 flex items-center gap-2 justify-end md:justify-start"><Tag size={16} /> {selectedCourse.price ? formatRupiah(Number(selectedCourse.price)) : "Gratis"}</span>
+                        <span className="font-bold text-amber-600 flex items-center gap-2 justify-end md:justify-start">
+                          <Tag size={16} /> {selectedCourse.price ? formatRupiah(Number(selectedCourse.price)) : "Gratis"}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="prose-content mb-10 w-full max-w-full overflow-hidden">
+                    <div className="prose-content mb-10 w-full max-w-full">
                       <h4 className="text-[11px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-4 flex items-center gap-2">
                         <span className="w-6 h-[1px] bg-zinc-300"></span> Deskripsi Kurikulum
                       </h4>
