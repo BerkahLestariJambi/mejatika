@@ -19,7 +19,7 @@ export default function KursusPage() {
     return new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
-      minimumFractionDigits: 0, // Diganti 0 agar lebih bersih untuk rupiah
+      minimumFractionDigits: 0,
     }).format(number);
   };
 
@@ -71,7 +71,6 @@ export default function KursusPage() {
                 <CardContent className="p-0 flex flex-col h-full">
                   <div className="p-4">
                     <div className="relative h-56 w-full rounded-[2rem] overflow-hidden bg-zinc-100">
-                      {/* Menggunakan thumbnail_url dari accessor Laravel */}
                       <img 
                         src={course.thumbnail_url || "/placeholder.svg"} 
                         alt={course.title} 
@@ -101,18 +100,17 @@ export default function KursusPage() {
                       </div>
                     </div>
 
-                    {/* FOTO MENTOR & SPESIALISASI DI CARD */}
+                    {/* FOTO MENTOR - DIPERBESAR DI CARD */}
                     {course.main_mentor && (
-                      <div className="flex items-center gap-3 mb-6 px-2">
+                      <div className="flex items-center gap-4 mb-6 px-2">
                         <img 
                           src={course.main_mentor.avatar} 
                           alt={course.main_mentor.name} 
-                          className="w-10 h-10 rounded-full border-2 border-amber-500 object-cover"
+                          className="w-14 h-14 rounded-full border-2 border-amber-500 object-cover shadow-md transition-transform group-hover:scale-105"
                         />
                         <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-zinc-900 leading-none mb-1">{course.main_mentor.name}</span>
-                          <span className="text-[9px] font-black uppercase text-amber-600 tracking-tighter">
-                            {/* Menarik data specialist dari accessor User */}
+                          <span className="text-xs font-bold text-zinc-900 leading-tight mb-1">{course.main_mentor.name}</span>
+                          <span className="text-[10px] font-black uppercase text-amber-600 tracking-tighter">
                             {course.active_instructors?.[0]?.specialist || "Mentor Mejatika"}
                           </span>
                         </div>
@@ -150,22 +148,22 @@ export default function KursusPage() {
 
                 <div className="px-4 md:px-10 pb-10 -mt-12 relative z-10">
                   <div className="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-xl border border-zinc-50 w-full overflow-hidden">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-6">
                       <Badge className="bg-amber-500 text-white px-4 py-1 rounded-full uppercase font-black text-[10px] tracking-widest border-none">
                         {selectedCourse.category?.name || "Premium Course"}
                       </Badge>
                       
-                      {/* MENTOR DI MODAL (Desktop) */}
+                      {/* MENTOR DI MODAL (Desktop) - DIPERBESAR */}
                       {selectedCourse.main_mentor && (
-                        <div className="hidden md:flex items-center gap-3 bg-zinc-50 p-2 pr-4 rounded-full border border-zinc-100">
+                        <div className="hidden md:flex items-center gap-4 bg-zinc-50 p-3 pr-6 rounded-full border border-zinc-100 shadow-sm">
                            <img 
                             src={selectedCourse.main_mentor.avatar} 
-                            className="w-8 h-8 rounded-full border border-amber-500 object-cover" 
+                            className="w-12 h-12 rounded-full border-2 border-amber-500 object-cover" 
                             alt="" 
                           />
                           <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase leading-none">{selectedCourse.main_mentor.name}</span>
-                            <span className="text-[8px] font-bold text-amber-600 uppercase tracking-tighter">
+                            <span className="text-xs font-black uppercase leading-none mb-1">{selectedCourse.main_mentor.name}</span>
+                            <span className="text-[9px] font-bold text-amber-600 uppercase tracking-tighter">
                               {selectedCourse.active_instructors?.[0]?.specialist || "Mentor"}
                             </span>
                           </div>
@@ -177,19 +175,19 @@ export default function KursusPage() {
                       {selectedCourse.title}
                     </h2>
 
-                    {/* MENTOR DI MODAL (Mobile Only) */}
+                    {/* MENTOR DI MODAL (Mobile Only) - DIPERBESAR */}
                     {selectedCourse.main_mentor && (
-                      <div className="flex md:hidden items-center gap-4 mb-6 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                      <div className="flex md:hidden items-center gap-4 mb-6 p-5 bg-zinc-50 rounded-3xl border border-zinc-100">
                          <img 
                           src={selectedCourse.main_mentor.avatar} 
-                          className="w-12 h-12 rounded-full border-2 border-amber-500 object-cover shadow-sm" 
+                          className="w-16 h-16 rounded-full border-2 border-amber-500 object-cover shadow-md" 
                           alt="" 
                         />
                         <div className="flex flex-col">
-                          <span className="text-sm font-black text-zinc-900 uppercase italic leading-none mb-1">
+                          <span className="text-base font-black text-zinc-900 uppercase italic leading-none mb-1">
                             {selectedCourse.main_mentor.name}
                           </span>
-                          <span className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                          <span className="text-[11px] font-bold text-amber-600 uppercase tracking-widest">
                             {selectedCourse.active_instructors?.[0]?.specialist || "Professional Instructor"}
                           </span>
                         </div>
