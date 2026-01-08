@@ -100,22 +100,38 @@ export default function KursusPage() {
                       </div>
                     </div>
 
-                    {/* FOTO MENTOR - DIPERBESAR DI CARD */}
-                    {course.main_mentor && (
-                      <div className="flex items-center gap-4 mb-6 px-2">
-                        <img 
-                          src={course.main_mentor.avatar} 
-                          alt={course.main_mentor.name} 
-                          className="w-14 h-14 rounded-full border-2 border-amber-500 object-cover shadow-md transition-transform group-hover:scale-105"
-                        />
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-zinc-900 leading-tight mb-1">{course.main_mentor.name}</span>
-                          <span className="text-[10px] font-black uppercase text-amber-600 tracking-tighter">
-                            {course.active_instructors?.[0]?.specialist || "Mentor Mejatika"}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                   {/* FOTO MENTOR & LABEL MENTOR DI CARD */}
+{course.main_mentor && (
+  <div className="flex items-center gap-4 mb-6 px-2">
+    {/* Foto Mentor */}
+    <div className="relative">
+      <img 
+        src={course.main_mentor.avatar} 
+        alt={course.main_mentor.name} 
+        className="w-14 h-14 rounded-full border-2 border-amber-500 object-cover shadow-md transition-transform group-hover:scale-105"
+      />
+      {/* Opsional: Dot indicator hijau jika ingin tanda online */}
+      <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+    </div>
+
+    <div className="flex flex-col">
+      {/* Label Mentor Baru */}
+      <span className="text-[9px] font-black uppercase tracking-[0.15em] text-amber-600 mb-0.5 bg-amber-50 self-start px-2 py-0.5 rounded-full border border-amber-100">
+        Mentor Kursus
+      </span>
+      
+      {/* Nama Mentor */}
+      <span className="text-sm font-black text-zinc-900 leading-tight">
+        {course.main_mentor.name}
+      </span>
+      
+      {/* Spesialisasi */}
+      <span className="text-[10px] font-medium text-zinc-400 italic">
+        {course.active_instructors?.[0]?.specialist || "Professional Instructor"}
+      </span>
+    </div>
+  </div>
+)}
 
                     <Button className="mt-auto w-full bg-zinc-900 hover:bg-amber-600 text-white rounded-2xl h-14 font-black uppercase text-xs tracking-[0.2em]">
                       Detail Kursus
