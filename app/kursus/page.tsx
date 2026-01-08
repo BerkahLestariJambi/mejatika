@@ -3,14 +3,14 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Tag, Loader2, Info, X } from "lucide-react"
+import { Clock, Tag, Loader2, Info, X, User } from "lucide-react" // Tambah ikon User
 import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { useRouter } from "next/navigation" // Import useRouter untuk navigasi
+import { useRouter } from "next/navigation"
 
 export default function KursusPage() {
-  const router = useRouter() // Inisialisasi router
+  const router = useRouter()
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null)
@@ -38,9 +38,7 @@ export default function KursusPage() {
     fetchCourses()
   }, [])
 
-  // Fungsi untuk menangani pendaftaran
   const handleEnroll = (courseId: number) => {
-    // Mengarahkan ke login dengan parameter redirect agar setelah login bisa kembali ke kursus ini
     router.push(`/login?redirect=/kursus&course_id=${courseId}`)
   }
 
@@ -73,7 +71,7 @@ export default function KursusPage() {
                 <CardContent className="p-0 flex flex-col h-full">
                   <div className="p-4">
                     <div className="relative h-56 w-full rounded-[2rem] overflow-hidden bg-zinc-100">
-                      <img src={course.thumbnail || "/placeholder.svg"} alt={course.title} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                      <img src={course.thumbnail_url || "/placeholder.svg"} alt={course.title} className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" />
                       <div className="absolute top-4 right-4 bg-white/90 backdrop-blur p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                          <Info size={18} className="text-amber-600" />
                       </div>
@@ -85,7 +83,7 @@ export default function KursusPage() {
                       {course.title}
                     </h3>
                     
-                    <div className="bg-zinc-50 rounded-3xl p-5 space-y-3 mb-8">
+                    <div className="bg-zinc-50 rounded-3xl p-5 space-y-3 mb-6">
                       <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-widest text-zinc-400">
                         <span className="flex items-center gap-2"><Clock size={14} className="text-amber-500" /> Durasi</span>
                         <span className="text-zinc-800">{course.duration}</span>
@@ -97,6 +95,21 @@ export default function KursusPage() {
                         </span>
                       </div>
                     </div>
+
+                    {/* MENAMPILKAN MENTOR DI CARD */}
+                    {course.main_mentor && (
+                      <div className="flex items-center gap-3 mb-6 px-2">
+                        <img 
+                          src={course.main_mentor.avatar} 
+                          alt={course.main_mentor.name} 
+                          className="w-10 h-10 rounded-full border-2 border-amber-500 object-cover"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black uppercase text-amber-600 tracking-tighter">Instructor</span>
+                          <span className="text-xs font-bold text-zinc-900 leading-none">{course.main_mentor.name}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <Button className="mt-auto w-full bg-zinc-900 hover:bg-amber-600 text-white rounded-2xl h-14 font-black uppercase text-xs tracking-[0.2em]">
                       Detail Kursus
@@ -123,19 +136,48 @@ export default function KursusPage() {
 
               <div className="overflow-y-auto custom-scrollbar flex-grow bg-[#fcfcf9]">
                 <div className="relative h-64 md:h-80 w-full">
-                  <img src={selectedCourse.thumbnail || "/placeholder.svg"} className="w-full h-full object-cover" alt="" />
+                  <img src={selectedCourse.thumbnail_url || "/placeholder.svg"} className="w-full h-full object-cover" alt="" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#fcfcf9] via-transparent to-black/20" />
                 </div>
 
                 <div className="px-4 md:px-10 pb-10 -mt-12 relative z-10">
                   <div className="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-xl border border-zinc-50 w-full overflow-hidden">
-                    <Badge className="bg-amber-500 text-white mb-4 px-4 py-1 rounded-full uppercase font-black text-[10px] tracking-widest border-none">
-                      {selectedCourse.category?.name || "Premium Course"}
-                    </Badge>
+                    <div className="flex justify-between items-start mb-4">
+                      <Badge className="bg-amber-500 text-white px-4 py-1 rounded-full uppercase font-black text-[10px] tracking-widest border-none">
+                        {selectedCourse.category?.name || "Premium Course"}
+                      </Badge>
+                      
+                      {/* MENTOR DI DALAM MODAL (Desktop/Tablet) */}
+                      {selectedCourse.main_mentor && (
+                        <div className="hidden md:flex items-center gap-3 bg-zinc-50 p-2 pr-4 rounded-full border border-zinc-100">
+                           <img 
+                            src={selectedCourse.main_mentor.avatar} 
+                            className="w-8 h-8 rounded-full border border-amber-500 object-cover" 
+                            alt="" 
+                          />
+                          <span className="text-[10px] font-black uppercase tracking-tight">{selectedCourse.main_mentor.name}</span>
+                        </div>
+                      )}
+                    </div>
                     
                     <h2 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter text-zinc-900 mb-6 leading-tight break-words">
                       {selectedCourse.title}
                     </h2>
+
+                    {/* MENTOR DI DALAM MODAL (Mobile Only) */}
+                    {selectedCourse.main_mentor && (
+                      <div className="flex md:hidden items-center gap-3 mb-6 p-3 bg-zinc-50 rounded-2xl">
+                         <img 
+                          src={selectedCourse.main_mentor.avatar} 
+                          className="w-10 h-10 rounded-full border-2 border-amber-500 object-cover" 
+                          alt="" 
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black text-amber-600 uppercase">Instructor</span>
+                          <span className="text-sm font-bold">{selectedCourse.main_mentor.name}</span>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4 mb-8 border-y border-zinc-100 py-6">
                       <div className="flex flex-col">
