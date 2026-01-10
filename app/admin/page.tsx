@@ -18,6 +18,7 @@ export default function AdminDashboard() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [unreadCount, setUnreadCount] = useState(0) // State untuk notifikasi
   const [statsData, setStatsData] = useState({
     total_users: 0,
     total_news: 0,
@@ -27,7 +28,7 @@ export default function AdminDashboard() {
   })
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true)
         const token = localStorage.getItem("token")
@@ -37,30 +38,43 @@ export default function AdminDashboard() {
           return
         }
 
-        const response = await fetch(`https://backend.mejatika.com/api/admin/dashboard/stats`, {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+
+        // 1. Ambil Statistik Utama
+        const statsRes = await fetch(`https://backend.mejatika.com/api/admin/dashboard/stats`, {
           method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
+          headers,
           cache: 'no-store'
         })
 
-        if (!response.ok) {
-          if (response.status === 401) throw new Error("Sesi login berakhir. Silakan login kembali.")
-          if (response.status === 403) throw new Error("Akses ditolak. Anda bukan Admin.")
-          throw new Error(`Server bermasalah (Status: ${response.status})`)
+        // 2. Ambil Data Notifikasi Baru (Lonceng)
+        const notifyRes = await fetch(`https://backend.mejatika.com/api/admin/notifications`, {
+          method: 'GET',
+          headers,
+          cache: 'no-store'
+        })
+
+        if (!statsRes.ok || !notifyRes.ok) {
+          if (statsRes.status === 401) throw new Error("Sesi login berakhir. Silakan login kembali.")
+          throw new Error("Gagal menyambung ke server.")
         }
 
-        const result = await response.json()
+        const statsResult = await statsRes.json()
+        const notifyResult = await notifyRes.json()
 
-        if (result.success) {
-          setStatsData(result.data)
-          setError(null)
-        } else {
-          throw new Error(result.message || "Gagal memuat statistik")
+        if (statsResult.success) {
+          setStatsData(statsResult.data)
         }
+        
+        if (notifyResult.success) {
+          setUnreadCount(notifyResult.data.total_unread)
+        }
+
+        setError(null)
       } catch (err: any) {
         console.error("Dashboard Error:", err.message)
         setError(err.message)
@@ -69,7 +83,7 @@ export default function AdminDashboard() {
       }
     }
 
-    fetchStats()
+    fetchData()
   }, [router])
 
   const stats = [
@@ -89,7 +103,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* HEADER SECTION - Logout sudah dihapus dari sini */}
+      {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
         <div>
           <h1 className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">
@@ -100,16 +114,28 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-      
+        {/* NOTIFICATION BELL */}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" className="rounded-full relative group bg-white shadow-sm">
+            <Bell size={18} className="text-zinc-600 group-hover:rotate-12 transition-transform" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 bg-rose-500 text-white text-[10px] font-black rounded-full border-2 border-white flex items-center justify-center animate-bounce">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* STATS GRID */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => (
-          <Card key={stat.title} className="border-none shadow-sm hover:shadow-md transition-all">
+          <Card key={stat.title} className="border-none shadow-sm hover:shadow-md transition-all group">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-black uppercase tracking-widest text-zinc-400">{stat.title}</CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bg}`}><stat.icon className={`h-4 w-4 ${stat.color}`} /></div>
+              <div className={`p-2 rounded-lg ${stat.bg} group-hover:scale-110 transition-transform`}>
+                <stat.icon className={`h-4 w-4 ${stat.color}`} />
+              </div>
             </CardHeader>
             <CardContent>
               {loading ? (
