@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { 
@@ -8,8 +8,6 @@ import {
   FileText, 
   GraduationCap, 
   ImageIcon, 
-  Bell,
-  Loader2,
   AlertCircle,
   ArrowRight,
   RefreshCw
@@ -18,17 +16,10 @@ import { Button } from "@/components/ui/button"
 
 export default function AdminDashboard() {
   const router = useRouter()
-  const dropdownRef = useRef<HTMLDivElement>(null)
   
   // States
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showDetail, setShowDetail] = useState(false)
-  
-  const [notifyData, setNotifyData] = useState({
-    total_unread: 0,
-    details: { new_users: 0, new_news: 0, new_registrations: 0 }
-  })
   
   const [statsData, setStatsData] = useState({
     total_users: 0,
@@ -37,17 +28,6 @@ export default function AdminDashboard() {
     total_gallery: 0,
     recent_activities: []
   })
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDetail(false)
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
 
   const fetchData = async () => {
     try {
@@ -63,19 +43,16 @@ export default function AdminDashboard() {
         'Accept': 'application/json',
       }
 
-      // Fetch Stats and Notifications in parallel
-      const [statsRes, notifyRes] = await Promise.all([
-        fetch(`https://backend.mejatika.com/api/admin/dashboard/stats`, { headers, cache: 'no-store' }),
-        fetch(`https://backend.mejatika.com/api/admin/notifications`, { headers, cache: 'no-store' })
-      ])
+      // Hanya fetch Stats, notifikasi sudah dihandle oleh AdminHeader
+      const statsRes = await fetch(`https://backend.mejatika.com/api/admin/dashboard/stats`, { 
+        headers, 
+        cache: 'no-store' 
+      })
 
       if (statsRes.status === 401) throw new Error("Sesi login berakhir.")
       
       const sJson = await statsRes.json()
-      const nJson = await notifyRes.json()
-
       if (sJson.success) setStatsData(sJson.data)
-      if (nJson.success) setNotifyData(nJson.data)
 
       setError(null)
     } catch (err: any) {
@@ -108,78 +85,28 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* HEADER SECTION - Sejajar Kiri & Kanan */}
+      {/* HEADER SECTION - Sekarang lebih simpel & bersih */}
       <div className="flex items-center justify-between border-b pb-6">
         <div>
           <h1 className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">
             Admin <span className="text-amber-500">Dashboard</span>
           </h1>
           <p className="text-zinc-500 text-sm font-medium">
-            Real-time: <span className="text-zinc-800 font-bold">backend.mejatika.com</span>
+            Real-time monitoring: <span className="text-zinc-800 font-bold tracking-tight">backend.mejatika.com</span>
           </p>
         </div>
-
-        <div className="flex items-center gap-4 relative" ref={dropdownRef}>
-          <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={() => setShowDetail(!showDetail)}
-            className={`rounded-full relative transition-all shadow-sm ${showDetail ? 'bg-zinc-100 ring-2 ring-zinc-200' : 'bg-white'}`}
-          >
-            <Bell size={20} className={`${notifyData.total_unread > 0 ? 'text-rose-500 animate-swing' : 'text-zinc-500'}`} />
-            {notifyData.total_unread > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 bg-rose-600 text-white text-[10px] font-black rounded-full border-2 border-white flex items-center justify-center">
-                {notifyData.total_unread}
-              </span>
-            )}
-          </Button>
-
-          {/* DROPDOWN DETAIL NOTIFIKASI */}
-          {showDetail && (
-            <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-2xl border border-zinc-100 z-50 overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right">
-              <div className="p-4 bg-zinc-900 text-white flex justify-between items-center">
-                <h3 className="text-xs font-black uppercase italic tracking-widest">Notifikasi Baru</h3>
-                <span className="text-[9px] bg-zinc-700 px-2 py-1 rounded text-zinc-300">Last 24h</span>
-              </div>
-              
-              <div className="p-2 space-y-1">
-                <button onClick={() => router.push('/admin/users')} className="w-full flex items-center justify-between p-3 hover:bg-zinc-50 rounded-xl transition-all group">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg group-hover:bg-blue-100"><Users size={16} className="text-blue-600" /></div>
-                    <span className="text-sm font-bold text-zinc-700 uppercase italic tracking-tighter">User Baru</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-zinc-900">{notifyData.details.new_users}</span>
-                    <ArrowRight size={14} className="text-zinc-300" />
-                  </div>
-                </button>
-
-                <button onClick={() => router.push('/admin/news')} className="w-full flex items-center justify-between p-3 hover:bg-zinc-50 rounded-xl transition-all group">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-green-50 rounded-lg group-hover:bg-green-100"><FileText size={16} className="text-green-600" /></div>
-                    <span className="text-sm font-bold text-zinc-700 uppercase italic tracking-tighter">Berita Baru</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-zinc-900">{notifyData.details.new_news}</span>
-                    <ArrowRight size={14} className="text-zinc-300" />
-                  </div>
-                </button>
-
-                {notifyData.total_unread === 0 && (
-                  <div className="p-8 text-center">
-                    <p className="text-xs font-bold text-zinc-400 italic">Belum ada aktivitas baru hari ini.</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="p-2 bg-zinc-50 border-t">
-                 <Button variant="ghost" className="w-full text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-zinc-900" onClick={() => setShowDetail(false)}>
-                   Tutup Panel
-                 </Button>
-              </div>
-            </div>
-          )}
-        </div>
+        
+        {/* Tombol Refresh Manual */}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={fetchData} 
+          disabled={loading}
+          className="rounded-full font-bold uppercase text-[10px] tracking-widest italic"
+        >
+          <RefreshCw size={14} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Sync Data
+        </Button>
       </div>
 
       {/* STATS CARDS */}
@@ -207,7 +134,7 @@ export default function AdminDashboard() {
         <Card className="lg:col-span-2 border-none shadow-sm overflow-hidden border-l-4 border-zinc-900">
           <CardHeader className="bg-zinc-900 text-white py-4 px-6 flex flex-row items-center justify-between">
             <CardTitle className="text-xs font-black uppercase italic tracking-[0.2em]">Live Stream Activity</CardTitle>
-            <RefreshCw size={14} className={`text-zinc-500 ${loading ? 'animate-spin' : ''}`} />
+            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" title="System Online" />
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
@@ -221,10 +148,10 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 ))
-              ) : statsData.recent_activities.length > 0 ? (
+              ) : statsData.recent_activities && statsData.recent_activities.length > 0 ? (
                 statsData.recent_activities.map((activity: any, i: number) => (
                   <div key={i} className="flex items-start gap-4 group">
-                    <div className={`mt-1.5 h-3 w-3 rounded-full ${activity.color} ring-4 ring-zinc-50 group-hover:scale-125 transition-all`} />
+                    <div className={`mt-1.5 h-3 w-3 rounded-full ${activity.color || 'bg-zinc-400'} ring-4 ring-zinc-50 group-hover:scale-125 transition-all`} />
                     <div className="flex-1 border-b border-zinc-50 pb-4">
                       <p className="text-sm font-black text-zinc-800 italic uppercase tracking-tight">{activity.label}</p>
                       <p className="text-[10px] text-zinc-400 font-bold uppercase">{activity.time}</p>
@@ -233,7 +160,7 @@ export default function AdminDashboard() {
                 ))
               ) : (
                 <div className="text-center py-10">
-                  <p className="text-xs text-zinc-400 italic font-bold">LOG KOSONG</p>
+                  <p className="text-xs text-zinc-400 italic font-bold">LOG AKTIVITAS KOSONG</p>
                 </div>
               )}
             </div>
