@@ -28,9 +28,10 @@ export default function KursusPage() {
       try {
         const res = await fetch("https://backend.mejatika.com/api/courses")
         const data = await res.json()
+        // Pastikan mengambil array dari property 'data' jika ada
         setCourses(Array.isArray(data) ? data : data.data || [])
       } catch (err) {
-        console.error(err)
+        console.error("Error fetching courses:", err)
       } finally {
         setLoading(false)
       }
@@ -100,38 +101,33 @@ export default function KursusPage() {
                       </div>
                     </div>
 
-                   {/* FOTO MENTOR & LABEL MENTOR DI CARD */}
-{course.main_mentor && (
-  <div className="flex items-center gap-4 mb-6 px-2">
-    {/* Foto Mentor */}
-    <div className="relative">
-      <img 
-        src={course.main_mentor.avatar} 
-        alt={course.main_mentor.name} 
-        className="w-14 h-14 rounded-full border-2 border-amber-500 object-cover shadow-md transition-transform group-hover:scale-105"
-      />
-      {/* Opsional: Dot indicator hijau jika ingin tanda online */}
-      <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
-    </div>
+                    {/* FOTO MENTOR & LABEL MENTOR DI CARD */}
+                    {course.main_mentor && (
+                      <div className="flex items-center gap-4 mb-6 px-2">
+                        <div className="relative">
+                          <img 
+                            /* PERBAIKAN: Menggunakan profile_photo_url dari Accessor Laravel */
+                            src={course.main_mentor.profile_photo_url} 
+                            alt={course.main_mentor.name} 
+                            className="w-14 h-14 rounded-full border-2 border-amber-500 object-cover shadow-md transition-transform group-hover:scale-105"
+                          />
+                          <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                        </div>
 
-    <div className="flex flex-col">
-      {/* Label Mentor Baru */}
-      <span className="text-[9px] font-black uppercase tracking-[0.15em] text-amber-600 mb-0.5 bg-amber-50 self-start px-2 py-0.5 rounded-full border border-amber-100">
-        Mentor Kursus
-      </span>
-      
-      {/* Nama Mentor */}
-      <span className="text-sm font-black text-zinc-900 leading-tight">
-        {course.main_mentor.name}
-      </span>
-      
-      {/* Spesialisasi */}
-      <span className="text-[10px] font-medium text-zinc-400 italic">
-        {course.active_instructors?.[0]?.specialist || "Professional Instructor"}
-      </span>
-    </div>
-  </div>
-)}
+                        <div className="flex flex-col">
+                          <span className="text-[9px] font-black uppercase tracking-[0.15em] text-amber-600 mb-0.5 bg-amber-50 self-start px-2 py-0.5 rounded-full border border-amber-100">
+                            Mentor Kursus
+                          </span>
+                          <span className="text-sm font-black text-zinc-900 leading-tight">
+                            {course.main_mentor.name}
+                          </span>
+                          <span className="text-[10px] font-medium text-zinc-400 italic">
+                            {/* PERBAIKAN: Menggunakan field specialist dari model User */}
+                            {course.main_mentor.specialist || "Professional Instructor"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
 
                     <Button className="mt-auto w-full bg-zinc-900 hover:bg-amber-600 text-white rounded-2xl h-14 font-black uppercase text-xs tracking-[0.2em]">
                       Detail Kursus
@@ -169,18 +165,19 @@ export default function KursusPage() {
                         {selectedCourse.category?.name || "Premium Course"}
                       </Badge>
                       
-                      {/* MENTOR DI MODAL (Desktop) - DIPERBESAR */}
+                      {/* MENTOR DI MODAL (Desktop) */}
                       {selectedCourse.main_mentor && (
                         <div className="hidden md:flex items-center gap-4 bg-zinc-50 p-3 pr-6 rounded-full border border-zinc-100 shadow-sm">
                            <img 
-                            src={selectedCourse.main_mentor.avatar} 
+                            /* PERBAIKAN: Menggunakan profile_photo_url */
+                            src={selectedCourse.main_mentor.profile_photo_url} 
                             className="w-12 h-12 rounded-full border-2 border-amber-500 object-cover" 
-                            alt="" 
+                            alt={selectedCourse.main_mentor.name} 
                           />
                           <div className="flex flex-col">
                             <span className="text-xs font-black uppercase leading-none mb-1">{selectedCourse.main_mentor.name}</span>
                             <span className="text-[9px] font-bold text-amber-600 uppercase tracking-tighter">
-                              {selectedCourse.active_instructors?.[0]?.specialist || "Mentor"}
+                              {selectedCourse.main_mentor.specialist || "Mentor"}
                             </span>
                           </div>
                         </div>
@@ -191,11 +188,11 @@ export default function KursusPage() {
                       {selectedCourse.title}
                     </h2>
 
-                    {/* MENTOR DI MODAL (Mobile Only) - DIPERBESAR */}
+                    {/* MENTOR DI MODAL (Mobile Only) */}
                     {selectedCourse.main_mentor && (
                       <div className="flex md:hidden items-center gap-4 mb-6 p-5 bg-zinc-50 rounded-3xl border border-zinc-100">
                          <img 
-                          src={selectedCourse.main_mentor.avatar} 
+                          src={selectedCourse.main_mentor.profile_photo_url} 
                           className="w-16 h-16 rounded-full border-2 border-amber-500 object-cover shadow-md" 
                           alt="" 
                         />
@@ -204,7 +201,7 @@ export default function KursusPage() {
                             {selectedCourse.main_mentor.name}
                           </span>
                           <span className="text-[11px] font-bold text-amber-600 uppercase tracking-widest">
-                            {selectedCourse.active_instructors?.[0]?.specialist || "Professional Instructor"}
+                            {selectedCourse.main_mentor.specialist || "Professional Instructor"}
                           </span>
                         </div>
                       </div>
