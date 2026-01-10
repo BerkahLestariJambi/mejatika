@@ -12,56 +12,96 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Bell, LogOut, Settings, User, Users, FileText, ArrowRight } from "lucide-react"
+import { 
+  Bell, 
+  LogOut, 
+  Settings, 
+  User, 
+  Users, 
+  FileText, 
+  CheckCheck,
+  BellOff
+} from "lucide-react"
 import Swal from "sweetalert2"
 
 export function AdminHeader() {
   const router = useRouter()
   const [adminName, setAdminName] = useState("Admin")
-  
-  // State baru untuk Notifikasi
   const [notifyData, setNotifyData] = useState({
     total_unread: 0,
     details: { new_users: 0, new_news: 0, new_registrations: 0 }
   })
 
-  // 1. Ambil data user & Notifikasi saat dimuat
+  // 1. Fungsi ambil data notifikasi dari API
+  const fetchNotif = async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    try {
+      const res = await fetch(`https://backend.mejatika.com/api/admin/notifications`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      const json = await res.json()
+      if (json.success) setNotifyData(json.data)
+    } catch (err) {
+      console.error("Gagal sinkron notifikasi")
+    }
+  }
+
   useEffect(() => {
     const user = localStorage.getItem("user")
-    const token = localStorage.getItem("token")
-
     if (user) {
       try {
         const userData = JSON.parse(user)
         setAdminName(userData.name || "Admin")
-      } catch (e) {
-        console.error("Gagal parsing data user")
-      }
-    }
-
-    // Ambil Data Notifikasi dari API
-    const fetchNotif = async () => {
-      if (!token) return
-      try {
-        const res = await fetch(`https://backend.mejatika.com/api/admin/notifications`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        const json = await res.json()
-        if (json.success) setNotifyData(json.data)
-      } catch (err) {
-        console.error("Gagal sinkron notifikasi")
-      }
+      } catch (e) { console.error("Error parsing user") }
     }
 
     fetchNotif()
-    const interval = setInterval(fetchNotif, 60000) // Cek tiap 1 menit
+    // Auto-refresh setiap 1 menit agar angka update otomatis
+    const interval = setInterval(fetchNotif, 60000)
     return () => clearInterval(interval)
   }, [])
+
+  // 2. Fungsi saat salah satu notif diklik (Angka berkurang)
+  const handleReadItem = async (type: 'users' | 'news', targetUrl: string) => {
+    const token = localStorage.getItem("token")
+    
+    // Kurangi angka di UI dulu biar cepet (Optimistic)
+    setNotifyData(prev => ({
+      ...prev,
+      total_unread: Math.max(0, prev.total_unread - (type === 'users' ? prev.details.new_users : prev.details.new_news)),
+      details: { ...prev.details, [type === 'users' ? 'new_users' : 'new_news']: 0 }
+    }))
+
+    router.push(targetUrl)
+
+    // Kirim ke backend agar permanen
+    try {
+      await fetch(`https://backend.mejatika.com/api/admin/notifications/read`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      })
+    } catch (e) { console.error("Gagal update status") }
+  }
+
+  // 3. Fungsi Tandai Semua Dibaca (Angka jadi 0)
+  const markAllAsRead = async () => {
+    const token = localStorage.getItem("token")
+    setNotifyData({ total_unread: 0, details: { new_users: 0, new_news: 0, new_registrations: 0 } })
+    
+    try {
+      await fetch(`https://backend.mejatika.com/api/admin/notifications/mark-all`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+    } catch (e) { console.error("Gagal mark all") }
+  }
 
   const handleLogout = () => {
     Swal.fire({
       title: "Logout?",
-      text: "Anda akan keluar dari sesi admin.",
+      text: "Sesi admin akan diakhiri.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#f59e0b",
@@ -78,107 +118,165 @@ export function AdminHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-20 border-b bg-background/95 backdrop-blur">
+    <header className="sticky top-0 z-20 border-b bg-white/95 backdrop-blur shadow-sm">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
+        
+        {/* Sisi Kiri: Label */}
         <div className="flex-1">
            <span className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400 italic">
-             Panel <span className="text-amber-500 font-black">Management</span>
+             Mejatika <span className="text-amber-500 font-black text-sm">Panel</span>
            </span>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
+        <div className="flex items-center gap-2 md:gap-5">
           
-          {/* --- TOMBOL BELL YANG SUDAH DIHIDUPKAN --- */}
+          {/* --- DROPDOWN NOTIFIKASI --- */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative hover:bg-zinc-100 rounded-full transition-all">
-                <Bell className={`h-5 w-5 ${notifyData.total_unread > 0 ? 'text-amber-500' : 'text-zinc-500'}`} />
+              <Button variant="ghost" size="icon" className="relative hover:bg-zinc-100 rounded-full h-10 w-10 transition-all">
+                <Bell className={`h-5 w-5 ${notifyData.total_unread > 0 ? 'text-amber-500 animate-swing' : 'text-zinc-400'}`} />
                 {notifyData.total_unread > 0 && (
-                  <span className="absolute top-2 right-2 flex h-2.5 w-2.5 rounded-full bg-rose-500 border-2 border-white animate-pulse"></span>
+                  <span className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white border-2 border-white shadow-sm">
+                    {notifyData.total_unread > 9 ? '9+' : notifyData.total_unread}
+                  </span>
                 )}
               </Button>
             </DropdownMenuTrigger>
             
-            <DropdownMenuContent align="end" className="w-72 rounded-2xl p-2 shadow-2xl border-zinc-100 animate-in fade-in zoom-in duration-200">
-              <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest text-zinc-400 px-3 py-2 italic">
-                Pemberitahuan Terbaru
-              </DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-80 rounded-3xl p-2 shadow-2xl border-zinc-100 animate-in fade-in zoom-in duration-200">
+              <div className="flex items-center justify-between px-3 py-2">
+                <DropdownMenuLabel className="font-black text-[10px] uppercase tracking-widest text-zinc-400 italic">
+                  Notifikasi
+                </DropdownMenuLabel>
+                {notifyData.total_unread > 0 && (
+                  <button 
+                    onClick={markAllAsRead}
+                    className="flex items-center gap-1 text-[10px] font-bold text-amber-600 hover:text-amber-700 transition-colors uppercase"
+                  >
+                    <CheckCheck size={12} /> Bersihkan
+                  </button>
+                )}
+              </div>
               <DropdownMenuSeparator />
               
-              {/* Notif User Baru */}
-              <DropdownMenuItem 
-                onClick={() => router.push('/admin/users')}
-                className="rounded-xl cursor-pointer p-3 focus:bg-zinc-50 flex justify-between items-center"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-50 rounded-lg"><Users className="h-4 w-4 text-blue-600" /></div>
-                  <span className="text-xs font-bold text-zinc-700">Pendaftaran User</span>
-                </div>
-                <span className="bg-zinc-100 px-2 py-0.5 rounded text-[10px] font-black">{notifyData.details.new_users}</span>
-              </DropdownMenuItem>
+              <div className="max-h-[300px] overflow-y-auto">
+                {/* Notif User Baru */}
+                <DropdownMenuItem 
+                  onClick={() => handleReadItem('users', '/admin/users')}
+                  className="rounded-2xl cursor-pointer p-4 focus:bg-zinc-50 flex justify-between items-center group mb-1"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-blue-50 rounded-xl group-hover:scale-110 transition-transform"><Users className="h-5 w-5 text-blue-600" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black italic text-zinc-800 uppercase leading-none mb-1">Pendaftaran</span>
+                      <span className="text-[10px] font-medium text-zinc-400">Ada pengguna baru terdaftar</span>
+                    </div>
+                  </div>
+                  {notifyData.details.new_users > 0 && (
+                    <span className="h-6 w-6 flex items-center justify-center bg-zinc-900 text-white rounded-full text-[10px] font-black italic">
+                      {notifyData.details.new_users}
+                    </span>
+                  )}
+                </DropdownMenuItem>
 
-              {/* Notif Berita Baru */}
-              <DropdownMenuItem 
-                onClick={() => router.push('/admin/news')}
-                className="rounded-xl cursor-pointer p-3 focus:bg-zinc-50 flex justify-between items-center"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-50 rounded-lg"><FileText className="h-4 w-4 text-green-600" /></div>
-                  <span className="text-xs font-bold text-zinc-600">Update Berita</span>
-                </div>
-                <span className="bg-zinc-100 px-2 py-0.5 rounded text-[10px] font-black">{notifyData.details.new_news}</span>
-              </DropdownMenuItem>
+                {/* Notif Berita Baru */}
+                <DropdownMenuItem 
+                  onClick={() => handleReadItem('news', '/admin/news')}
+                  className="rounded-2xl cursor-pointer p-4 focus:bg-zinc-50 flex justify-between items-center group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="p-2.5 bg-green-50 rounded-xl group-hover:scale-110 transition-transform"><FileText className="h-5 w-5 text-green-600" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black italic text-zinc-800 uppercase leading-none mb-1">Berita/News</span>
+                      <span className="text-[10px] font-medium text-zinc-400">Update artikel berita terbaru</span>
+                    </div>
+                  </div>
+                  {notifyData.details.new_news > 0 && (
+                    <span className="h-6 w-6 flex items-center justify-center bg-zinc-900 text-white rounded-full text-[10px] font-black italic">
+                      {notifyData.details.new_news}
+                    </span>
+                  )}
+                </DropdownMenuItem>
+              </div>
 
               {notifyData.total_unread === 0 && (
-                <div className="py-6 text-center">
-                  <p className="text-[10px] font-bold text-zinc-300 italic uppercase">Semua data up to date</p>
+                <div className="py-10 flex flex-col items-center justify-center gap-2 opacity-40">
+                  <BellOff size={24} className="text-zinc-300" />
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest italic">Tidak ada notifikasi</p>
                 </div>
               )}
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* --- DROPDOWN ADMIN PROFIL --- */}
+          {/* --- DROPDOWN PROFIL ADMIN --- */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center gap-3 px-2 hover:bg-zinc-100 rounded-full transition-all">
+              <Button variant="ghost" className="flex items-center gap-3 px-1 md:px-2 hover:bg-zinc-100 rounded-full transition-all group">
                 <div className="flex flex-col items-end hidden md:flex">
-                  <span className="text-sm font-black leading-none italic tracking-tighter">{adminName}</span>
-                  <span className="text-[9px] text-zinc-400 font-black uppercase tracking-tighter">Administrator</span>
+                  <span className="text-sm font-black leading-none italic tracking-tighter text-zinc-800 group-hover:text-amber-500 transition-colors">
+                    {adminName}
+                  </span>
+                  <span className="text-[9px] text-zinc-400 font-black uppercase tracking-widest italic">Admin</span>
                 </div>
-                <Avatar className="h-9 w-9 border-2 border-amber-100 shadow-sm">
+                <Avatar className="h-10 w-10 border-2 border-amber-100 group-hover:border-amber-400 transition-all shadow-sm">
                   <AvatarImage src={`https://ui-avatars.com/api/?name=${adminName}&background=f59e0b&color=fff&bold=true`} />
-                  <AvatarFallback className="bg-amber-500 text-white font-bold">AD</AvatarFallback>
+                  <AvatarFallback className="bg-amber-500 text-white font-bold text-xs">AD</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             
-            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 shadow-xl border-zinc-100">
-              <DropdownMenuLabel className="font-black px-3 py-2 text-xs uppercase italic tracking-widest text-zinc-400">Pengaturan Akun</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-60 rounded-3xl p-2 shadow-2xl border-zinc-100 mt-1">
+              <DropdownMenuLabel className="font-black px-4 py-3 text-[10px] uppercase italic tracking-[0.2em] text-zinc-400">
+                Menu Akun
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               
-              <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5">
-                <User className="mr-2 h-4 w-4 text-zinc-400" />
-                <span className="text-sm font-bold tracking-tight">Profil Saya</span>
+              <DropdownMenuItem className="rounded-2xl cursor-pointer py-3 px-4 focus:bg-zinc-50 group">
+                <div className="flex items-center gap-3">
+                  <User className="h-4 w-4 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
+                  <span className="text-sm font-bold text-zinc-700 italic">Profil Saya</span>
+                </div>
               </DropdownMenuItem>
               
-              <DropdownMenuItem className="rounded-xl cursor-pointer py-2.5">
-                <Settings className="mr-2 h-4 w-4 text-zinc-400" />
-                <span className="text-sm font-bold tracking-tight">System Settings</span>
+              <DropdownMenuItem className="rounded-2xl cursor-pointer py-3 px-4 focus:bg-zinc-50 group">
+                <div className="flex items-center gap-3">
+                  <Settings className="h-4 w-4 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
+                  <span className="text-sm font-bold text-zinc-700 italic">Pengaturan Sistem</span>
+                </div>
               </DropdownMenuItem>
               
               <DropdownMenuSeparator />
               
               <DropdownMenuItem 
                 onClick={handleLogout}
-                className="text-red-600 rounded-xl cursor-pointer focus:bg-red-50 focus:text-red-600 py-2.5"
+                className="text-rose-600 rounded-2xl cursor-pointer focus:bg-rose-50 focus:text-rose-600 py-3 px-4 transition-all"
               >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span className="font-black uppercase text-[10px] italic tracking-[0.1em]">Keluar Sesi</span>
+                <div className="flex items-center gap-3 w-full">
+                  <LogOut className="h-4 w-4" />
+                  <span className="font-black uppercase text-[10px] italic tracking-widest">Logout Sesi</span>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
         </div>
       </div>
+      
+      {/* CSS untuk Animasi Goyang Bell */}
+      <style jsx global>{`
+        @keyframes swing {
+          0% { transform: rotate(0deg); }
+          20% { transform: rotate(15deg); }
+          40% { transform: rotate(-10deg); }
+          60% { transform: rotate(5deg); }
+          80% { transform: rotate(-5deg); }
+          100% { transform: rotate(0deg); }
+        }
+        .animate-swing {
+          animation: swing 1s ease-in-out infinite;
+          transform-origin: top center;
+        }
+      `}</style>
     </header>
   )
 }
