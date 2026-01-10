@@ -8,8 +8,6 @@ import {
   FileText, 
   GraduationCap, 
   ImageIcon, 
-  Settings, 
-  LogOut,
   Bell,
   Loader2,
   AlertCircle
@@ -39,7 +37,6 @@ export default function AdminDashboard() {
           return
         }
 
-        // Gunakan URL lengkap tanpa slash di akhir agar tidak double slash
         const response = await fetch(`https://backend.mejatika.com/api/admin/dashboard/stats`, {
           method: 'GET',
           headers: {
@@ -47,7 +44,6 @@ export default function AdminDashboard() {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
           },
-          // Cache: no-store supaya data selalu fresh dari database
           cache: 'no-store'
         })
 
@@ -76,14 +72,6 @@ export default function AdminDashboard() {
     fetchStats()
   }, [router])
 
-  const handleLogout = () => {
-    if (confirm("Apakah Anda yakin ingin keluar?")) {
-      localStorage.removeItem("token")
-      localStorage.removeItem("user")
-      router.push("/login")
-    }
-  }
-
   const stats = [
     { title: "Total Users", value: statsData.total_users, description: "Pengguna terdaftar", icon: Users, color: "text-blue-600", bg: "bg-blue-50" },
     { title: "News Articles", value: statsData.total_news, description: "Berita diterbitkan", icon: FileText, color: "text-green-600", bg: "bg-green-50" },
@@ -93,7 +81,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8 p-2">
-      {/* ERROR ALERT (Jika ada error akan muncul di sini) */}
+      {/* ERROR ALERT */}
       {error && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl flex items-center gap-3 animate-in fade-in zoom-in duration-300">
           <AlertCircle size={20} />
@@ -101,13 +89,15 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* HEADER SECTION */}
+      {/* HEADER SECTION - Logout sudah dihapus dari sini */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6">
         <div>
           <h1 className="text-3xl font-black italic uppercase tracking-tighter text-zinc-900">
             Admin <span className="text-amber-500">Dashboard</span>
           </h1>
-          <p className="text-zinc-500 font-medium tracking-tight">Data real-time: <span className="text-zinc-800">backend.mejatika.com</span></p>
+          <p className="text-zinc-500 font-medium tracking-tight">
+            Data real-time: <span className="text-zinc-800">backend.mejatika.com</span>
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -115,9 +105,7 @@ export default function AdminDashboard() {
             <Bell size={18} />
             <span className="absolute top-1 right-1 h-2 w-2 bg-amber-500 rounded-full border-2 border-white"></span>
           </Button>
-          <Button variant="destructive" onClick={handleLogout} className="rounded-xl font-bold uppercase text-xs tracking-widest gap-2 shadow-lg shadow-rose-100">
-            <LogOut size={16} /> Logout
-          </Button>
+          {/* Bagian Logout di sini sudah dihilangkan sesuai permintaan bos */}
         </div>
       </div>
 
@@ -150,7 +138,10 @@ export default function AdminDashboard() {
           <CardContent className="p-6">
             <div className="space-y-6">
               {loading ? (
-                <div className="flex items-center gap-2 text-zinc-400"><Loader2 className="animate-spin" /> <span className="text-xs font-bold">Syncing data...</span></div>
+                <div className="flex items-center gap-2 text-zinc-400">
+                  <Loader2 className="animate-spin" /> 
+                  <span className="text-xs font-bold">Syncing data...</span>
+                </div>
               ) : statsData.recent_activities.length > 0 ? (
                 statsData.recent_activities.map((activity: any, i: number) => (
                   <div key={i} className="flex items-start gap-4 group">
@@ -170,7 +161,11 @@ export default function AdminDashboard() {
 
         {/* QUICK ACTIONS */}
         <Card className="border-none shadow-sm">
-          <CardHeader><CardTitle className="text-sm font-black uppercase italic tracking-widest text-zinc-800">Quick Actions</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-sm font-black uppercase italic tracking-widest text-zinc-800">
+              Quick Actions
+            </CardTitle>
+          </CardHeader>
           <CardContent className="p-6">
             <div className="grid gap-3">
               {[
