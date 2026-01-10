@@ -100,13 +100,7 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" className="rounded-full relative">
-            <Bell size={18} />
-            <span className="absolute top-1 right-1 h-2 w-2 bg-amber-500 rounded-full border-2 border-white"></span>
-          </Button>
-          {/* Bagian Logout di sini sudah dihilangkan sesuai permintaan bos */}
-        </div>
+      
       </div>
 
       {/* STATS GRID */}
