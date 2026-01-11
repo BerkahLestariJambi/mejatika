@@ -14,6 +14,7 @@ export default function DetailCerpen() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!slug) return;
     fetch(`https://backend.mejatika.com/api/news/${slug}`)
       .then((res) => res.json())
       .then((json) => {
@@ -35,89 +36,89 @@ export default function DetailCerpen() {
     <div className="min-h-screen bg-[#e5e1d8] flex flex-col font-serif">
       <Navigation />
       
-      <main className="flex-grow container mx-auto px-2 py-10 lg:py-16">
+      <main className="flex-grow container mx-auto px-4 py-10 lg:py-16">
         <div className="max-w-4xl mx-auto">
           
-          {/* FRAME UTAMA - BINGKAI KERTAS */}
-          <div className="relative bg-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-zinc-200 rounded-sm overflow-hidden">
+          {/* PEMBUNGKUS KERTAS (FRAME) */}
+          <div className="relative bg-white shadow-[0_30px_60px_-15px_rgba(0,0,0,0.3)] border border-zinc-200 rounded-sm overflow-hidden">
             
-            {/* Garis Margin Merah Vertikal */}
-            <div className="absolute left-8 md:left-20 top-0 bottom-0 w-[1px] bg-red-200 z-20"></div>
+            {/* Garis Margin Merah (Kiri) */}
+            <div className="absolute left-10 md:left-24 top-0 bottom-0 w-[1.5px] bg-red-200 z-20"></div>
 
             {/* Efek Lubang Binder */}
-            <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-around py-10 z-30 opacity-30">
-                {[...Array(15)].map((_, i) => (
-                    <div key={i} className="w-3 h-3 bg-[#e5e1d8] rounded-full shadow-inner border border-zinc-300"></div>
+            <div className="absolute left-3 top-0 bottom-0 flex flex-col justify-around py-12 z-30 opacity-30">
+                {[...Array(16)].map((_, i) => (
+                    <div key={i} className="w-3.5 h-3.5 bg-[#e5e1d8] rounded-full shadow-inner border border-zinc-300"></div>
                 ))}
             </div>
 
-            {/* AREA ISI NASKAH (Garis Folio) */}
-            <div className="relative z-10 px-12 md:px-28 py-12 md:py-20 folio-lines">
+            {/* ISI KONTEN DI DALAM FRAME */}
+            <div className="relative z-10 px-14 md:px-36 py-16 md:py-24 folio-paper">
               
-              {/* 1. JUDUL */}
-              <header className="mb-8 border-b border-zinc-100 pb-6">
-                <h1 className="text-3xl md:text-6xl font-black text-zinc-900 leading-tight italic uppercase tracking-tighter mb-4">
+              {/* 1. JUDUL (DI DALAM FRAME) */}
+              <header className="mb-12 border-b-2 border-zinc-100 pb-8">
+                <h1 className="text-4xl md:text-7xl font-black text-zinc-900 leading-[0.85] italic uppercase tracking-tighter mb-6">
                   {data.title}
                 </h1>
-                <div className="flex flex-wrap items-center gap-4 text-zinc-400 font-sans font-bold uppercase text-[9px] tracking-widest">
-                   <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-amber-500" /> {new Date(data.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
-                   <span className="flex items-center gap-1"><User className="h-3 w-3 text-amber-500" /> Penulis Mejatika</span>
+                <div className="flex flex-wrap items-center gap-6 text-zinc-400 font-sans font-bold uppercase text-[10px] tracking-[0.2em]">
+                   <span className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-amber-500" /> {new Date(data.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                   <span className="flex items-center gap-2"><User className="h-3.5 w-3.5 text-amber-500" /> Mejatika Literasi</span>
                 </div>
               </header>
 
-              {/* 2. GAMBAR UTAMA */}
-              <div className="mb-10">
-                <div className="bg-zinc-50 p-2 border border-zinc-100 shadow-sm inline-block w-full">
+              {/* 2. GAMBAR UTAMA (DI DALAM FRAME) */}
+              <div className="mb-16">
+                <div className="bg-white p-3 shadow-md border border-zinc-100 transform -rotate-1 hover:rotate-0 transition-transform duration-500">
                   <img 
                     src={data.image || "/placeholder.svg"} 
                     alt={data.title} 
-                    className="w-full h-auto max-h-[500px] object-cover" 
+                    className="w-full h-auto max-h-[500px] object-cover rounded-sm" 
                   />
                 </div>
               </div>
 
-              {/* 3. ISI CERITA */}
-              <article className="cerpen-content mb-12 overflow-hidden">
+              {/* 3. ISI CERITA (SUDAH DIKUNCI AGAR TIDAK LEBAR) */}
+              <article className="cerpen-content mb-16 overflow-hidden">
                 <div 
-                  className="prose prose-zinc prose-lg md:prose-xl max-w-none text-zinc-800"
+                  className="prose prose-zinc prose-lg md:prose-xl max-w-none text-zinc-800 leading-[3rem]"
                   dangerouslySetInnerHTML={{ __html: data.content }} 
                 />
               </article>
 
-              {/* 4. QUOTE */}
+              {/* 4. QUOTE (DI DALAM FRAME) */}
               {data.quote && (
-                <div className="mb-12 p-6 md:p-10 bg-zinc-50 border-y border-zinc-100 text-center relative">
-                   <QuoteIcon className="absolute top-2 left-2 h-8 w-8 text-zinc-200" />
-                   <p className="text-xl md:text-2xl italic text-zinc-600 font-serif leading-relaxed">
+                <div className="mb-16 p-8 bg-zinc-50 border-y-2 border-zinc-100 text-center relative italic">
+                   <QuoteIcon className="absolute top-2 left-2 h-10 w-10 text-zinc-200/50" />
+                   <p className="text-xl md:text-3xl text-zinc-600 font-serif leading-relaxed">
                      "{data.quote}"
                    </p>
                 </div>
               )}
 
-              {/* 5. TOMBOL KEMBALI */}
-              <div className="pt-10 border-t border-zinc-100 text-center">
+              {/* 5. TOMBOL KEMBALI (DI DALAM FRAME) */}
+              <div className="pt-12 border-t border-zinc-100 text-center">
                 <button 
                   onClick={() => router.push('/cerpen')}
-                  className="inline-flex items-center gap-2 text-zinc-400 hover:text-amber-600 transition-colors uppercase text-[10px] font-sans font-black tracking-[0.3em]"
+                  className="inline-flex items-center gap-3 text-zinc-400 hover:text-amber-600 transition-all uppercase text-[10px] font-sans font-black tracking-[0.4em]"
                 >
-                  <ArrowLeft className="h-4 w-4" /> Kembali ke Ruang Cerpen
+                  <ArrowLeft className="h-4 w-4" /> Kembali ke Ruang Arsip
                 </button>
               </div>
 
             </div>
           </div>
 
-          {/* TOMBOL SHARE (DI LUAR FRAME) */}
-          <div className="mt-8 flex justify-center">
-             <Button 
+          {/* TOMBOL SHARE (DI LUAR FRAME AGAR BERSIH) */}
+          <div className="mt-10 flex justify-center opacity-40 hover:opacity-100 transition-opacity">
+             <button 
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
-                  alert("Tautan berhasil disalin!");
+                  alert("Tautan berhasil disalin bos!");
                 }}
-                className="bg-zinc-900 text-white rounded-full px-8 hover:bg-amber-600 transition-all font-sans font-bold uppercase text-[10px] tracking-widest"
+                className="text-zinc-600 text-[9px] uppercase font-black tracking-widest flex items-center gap-2 border-b border-zinc-400 pb-1"
              >
-                <Share2 className="mr-2 h-4 w-4" /> Salin Link Cerita
-             </Button>
+               <Share2 className="h-3 w-3" /> Bagikan Naskah Ini
+             </button>
           </div>
 
         </div>
@@ -126,56 +127,56 @@ export default function DetailCerpen() {
       <Footer />
 
       <style jsx global>{`
-        /* KONFIGURASI GARIS FOLIO */
-        .folio-lines {
-          background-image: linear-gradient(#f1f1f1 1.2px, transparent 1.2px);
-          background-size: 100% 2.8rem; /* Ukuran baris */
+        /* KUNCI TAMPILAN GARIS */
+        .folio-paper {
+          background-image: linear-gradient(#f0f0f0 1.5px, transparent 1.5px);
+          background-size: 100% 3rem; /* Tinggi baris garis */
         }
 
         .cerpen-content {
-          line-height: 2.8rem !important;
+          line-height: 3rem !important; /* WAJIB SAMA DENGAN background-size */
         }
 
         .cerpen-content p {
-          margin-bottom: 2.8rem !important; /* Pas dengan garis */
-          text-indent: 2.5rem;
-          line-height: 2.8rem !important;
-          word-wrap: break-word; /* Mencegah teks keluar frame */
+          margin-bottom: 3rem !important; 
+          text-indent: 3.5rem;
+          line-height: 3rem !important;
+          word-break: break-word; /* INI KUNCINYA AGAR TEKS TIDAK KELUAR */
         }
 
         .cerpen-content p:first-of-type {
           text-indent: 0;
         }
 
-        /* Dropcap (Huruf Pertama) */
+        /* Huruf Pertama (Dropcap) */
         .cerpen-content p:first-of-type::first-letter {
           float: left;
-          font-size: 5.5rem;
+          font-size: 6.5rem;
           line-height: 1;
           font-weight: 900;
-          margin-top: 0.5rem;
-          margin-right: 0.8rem;
+          margin-top: 0.8rem;
+          margin-right: 1.2rem;
           color: #d97706;
           font-style: italic;
+          text-transform: uppercase;
         }
 
-        /* Perbaikan untuk elemen di dalam prose */
+        /* Override Prose Defaults */
         .prose p {
           margin-top: 0 !important;
-          margin-bottom: 2.8rem !important;
+          margin-bottom: 3rem !important;
         }
 
-        /* Mobile Fix */
-        @media (max-width: 640px) {
-          .folio-lines {
-            padding-left: 2.5rem;
-            padding-right: 1rem;
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+          .folio-paper {
+            padding-left: 3.5rem;
+            padding-right: 1.5rem;
           }
           .cerpen-content p {
             text-indent: 1.5rem;
-            font-size: 1.1rem;
+            font-size: 1.15rem;
           }
-          .absolute.left-8 { left: 1.5rem; }
         }
       `}</style>
     </div>
