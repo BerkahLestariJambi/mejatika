@@ -35,19 +35,26 @@ export default function HomePage() {
       
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
         .then((res) => res.json())
-        .then((data) => {
-          // DEBUG: Lihat di console browser apakah ada field 'quote'
-          console.log("Data Berita:", data);
-          setArticle(data)
+        .then((json) => {
+          // KUNCI: Backend bos mengirim { success: true, data: {...} }
+          // Jadi kita ambil json.data
+          if (json.success) {
+            setArticle(json.data)
+          }
           setLoadingDetail(false)
         })
         .catch(() => setLoadingDetail(false))
     }
   }, [selectedSlug])
 
+  // Membersihkan HTML untuk teks aman
   const getCleanContent = (htmlContent: string) => {
     if (!htmlContent) return "";
-    return htmlContent.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+    return htmlContent
+      .replace(/<[^>]*>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/news/${selectedSlug}` : '';
@@ -86,9 +93,9 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-6 flex flex-col items-center"
             >
-              {/* --- GULUNGAN ATAS BATIK CERAH --- */}
+              {/* --- GULUNGAN ATAS BATIK --- */}
               <div className="w-full max-w-4xl relative z-30">
-                <div className="w-full h-16 bg-amber-500 dark:bg-amber-600 rounded-full shadow-2xl flex items-center justify-between px-12 relative overflow-hidden border-b-4 border-amber-700/30">
+                <div className="w-full h-16 bg-amber-500 rounded-full shadow-2xl flex items-center justify-between px-12 relative overflow-hidden border-b-4 border-amber-700/30">
                   <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
                   <span className="text-[12px] font-black text-white uppercase tracking-[0.5em] z-10 drop-shadow-md">MEJATIKA</span>
                   <div className="flex gap-1.5 z-10">
@@ -99,97 +106,108 @@ export default function HomePage() {
               </div>
 
               {/* BODY KERTAS */}
-              <div className="w-full max-w-[92%] lg:max-w-[850px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-8 lg:px-20 py-16 -mt-8 relative border-x border-black/5 z-20">
+              <div className="w-full max-w-[92%] lg:max-w-[850px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-6 md:px-12 lg:px-20 py-16 -mt-8 relative border-x border-black/5 z-20">
                 
                 {loadingDetail ? (
-                  <div className="h-[40vh] flex items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+                  <div className="h-[40vh] flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="h-10 w-10 animate-spin text-amber-600" />
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Membuka Gulungan...</p>
+                  </div>
                 ) : article && (
                   <article className="space-y-10">
                     <header className="space-y-4 text-center">
                       <Badge className="bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-[0.4em] font-black text-[9px] px-4 py-1.5 mx-auto">
-                        {article.category?.name || "BERITA"}
+                        {article.category?.name || "Warta"}
                       </Badge>
 
-                      <h1 className="text-[18px] font-black uppercase leading-snug tracking-widest text-zinc-900 dark:text-white">
+                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-black uppercase leading-tight tracking-tighter text-zinc-900 dark:text-white">
                         {article.title}
                       </h1>
                       
-                      {/* AUTHOR & DATE */}
-                      <div className="flex items-center justify-center gap-4 text-[9px] font-black uppercase text-muted-foreground tracking-[0.2em] pt-2">
+                      <div className="flex items-center justify-center gap-4 text-[9px] font-black uppercase text-zinc-400 tracking-[0.2em] pt-2">
                         <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-amber-600" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
                         <span className="w-1 h-1 rounded-full bg-amber-500" />
-                        <span className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 bg-amber-50 px-2 py-0.5 rounded">
-                          <User className="w-3.5 h-3.5 text-amber-600" /> {article.user?.name || article.author || "Admin Mejatika"}
+                        <span className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 bg-amber-50 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                          <User className="w-3.5 h-3.5 text-amber-600" /> {article.author || "Admin"}
                         </span>
                       </div>
                     </header>
 
-                    <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg border border-black/5">
-                      <img src={article.image} className="w-full h-full object-cover" alt="news" />
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-black/5 bg-zinc-100">
+                      <img src={article.image || "/placeholder.svg"} className="w-full h-full object-cover" alt="news" />
                     </div>
 
-                    <div className="text-lg lg:text-xl leading-[1.8] text-justify text-zinc-800 dark:text-zinc-200 first-letter:text-8xl first-letter:font-black first-letter:text-amber-600 first-letter:mr-3 first-letter:float-left first-letter:leading-[0.85] first-letter:mt-1">
+                    {/* KONTEN UTAMA */}
+                    <div className="text-lg lg:text-xl leading-[1.8] text-justify text-zinc-800 dark:text-zinc-200 article-body">
                       {getCleanContent(article.content)}
                     </div>
 
-                    {/* --- KONDISI QUOTE DIPERBAIKI --- */}
+                    {/* QUOTE / EXCERPT */}
                     {(article.quote || article.excerpt) && (
-                      <div className="relative py-12 px-8 lg:px-14 border-y-4 border-amber-500 bg-amber-50/40 dark:bg-amber-900/10 italic text-center rounded-xl shadow-inner">
-                         <Quote className="absolute top-4 left-6 w-12 h-12 opacity-20 text-amber-600" />
-                         <p className="text-xl lg:text-3xl font-black leading-tight uppercase tracking-tighter text-amber-950 dark:text-amber-100 relative z-10 px-6">
+                      <div className="relative py-12 px-8 lg:px-14 border-y-2 border-dashed border-amber-500/30 bg-amber-50/30 dark:bg-amber-900/10 italic text-center rounded-xl">
+                         <Quote className="absolute top-4 left-6 w-10 h-10 opacity-10 text-amber-600" />
+                         <p className="text-xl lg:text-2xl font-black leading-tight uppercase tracking-tighter text-amber-900 dark:text-amber-100 relative z-10">
                            "{article.quote || article.excerpt}"
                          </p>
-                         <Quote className="absolute bottom-4 right-6 w-12 h-12 opacity-20 text-amber-600 rotate-180" />
+                         <Quote className="absolute bottom-4 right-6 w-10 h-10 opacity-10 text-amber-600 rotate-180" />
                       </div>
                     )}
 
-                    {/* SHARE & NAVIGASI BAWAH */}
-                    <div className="flex flex-col items-center gap-10 pt-8 border-t border-black/5">
-                      <div className="flex flex-col items-center gap-4 w-full">
-                        <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600">BAGIKAN WARTA</span>
-                        <div className="flex gap-5">
-                          <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="p-3.5 rounded-xl bg-green-50 text-green-600 hover:bg-green-600 hover:text-white transition-all shadow-md">
+                    {/* SHARE AREA */}
+                    <div className="flex flex-col items-center gap-8 pt-10 border-t border-black/5">
+                      <div className="flex flex-col items-center gap-4">
+                        <span className="text-[9px] font-black uppercase tracking-[0.5em] text-amber-600">Bagikan Warta</span>
+                        <div className="flex gap-4">
+                          <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="p-3 rounded-full bg-zinc-100 text-zinc-400 hover:bg-green-500 hover:text-white transition-all">
                             <MessageCircle className="w-5 h-5" />
                           </a>
-                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="p-3.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-md">
+                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="p-3 rounded-full bg-zinc-100 text-zinc-400 hover:bg-blue-600 hover:text-white transition-all">
                             <Facebook className="w-5 h-5" />
                           </a>
                           <button onClick={() => {
-                            if(navigator.share) {
-                                navigator.share({ title: article.title, url: shareUrl });
-                            } else {
-                                alert("Link disalin ke clipboard!");
-                                navigator.clipboard.writeText(shareUrl);
-                            }
-                          }} className="p-3.5 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-600 hover:text-white transition-all shadow-sm">
+                            navigator.clipboard.writeText(shareUrl);
+                            alert("Tautan berhasil disalin!");
+                          }} className="p-3 rounded-full bg-zinc-100 text-zinc-400 hover:bg-amber-500 hover:text-white transition-all">
                             <Share2 className="w-5 h-5" />
                           </button>
                         </div>
                       </div>
 
-                      <div className="w-full pt-2 flex justify-center">
-                        <Button 
-                          onClick={() => setSelectedSlug(null)}
-                          className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-full px-10 h-12 font-black uppercase text-[11px] tracking-[0.2em] shadow-lg hover:scale-105 transition-transform gap-3"
-                        >
-                          <ArrowLeft className="w-4 h-4" /> KEMBALI KE BERANDA
-                        </Button>
-                      </div>
+                      <Button 
+                        onClick={() => setSelectedSlug(null)}
+                        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-full px-8 font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-transform"
+                      >
+                        <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Beranda
+                      </Button>
                     </div>
                   </article>
                 )}
               </div>
 
               {/* GULUNGAN BAWAH */}
-              <div className="w-full max-w-4xl h-16 bg-amber-500 dark:bg-amber-600 rounded-full shadow-2xl relative z-10 border-t-4 border-amber-700/30 flex items-center justify-center overflow-hidden mb-16">
+              <div className="w-full max-w-4xl h-14 bg-amber-500 rounded-full shadow-2xl relative z-10 border-t-4 border-amber-700/30 flex items-center justify-center mb-20 overflow-hidden">
                  <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-                 <div className="w-24 h-1 bg-white/30 rounded-full"></div>
+                 <div className="w-20 h-1.5 bg-white/20 rounded-full"></div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
+
       <Footer />
+
+      <style jsx global>{`
+        .article-body::first-letter {
+          float: left;
+          font-size: 5rem;
+          line-height: 1;
+          font-weight: 900;
+          color: #d97706; /* amber-600 */
+          margin-right: 0.75rem;
+          margin-top: 0.25rem;
+          text-transform: uppercase;
+        }
+      `}</style>
     </div>
   )
 }
