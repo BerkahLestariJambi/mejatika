@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Calendar, ArrowRight, Loader2 } from "lucide-material"
+// PERBAIKAN: Pastikan menggunakan lucide-react
+import { ChevronLeft, ChevronRight, Calendar, ArrowRight, Loader2 } from "lucide-react" 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -31,13 +32,11 @@ export function NewsSlider({ onReadMore }: NewsSliderProps) {
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {
-          // --- FILTER: HANYA MUNCULKAN SELAIN CERPEN ---
+          // Filter supaya cerpen tidak masuk slider
           const filteredNews = json.data.filter((item: NewsItem) => {
             const catName = (item.category?.name || "").toLowerCase();
             return !catName.includes("cerpen");
           });
-
-          // Ambil 5 berita terbaru setelah difilter
           setLatestNews(filteredNews.slice(0, 5))
         }
         setLoading(false)
@@ -56,16 +55,21 @@ export function NewsSlider({ onReadMore }: NewsSliderProps) {
     setCurrentIndex((prev) => (prev - 1 + latestNews.length) % latestNews.length)
   }
 
+  // PERBAIKAN: Fungsi pembersihan teks agar tidak muncul &nbsp; atau tag HTML
   const getExcerpt = (html: string) => {
     if (!html) return ""
-    return html.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..."
+    return html
+      .replace(/<[^>]*>?/gm, '') // Hapus tag HTML
+      .replace(/&nbsp;/g, ' ')   // Ganti &nbsp; jadi spasi biasa
+      .replace(/\s+/g, ' ')      // Bersihkan spasi ganda
+      .trim()
+      .substring(0, 120) + "..."
   }
 
   if (loading) {
     return (
-      <div className="h-[450px] flex flex-col items-center justify-center bg-zinc-50 rounded-[2.5rem] border border-dashed border-zinc-200">
-        <Loader2 className="h-8 w-8 animate-spin text-amber-500 mb-2" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Menyaring Warta Utama...</p>
+      <div className="h-[400px] flex items-center justify-center bg-white rounded-[2.5rem] shadow-sm border border-zinc-100">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
       </div>
     )
   }
@@ -84,83 +88,57 @@ export function NewsSlider({ onReadMore }: NewsSliderProps) {
       </div>
       
       <Card className="overflow-hidden border-none shadow-2xl bg-white dark:bg-zinc-950 rounded-[2.5rem] relative">
-        {/* Navigasi Panah */}
-        <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 flex justify-between z-30 pointer-events-none hidden md:flex">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={prevSlide}
-            className="pointer-events-auto h-12 w-12 rounded-full bg-white/90 dark:bg-black/50 backdrop-blur-md shadow-lg hover:bg-amber-500 hover:text-white transition-all"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={nextSlide}
-            className="pointer-events-auto h-12 w-12 rounded-full bg-white/90 dark:bg-black/50 backdrop-blur-md shadow-lg hover:bg-amber-500 hover:text-white transition-all"
-          >
-            <ChevronRight className="w-6 h-6" />
-          </Button>
-        </div>
-
         <div className="p-4">
-          <div className="relative h-[250px] md:h-[380px] w-full overflow-hidden rounded-[2rem] shadow-inner bg-zinc-100">
+          <div className="relative h-[250px] md:h-[350px] w-full overflow-hidden rounded-[2rem] bg-zinc-100">
             <img
               src={currentNews.image || "/placeholder.svg"}
               alt={currentNews.title}
               className="w-full h-full object-cover"
             />
-            
             <div className="absolute top-6 left-6">
               <span className="bg-amber-500 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl">
                 {currentNews.category?.name}
               </span>
             </div>
+            
+            {/* Tombol Navigasi Slider */}
+            <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between pointer-events-none">
+              <Button variant="ghost" size="icon" onClick={prevSlide} className="pointer-events-auto rounded-full bg-white/80 hover:bg-amber-500 hover:text-white shadow-md">
+                <ChevronLeft className="h-6 w-6" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={nextSlide} className="pointer-events-auto rounded-full bg-white/80 hover:bg-amber-500 hover:text-white shadow-md">
+                <ChevronRight className="h-6 w-6" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        <CardContent className="px-8 md:px-12 py-8">
-          <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-4">
+        <CardContent className="px-8 md:px-12 py-6">
+          <div className="flex items-center gap-2 text-zinc-400 text-[9px] font-black uppercase tracking-widest mb-3">
             <Calendar className="w-3.5 h-3.5 text-amber-500" />
-            <span>
-              {new Date(currentNews.created_at).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
+            <span>{new Date(currentNews.created_at).toLocaleDateString("id-ID")}</span>
           </div>
 
-          <h3 className="text-2xl md:text-3xl font-black mb-4 leading-tight tracking-tighter text-zinc-900 dark:text-white uppercase italic">
+          <h3 className="text-xl md:text-3xl font-black mb-4 leading-tight tracking-tighter text-zinc-900 dark:text-white uppercase italic">
             {currentNews.title}
           </h3>
           
-          <p className="text-zinc-500 dark:text-zinc-400 mb-8 leading-relaxed line-clamp-2 font-medium text-sm md:text-base">
+          <p className="text-zinc-500 text-sm md:text-base mb-8 line-clamp-2">
             {getExcerpt(currentNews.content)}
           </p>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-t border-zinc-100 dark:border-zinc-800 pt-8">
+          <div className="flex justify-between items-center border-t border-zinc-50 pt-6">
             <Button 
-              size="lg" 
               onClick={() => onReadMore(currentNews.slug)}
-              className="w-full md:w-auto rounded-2xl bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[11px] tracking-widest h-14 px-10 transition-all group"
+              className="rounded-xl bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[10px] tracking-widest px-8 transition-all group"
             >
               Baca Selengkapnya
-              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-2 transition-transform" />
+              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
 
-            <div className="flex gap-2 justify-center items-center">
-              {latestNews.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`h-1.5 rounded-full transition-all duration-500 ${
-                    index === currentIndex 
-                      ? "bg-amber-500 w-10" 
-                      : "bg-zinc-200 dark:bg-zinc-800 w-3 hover:bg-amber-200"
-                  }`}
-                />
+            <div className="flex gap-1.5">
+              {latestNews.map((_, i) => (
+                <div key={i} className={`h-1.5 rounded-full transition-all ${i === currentIndex ? "bg-amber-500 w-8" : "bg-zinc-200 w-2"}`} />
               ))}
             </div>
           </div>
