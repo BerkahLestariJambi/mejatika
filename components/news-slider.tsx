@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Calendar, ArrowRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, Calendar, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -9,15 +9,14 @@ interface NewsItem {
   id: string
   title: string
   slug: string
-  excerpt: string
+  content: string // Backend Laravel menggunakan 'content'
   image: string
-  publishedAt: string
+  created_at: string // Sesuai field default Laravel
   category: {
     name: string
   }
 }
 
-// Tambahkan prop onReadMore untuk integrasi modal di HomePage
 interface NewsSliderProps {
   onReadMore: (slug: string) => void
 }
@@ -28,11 +27,13 @@ export function NewsSlider({ onReadMore }: NewsSliderProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mengambil 5 berita terbaru
     fetch("https://backend.mejatika.com/api/news")
       .then((res) => res.json())
-      .then((data) => {
-        setLatestNews(data.slice(0, 5))
+      .then((json) => {
+        // PERBAIKAN: Ambil json.data dan ambil 5 teratas
+        if (json.success && Array.isArray(json.data)) {
+          setLatestNews(json.data.slice(0, 5))
+        }
         setLoading(false)
       })
       .catch((error) => {
@@ -49,24 +50,18 @@ export function NewsSlider({ onReadMore }: NewsSliderProps) {
     setCurrentIndex((prev) => (prev - 1 + latestNews.length) % latestNews.length)
   }
 
+  // Fungsi untuk memotong teks konten menjadi ringkasan
+  const getExcerpt = (html: string) => {
+    if (!html) return ""
+    return html.replace(/<[^>]*>?/gm, '').substring(0, 150) + "..."
+  }
+
   if (loading) {
     return (
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4 border-l-4 border-primary pl-4">Berita Terbaru</h2>
-        <Card className="overflow-hidden border-none shadow-md bg-card pt-6">
-          <div className="px-6 md:px-10">
-            <div className="h-[250px] md:h-[350px] bg-muted animate-pulse rounded-2xl" />
-          </div>
-          <CardContent className="p-6 md:p-10">
-            <div className="h-4 bg-muted rounded w-1/4 mb-3 animate-pulse" />
-            <div className="h-8 bg-muted rounded w-3/4 mb-4 animate-pulse" />
-            <div className="space-y-2">
-              <div className="h-4 bg-muted rounded w-full animate-pulse" />
-              <div className="h-4 bg-muted rounded w-2/3 animate-pulse" />
-            </div>
-          </CardContent>
-        </Card>
-      </section>
+      <div className="h-[500px] flex flex-col items-center justify-center bg-zinc-50 rounded-3xl border border-dashed border-zinc-200">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-500 mb-2" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Menyusun Berita Utama...</p>
+      </div>
     )
   }
 
@@ -76,60 +71,55 @@ export function NewsSlider({ onReadMore }: NewsSliderProps) {
 
   return (
     <section className="mb-8">
-      <h2 className="text-2xl font-bold mb-4 border-l-4 border-primary pl-4 text-foreground">
-        Berita Terbaru
-      </h2>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="h-8 w-2 bg-amber-500 rounded-full" />
+        <h2 className="text-2xl font-black uppercase italic tracking-tighter text-zinc-900 dark:text-white">
+          Warta Terkini
+        </h2>
+      </div>
       
-      <Card className="overflow-hidden border-none shadow-xl bg-card pt-6">
-        {/* --- BAGIAN GAMBAR DENGAN BATAS KIRI-KANAN --- */}
-        <div className="px-6 md:px-10 relative group">
-          <div className="relative h-[250px] md:h-[380px] w-full overflow-hidden rounded-2xl shadow-lg ring-1 ring-border/50">
+      <Card className="overflow-hidden border-none shadow-2xl bg-white dark:bg-zinc-950 rounded-[2.5rem] relative">
+        {/* Navigasi Panah (Floating) */}
+        <div className="absolute top-1/2 -translate-y-1/2 left-4 right-4 flex justify-between z-30 pointer-events-none">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={prevSlide}
+            className="pointer-events-auto h-12 w-12 rounded-full bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-lg hover:bg-amber-500 hover:text-white transition-all"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={nextSlide}
+            className="pointer-events-auto h-12 w-12 rounded-full bg-white/80 dark:bg-black/50 backdrop-blur-md shadow-lg hover:bg-amber-500 hover:text-white transition-all"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </Button>
+        </div>
+
+        <div className="p-4">
+          <div className="relative h-[250px] md:h-[400px] w-full overflow-hidden rounded-[2rem] shadow-inner bg-zinc-100">
             <img
               src={currentNews.image || "/placeholder.svg"}
               alt={currentNews.title}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              className="w-full h-full object-cover"
             />
             
-            {/* Overlay Gradient untuk teks di atas gambar (Opsional) */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-60" />
-
-            {/* Badge Kategori */}
-            <div className="absolute top-4 left-4">
-              <span className="bg-primary/90 backdrop-blur-md text-primary-foreground px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider shadow-xl">
-                {currentNews.category.name}
+            <div className="absolute top-6 left-6">
+              <span className="bg-amber-500 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-xl">
+                {currentNews.category?.name || "BERITA"}
               </span>
             </div>
-
-            {/* Navigasi Panah (Hanya tampil di Desktop saat Hover) */}
-            {latestNews.length > 1 && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={prevSlide}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <ChevronLeft className="w-6 h-6" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={nextSlide}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/40 backdrop-blur-md text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <ChevronRight className="w-6 h-6" />
-                </Button>
-              </>
-            )}
           </div>
         </div>
 
-        {/* --- BAGIAN KONTEN TEKS --- */}
-        <CardContent className="p-6 md:p-10">
-          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-4">
-            <Calendar className="w-4 h-4 text-primary" />
-            <span className="font-medium">
-              {new Date(currentNews.publishedAt).toLocaleDateString("id-ID", {
+        <CardContent className="px-8 md:px-12 py-8">
+          <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-black uppercase tracking-widest mb-4">
+            <Calendar className="w-3.5 h-3.5 text-amber-500" />
+            <span>
+              {new Date(currentNews.created_at).toLocaleDateString("id-ID", {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
@@ -137,41 +127,37 @@ export function NewsSlider({ onReadMore }: NewsSliderProps) {
             </span>
           </div>
 
-          <h3 className="text-2xl md:text-3xl font-extrabold mb-4 leading-tight tracking-tight text-balance text-foreground">
+          <h3 className="text-2xl md:text-4xl font-black mb-4 leading-tight tracking-tighter text-zinc-900 dark:text-white uppercase italic">
             {currentNews.title}
           </h3>
           
-          <p className="text-muted-foreground mb-8 text-pretty leading-relaxed md:text-lg line-clamp-2 md:line-clamp-3">
-            {currentNews.excerpt}
+          <p className="text-zinc-500 dark:text-zinc-400 mb-8 leading-relaxed line-clamp-2 font-medium">
+            {getExcerpt(currentNews.content)}
           </p>
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-t border-zinc-100 dark:border-zinc-800 pt-8">
             <Button 
               size="lg" 
               onClick={() => onReadMore(currentNews.slug)}
-              className="w-full md:w-auto rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
+              className="w-full md:w-auto rounded-2xl bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[11px] tracking-widest h-14 px-10 transition-all group"
             >
               Baca Selengkapnya
-              <ArrowRight className="w-5 h-5 ml-2" />
+              <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-2 transition-transform" />
             </Button>
 
-            {/* Indikator Dots */}
-            {latestNews.length > 1 && (
-              <div className="flex gap-2 justify-center items-center">
-                {latestNews.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentIndex(index)}
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      index === currentIndex 
-                        ? "bg-primary w-8" 
-                        : "bg-primary/20 w-2 hover:bg-primary/40"
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-            )}
+            <div className="flex gap-2 justify-center items-center">
+              {latestNews.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentIndex(index)}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    index === currentIndex 
+                      ? "bg-amber-500 w-10" 
+                      : "bg-zinc-200 dark:bg-zinc-800 w-3 hover:bg-amber-200"
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>
