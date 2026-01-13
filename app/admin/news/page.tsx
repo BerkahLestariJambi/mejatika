@@ -5,9 +5,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, Edit, Trash2, Loader2, Search, ArrowLeft, Quote as QuoteIcon, Save, Image as ImageIcon, Table as TableIcon } from "lucide-react"
+import { Plus, Edit, Trash2, Loader2, Search, ArrowLeft, Quote as QuoteIcon, Save, Image as ImageIcon, Table as TableIcon, Eye, EyeOff, Globe, FileText } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import Swal from 'sweetalert2'
 
 // IMPORT DINAMIS UNTUK REACT QUILL
@@ -16,11 +17,8 @@ const ReactQuill = dynamic(async () => {
   const { default: RQ } = await import("react-quill-new");
   // @ts-ignore
   const Quill = RQ.Quill;
-  
-  // Daftarkan modul tabel secara manual jika diperlukan oleh library
   const TableModule = Quill.import('modules/table');
   Quill.register({ 'modules/table': TableModule }, true);
-  
   return RQ;
 }, { 
   ssr: false, 
@@ -45,6 +43,7 @@ export default function NewsManagementPage() {
   const [image, setImage] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [categoryId, setCategoryId] = useState("")
+  const [isPublished, setIsPublished] = useState(true) // DEFAULT PUBLISH
 
   const Toast = Swal.mixin({
     toast: true,
@@ -54,7 +53,6 @@ export default function NewsManagementPage() {
     timerProgressBar: true,
   })
 
-  // KONFIGURASI MODUL EDITOR LENGKAP DENGAN TABEL
   const modules = useMemo(() => ({
     toolbar: [
       [{ 'header': [1, 2, 3, false] }],
@@ -63,10 +61,10 @@ export default function NewsManagementPage() {
       [{ 'color': [] }, { 'background': [] }],
       ['blockquote', 'code-block'],
       ['link', 'image'],
-      ['table'], // Tombol Utama Tabel
+      ['table'],
       ['clean']
     ],
-    table: true // Mengaktifkan fungsionalitas tabel
+    table: true
   }), [])
 
   const fetchNews = useCallback(async () => {
@@ -108,6 +106,7 @@ export default function NewsManagementPage() {
     setTitle(""); setContent(""); setQuote(""); 
     setImage(null); setPreviewUrl(null); 
     setCategoryId(""); setEditing(null);
+    setIsPublished(true);
     setIsEditorOpen(false);
   }
 
@@ -119,6 +118,7 @@ export default function NewsManagementPage() {
     formData.append("content", content);
     formData.append("quote", quote || "");
     formData.append("category_id", categoryId);
+    formData.append("status", isPublished ? "published" : "draft"); // KIRIM STATUS KE API
     if (image) formData.append("image", image);
     
     let url = "https://backend.mejatika.com/api/news";
@@ -131,7 +131,7 @@ export default function NewsManagementPage() {
         body: formData,
       });
       if (res.ok) {
-        Toast.fire({ icon: 'success', title: 'Data Berhasil Disimpan!' });
+        Toast.fire({ icon: 'success', title: `Warta berhasil di${isPublished ? 'publikasikan' : 'simpan sebagai draf'}!` });
         resetForm();
         fetchNews();
       }
@@ -145,7 +145,7 @@ export default function NewsManagementPage() {
       text: "Data akan hilang permanen!",
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#000',
+      confirmButtonColor: '#d33',
       confirmButtonText: 'Ya, Hapus!'
     }).then(async (result) => {
       if (result.isConfirmed) {
@@ -159,8 +159,7 @@ export default function NewsManagementPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen bg-[#fafafa] dark:bg-zinc-950 font-sans">
-      
+    <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen bg-[#fafafa] dark:bg-zinc-950">
       <AnimatePresence mode="wait">
         {!isEditorOpen ? (
           /* ============================================================
@@ -168,17 +167,17 @@ export default function NewsManagementPage() {
              ============================================================ */
           <motion.div key="list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-8">
             <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-              <h1 className="text-5xl font-black italic tracking-tighter uppercase">Warta <span className="text-amber-500">Mejatika</span></h1>
-              <Button onClick={() => setIsEditorOpen(true)} className="bg-zinc-900 text-white rounded-[1.5rem] h-16 px-10 font-black uppercase tracking-widest">
-                <Plus className="mr-3 h-6 w-6" /> Tulis Baru
+              <h1 className="text-5xl font-black italic tracking-tighter uppercase text-zinc-900">Portal <span className="text-amber-500">Editor</span></h1>
+              <Button onClick={() => setIsEditorOpen(true)} className="bg-zinc-900 hover:bg-amber-600 text-white rounded-2xl h-16 px-10 font-black uppercase tracking-widest shadow-xl">
+                <Plus className="mr-3 h-6 w-6" /> Tulis Warta Baru
               </Button>
             </div>
 
-            <div className="relative">
-              <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-zinc-400" />
+            <div className="relative group">
+              <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-zinc-400 group-focus-within:text-amber-500 transition-colors" />
               <Input 
-                placeholder="Cari warta..." 
-                className="pl-16 h-20 rounded-[2rem] border-none shadow-xl bg-white dark:bg-zinc-900 text-xl"
+                placeholder="Cari judul atau kategori warta..." 
+                className="pl-16 h-20 rounded-[2rem] border-none shadow-xl bg-white text-xl font-medium"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -189,32 +188,48 @@ export default function NewsManagementPage() {
                 <table className="w-full">
                   <thead className="bg-zinc-50 border-b">
                     <tr className="text-[11px] font-black uppercase text-zinc-400">
-                      <th className="px-10 py-6 text-left">Konten</th>
+                      <th className="px-10 py-6 text-left">Konten & Visual</th>
+                      <th className="px-10 py-6 text-left">Status</th>
                       <th className="px-10 py-6 text-left">Kategori</th>
                       <th className="px-10 py-6 text-right">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                     {fetching ? (
-                      <tr><td colSpan={3} className="py-20 text-center"><Loader2 className="animate-spin mx-auto h-10 w-10 text-amber-500" /></td></tr>
+                      <tr><td colSpan={4} className="py-20 text-center"><Loader2 className="animate-spin mx-auto h-10 w-10 text-amber-500" /></td></tr>
                     ) : filteredNews.map((item) => (
-                      <tr key={item.id} className="hover:bg-zinc-50/50 transition-all">
+                      <tr key={item.id} className="hover:bg-zinc-50/50 transition-all group">
                         <td className="px-10 py-8">
                           <div className="flex items-center gap-6">
-                            <img src={item.image} className="h-16 w-24 rounded-xl object-cover shadow" alt="" />
-                            <p className="font-black text-lg uppercase italic">{item.title}</p>
+                            <div className="relative h-16 w-24 shrink-0 rounded-xl overflow-hidden shadow-sm">
+                                <img src={item.image} className="h-full w-full object-cover" alt="" />
+                            </div>
+                            <p className="font-black text-lg uppercase italic line-clamp-1 group-hover:text-amber-500 transition-colors">{item.title}</p>
                           </div>
                         </td>
                         <td className="px-10 py-8">
-                          <Badge className="bg-zinc-100 text-zinc-900 border-none px-4 py-2 uppercase text-[10px] font-black">{item.category?.name || 'Umum'}</Badge>
+                           {item.status === 'published' ? (
+                             <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none px-3 py-1 font-black uppercase text-[9px] tracking-widest flex w-fit gap-1">
+                               <Globe className="h-3 w-3" /> Published
+                             </Badge>
+                           ) : (
+                             <Badge className="bg-zinc-100 text-zinc-500 hover:bg-zinc-100 border-none px-3 py-1 font-black uppercase text-[9px] tracking-widest flex w-fit gap-1">
+                               <FileText className="h-3 w-3" /> Draft
+                             </Badge>
+                           )}
+                        </td>
+                        <td className="px-10 py-8">
+                          <Badge className="bg-amber-50 text-amber-600 border-none px-4 py-2 uppercase text-[10px] font-black tracking-tighter">{item.category?.name || 'Umum'}</Badge>
                         </td>
                         <td className="px-10 py-8 text-right">
                           <div className="flex justify-end gap-2">
-                            <Button size="icon" variant="ghost" className="text-amber-600" onClick={() => {
+                            <Button size="icon" variant="ghost" className="rounded-xl hover:bg-amber-50 text-amber-600" onClick={() => {
                               setEditing(item); setTitle(item.title); setContent(item.content); setQuote(item.quote || "");
-                              setCategoryId(String(item.category_id)); setPreviewUrl(item.image); setIsEditorOpen(true);
-                            }}><Edit /></Button>
-                            <Button size="icon" variant="ghost" className="text-red-600" onClick={() => handleDelete(item.id)}><Trash2 /></Button>
+                              setCategoryId(String(item.category_id)); setPreviewUrl(item.image); 
+                              setIsPublished(item.status === 'published'); // SET STATUS SAAT EDIT
+                              setIsEditorOpen(true);
+                            }}><Edit className="h-5 w-5" /></Button>
+                            <Button size="icon" variant="ghost" className="rounded-xl hover:bg-red-50 text-red-600" onClick={() => handleDelete(item.id)}><Trash2 className="h-5 w-5" /></Button>
                           </div>
                         </td>
                       </tr>
@@ -226,69 +241,107 @@ export default function NewsManagementPage() {
           </motion.div>
         ) : (
           /* ============================================================
-             EDITOR VIEW (DENGAN FITUR TABEL LENGKAP)
+             EDITOR VIEW
              ============================================================ */
           <motion.div key="editor" initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -50 }} className="max-w-5xl mx-auto">
             <div className="flex items-center justify-between mb-10">
-              <Button variant="ghost" onClick={resetForm} className="font-black uppercase text-[10px] tracking-widest text-zinc-500">
-                <ArrowLeft className="mr-2" /> Kembali
+              <Button variant="ghost" onClick={resetForm} className="font-black uppercase text-[10px] tracking-[0.2em] text-zinc-500 hover:bg-white rounded-full px-6">
+                <ArrowLeft className="mr-2 h-4 w-4" /> Batalkan Perubahan
               </Button>
-              <div className="flex items-center gap-2 text-amber-500">
-                <TableIcon className="h-4 w-4" />
-                <span className="text-[10px] font-black uppercase tracking-widest">Table Support Enabled</span>
+              <div className="flex items-center gap-6 bg-white px-8 py-4 rounded-3xl shadow-sm border border-zinc-100">
+                <div className="flex items-center gap-3">
+                    <Label htmlFor="status-mode" className="text-[10px] font-black uppercase tracking-widest cursor-pointer text-zinc-400">
+                        {isPublished ? "Mode Publikasi" : "Simpan Sebagai Draf"}
+                    </Label>
+                    <Switch 
+                        id="status-mode" 
+                        checked={isPublished} 
+                        onCheckedChange={setIsPublished}
+                        className="data-[state=checked]:bg-emerald-500"
+                    />
+                </div>
+                {isPublished ? <Eye className="h-5 w-5 text-emerald-500" /> : <EyeOff className="h-5 w-5 text-zinc-400" />}
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-10 pb-20">
-              <Card className="border-none shadow-2xl rounded-[3.5rem] bg-white p-10 md:p-16 space-y-10">
-                
+              <Card className="border-none shadow-2xl rounded-[3.5rem] bg-white p-8 md:p-16 space-y-12 relative overflow-hidden">
+                {/* Indikator Status di Pojok Form */}
+                <div className={`absolute top-0 right-0 px-10 py-3 rounded-bl-3xl font-black uppercase text-[10px] tracking-widest text-white shadow-lg ${isPublished ? 'bg-emerald-500' : 'bg-zinc-400'}`}>
+                    {isPublished ? 'PUBLISH READY' : 'DRAFT MODE'}
+                </div>
+
                 <div className="space-y-4">
-                  <Label className="text-[11px] font-black uppercase tracking-[0.4em] text-amber-600">Headlines</Label>
+                  <Label className="text-[11px] font-black uppercase tracking-[0.4em] text-amber-600 ml-2">Judul Utama</Label>
                   <Input 
                     value={title} onChange={(e) => setTitle(e.target.value)} required 
-                    placeholder="JUDUL BERITA..." 
-                    className="h-24 text-3xl md:text-5xl font-black uppercase italic border-none bg-zinc-50 rounded-[2rem] px-10"
+                    placeholder="Tulis judul warta yang menarik..." 
+                    className="h-28 text-3xl md:text-5xl font-black uppercase italic border-none bg-zinc-50 rounded-[2.5rem] px-10 focus:ring-4 focus:ring-amber-500/10 transition-all"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                   <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase">Kategori</Label>
-                     <select className="w-full h-14 rounded-2xl bg-zinc-50 px-6 font-bold" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-                        <option value="">Pilih...</option>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                   <div className="space-y-4">
+                     <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">Kanal Berita</Label>
+                     <select className="w-full h-16 rounded-[1.5rem] bg-zinc-50 px-8 font-bold border-none outline-none focus:ring-2 focus:ring-amber-500 transition-all cursor-pointer shadow-inner" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
+                        <option value="">-- Pilih Kategori --</option>
                         {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                      </select>
                    </div>
-                   <div className="space-y-3">
-                     <Label className="text-[10px] font-black uppercase">Quote Intisari</Label>
-                     <Input value={quote} onChange={(e) => setQuote(e.target.value)} className="h-14 rounded-2xl bg-zinc-50 border-none" />
+                   <div className="space-y-4">
+                     <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">Highlight Quote</Label>
+                     <div className="relative">
+                        <QuoteIcon className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-amber-500" />
+                        <Input value={quote} onChange={(e) => setQuote(e.target.value)} className="h-16 pl-14 rounded-[1.5rem] bg-zinc-50 border-none font-bold italic shadow-inner" placeholder="Masukkan kutipan..." />
+                     </div>
                    </div>
                 </div>
 
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase text-zinc-400">Isi Berita & Data Tabel</Label>
-                  <div className="bg-zinc-50 rounded-[2.5rem] overflow-hidden p-2 border shadow-inner">
-                    <ReactQuill 
-                      theme="snow" 
-                      value={content} 
-                      onChange={setContent} 
-                      modules={modules}
-                      placeholder="Tulis berita atau masukkan tabel data di sini..."
-                    />
-                  </div>
-                  <div className="flex gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                    <div className="h-8 w-8 bg-amber-500 rounded-full flex items-center justify-center shrink-0">
-                       <TableIcon className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-[11px] text-amber-700 leading-tight">
-                      <b>Tips Tabel:</b> Klik ikon tabel di toolbar untuk memasukkan baris/kolom. Gunakan klik kanan atau klik pada sel tabel untuk memunculkan menu tambah baris/hapus baris.
-                    </p>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">Gambar Cover & Data Tabel</Label>
+                  <div className="group relative h-[300px] w-full rounded-[3rem] bg-zinc-50 border-4 border-dashed border-zinc-100 overflow-hidden flex flex-col items-center justify-center transition-all hover:border-amber-500 hover:bg-amber-50/20">
+                    {previewUrl ? (
+                      <>
+                        <img src={previewUrl} className="h-full w-full object-cover" alt="Preview" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <Button type="button" onClick={() => {setPreviewUrl(null); setImage(null)}} variant="destructive" className="rounded-full h-12 px-8 font-black uppercase text-[10px] tracking-widest">Ganti Gambar</Button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center cursor-pointer">
+                        <ImageIcon className="h-12 w-12 text-zinc-300 mx-auto mb-4" />
+                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Pilih Visual Utama</p>
+                        <input type="file" accept="image/*" onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if(file) { setImage(file); setPreviewUrl(URL.createObjectURL(file)); }
+                        }} className="absolute inset-0 opacity-0 cursor-pointer" />
+                      </div>
+                    )}
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full h-24 bg-zinc-900 hover:bg-amber-600 text-white rounded-[2rem] font-black uppercase tracking-[0.4em]" disabled={loading}>
-                  {loading ? <Loader2 className="animate-spin" /> : (editing ? "SIMPAN PERUBAHAN" : "TERBITKAN SEKARANG")}
-                </Button>
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-zinc-400 ml-2">Isi Berita Lengkap</Label>
+                  <div className="bg-zinc-50 rounded-[3rem] overflow-hidden p-2 border shadow-inner">
+                    <ReactQuill theme="snow" value={content} onChange={setContent} modules={modules} placeholder="Mulai menulis narasi di sini..." />
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-6">
+                    <Button type="submit" className={`flex-1 h-24 rounded-[2rem] font-black uppercase tracking-[0.4em] text-xs shadow-2xl transition-all hover:scale-[1.02] active:scale-95 ${isPublished ? 'bg-zinc-900 hover:bg-emerald-600 text-white' : 'bg-zinc-200 hover:bg-zinc-300 text-zinc-600'}`} disabled={loading}>
+                        {loading ? <Loader2 className="animate-spin h-6 w-6" /> : (
+                            <div className="flex items-center gap-3">
+                                {isPublished ? <Globe className="h-5 w-5" /> : <Save className="h-5 w-5" />}
+                                {editing ? "Simpan Perubahan" : (isPublished ? "Publikasikan Sekarang" : "Simpan Draf")}
+                            </div>
+                        )}
+                    </Button>
+                    {!isPublished && (
+                        <Button type="button" onClick={() => { setIsPublished(true); }} className="h-24 px-12 rounded-[2rem] border-2 border-emerald-500 text-emerald-600 font-black uppercase text-[10px] tracking-widest hover:bg-emerald-50 transition-all">
+                           Ubah Ke Publikasi
+                        </Button>
+                    )}
+                </div>
               </Card>
             </form>
           </motion.div>
@@ -296,41 +349,13 @@ export default function NewsManagementPage() {
       </AnimatePresence>
 
       <style jsx global>{`
-        /* 1. Reset Toolbar Styling */
-        .ql-toolbar.ql-snow { border: none !important; padding: 20px !important; background: #f8f8f8; border-radius: 2rem 2rem 0 0; }
+        .ql-toolbar.ql-snow { border: none !important; padding: 25px !important; background: #fafafa; border-radius: 2.5rem 2.5rem 0 0; border-bottom: 1px solid #f1f1f1 !important; }
         .ql-container.ql-snow { border: none !important; min-height: 450px; font-size: 1.1rem; }
-        .ql-editor { padding: 40px !important; line-height: 1.8; }
-
-        /* 2. TABEL CSS (PENTING AGAR TABEL MUNCUL GARISNYA) */
-        .ql-editor table {
-          border-collapse: collapse;
-          width: 100%;
-          margin: 15px 0;
-          table-layout: fixed;
-        }
-        .ql-editor td {
-          border: 1px solid #ddd;
-          padding: 8px 12px;
-          min-width: 50px;
-          height: 30px;
-          vertical-align: top;
-        }
-        .ql-editor th {
-          border: 1px solid #ddd;
-          background-color: #f4f4f5;
-          font-weight: bold;
-          padding: 8px 12px;
-        }
-        
-        /* Highlight sel saat dipilih agar mudah diedit */
-        .ql-table-cursor {
-          background-color: rgba(245, 158, 11, 0.1);
-        }
-
-        /* Responsive Tabel agar tidak hancur di HP */
-        @media (max-width: 768px) {
-          .ql-editor table { display: block; overflow-x: auto; }
-        }
+        .ql-editor { padding: 40px !important; line-height: 1.8; color: #18181b; }
+        .ql-editor table { border-collapse: collapse; width: 100%; margin: 20px 0; border: 1px solid #eee; }
+        .ql-editor td { border: 1px solid #eee; padding: 12px; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 10px; }
       `}</style>
     </div>
   )
