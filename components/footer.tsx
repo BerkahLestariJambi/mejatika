@@ -2,63 +2,79 @@ import { BookOpen, Mail, Phone, MapPin } from "lucide-react"
 
 export function Footer() {
   return (
-    <footer className="bg-primary text-primary-foreground mt-12">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <BookOpen className="w-6 h-6" />
-              <span className="font-bold text-xl">MEJATIKA</span>
+    <footer className="bg-zinc-950 text-zinc-400 mt-12 border-t border-amber-500/20 relative overflow-hidden">
+      {/* Efek Gradasi Halus di Latar Belakang */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent" />
+      
+      <div className="container mx-auto px-6 py-12 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          
+          {/* Kolom Brand */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-amber-500 rounded-lg">
+                <BookOpen className="w-5 h-5 text-black" />
+              </div>
+              <span className="font-black text-2xl tracking-tighter text-white">MEJATIKA</span>
             </div>
-            <p className="text-sm text-primary-foreground/80 text-pretty">
-              Platform pembelajaran digital terpercaya untuk mengembangkan pengetahuan, keterampilan dan karir Anda.
+            <p className="text-sm leading-relaxed text-zinc-500 text-pretty">
+              Warta Digital & Pembelajaran terpercaya dari jantung Flores untuk mengembangkan wawasan dan karakter Anda.
             </p>
           </div>
 
+          {/* Kolom Kontak */}
           <div>
-            <h3 className="font-semibold mb-4">Kontak</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <Mail className="w-4 h-4" />
-                <span>info@mejatika.com</span>
+            <h3 className="font-bold text-white uppercase tracking-widest text-xs mb-6 flex items-center gap-2">
+              <span className="w-4 h-px bg-amber-500"></span> Kontak Kami
+            </h3>
+            <div className="space-y-4 text-sm">
+              <div className="flex items-start gap-3 group">
+                <Mail className="w-4 h-4 text-amber-500 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="group-hover:text-zinc-200 transition-colors">info@mejatika.com</span>
               </div>
-              <div className="flex items-center gap-2">
-                <Phone className="w-4 h-4" />
-                <span>+62 081237026025</span>
+              <div className="flex items-start gap-3 group">
+                <Phone className="w-4 h-4 text-amber-500 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="group-hover:text-zinc-200 transition-colors">+62 812 3702 6025</span>
               </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4" />
-                <span>Kisol,Kel.Tanah Rata, Kec. KOta Komba, Kab. Manggarai Timur, Flores, NTT  Indonesia</span>
+              <div className="flex items-start gap-3 group">
+                <MapPin className="w-4 h-4 text-amber-500 mt-0.5 group-hover:scale-110 transition-transform" />
+                <span className="group-hover:text-zinc-200 transition-colors">
+                  Kisol, Kel. Tanah Rata, Kec. Kota Komba, <br /> 
+                  Kab. Manggarai Timur, Flores, NTT
+                </span>
               </div>
             </div>
           </div>
 
+          {/* Kolom Tautan */}
           <div>
-            <h3 className="font-semibold mb-4">Tautan</h3>
-            <div className="space-y-2 text-sm">
-              <a href="/tentang" className="block hover:text-accent-foreground transition-colors">
-                Tentang Kami
-              </a>
-              <a href="/kontak" className="block hover:text-accent-foreground transition-colors">
-                Hubungi Kami
-              </a>
-              <a href="/faq" className="block hover:text-accent-foreground transition-colors">
-                FAQ
-              </a>
+            <h3 className="font-bold text-white uppercase tracking-widest text-xs mb-6 flex items-center gap-2">
+              <span className="w-4 h-px bg-amber-500"></span> Navigasi
+            </h3>
+            <div className="grid grid-cols-1 gap-3 text-sm">
+              {["Tentang Kami", "Hubungi Kami", "FAQ"].map((item) => (
+                <a 
+                  key={item}
+                  href={`/${item.toLowerCase().replace(/\s+/g, '')}`} 
+                  className="hover:text-amber-500 transition-all flex items-center gap-2 group"
+                >
+                  <span className="w-1 h-1 rounded-full bg-zinc-700 group-hover:bg-amber-500 transition-colors"></span>
+                  {item}
+                </a>
+              ))}
             </div>
           </div>
         </div>
 
-        <div className="border-t border-primary-foreground/20 mt-8 pt-6 text-center text-sm">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p>&copy; 2025 MEJATIKA. All rights reserved.</p>
-            <div className="flex gap-6">
-              <a href="/privacy" className="hover:text-accent-foreground transition-colors">
-                Privacy Policy
-              </a>
-              <a href="/terms" className="hover:text-accent-foreground transition-colors">
-                Terms & Conditions
-              </a>
+        {/* Garis Pemisah Bawah */}
+        <div className="border-t border-zinc-900 mt-12 pt-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <p className="text-[10px] font-medium uppercase tracking-widest text-zinc-600">
+              &copy; {new Date().getFullYear()} <span className="text-zinc-400">MEJATIKA</span>. Handcrafted in Flores.
+            </p>
+            <div className="flex gap-8 text-[10px] font-bold uppercase tracking-widest">
+              <a href="/privacy" className="hover:text-amber-500 transition-colors">Privacy Policy</a>
+              <a href="/terms" className="hover:text-amber-500 transition-colors">Terms</a>
             </div>
           </div>
         </div>
