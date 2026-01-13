@@ -28,6 +28,7 @@ export default function HomePage() {
     return () => clearTimeout(timer)
   }, [])
 
+  // LOGIKA FETCH DETAIL DENGAN KEAMANAN STATUS
   useEffect(() => {
     if (selectedSlug) {
       setLoadingDetail(true)
@@ -36,25 +37,32 @@ export default function HomePage() {
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
         .then((res) => res.json())
         .then((json) => {
-          // KUNCI: Backend bos mengirim { success: true, data: {...} }
-          // Jadi kita ambil json.data
-          if (json.success) {
+          // Hanya tampilkan jika success DAN statusnya 'published'
+          if (json.success && json.data.status === 'published') {
             setArticle(json.data)
+          } else {
+            // Jika draf diakses paksa lewat URL/Slug, tendang balik ke list
+            setArticle(null)
+            setSelectedSlug(null)
           }
           setLoadingDetail(false)
         })
-        .catch(() => setLoadingDetail(false))
+        .catch(() => {
+          setLoadingDetail(false)
+          setSelectedSlug(null)
+        })
     }
   }, [selectedSlug])
 
-  // Membersihkan HTML untuk teks aman
-  const getCleanContent = (htmlContent: string) => {
-    if (!htmlContent) return "";
-    return htmlContent
-      .replace(/<[^>]*>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+  // FUNGSI RENDER KONTEN (Mendukung Tabel & Format Quill)
+  const renderRichContent = (htmlContent: string) => {
+    if (!htmlContent) return null;
+    return (
+      <div 
+        className="quill-html-content"
+        dangerouslySetInnerHTML={{ __html: htmlContent }} 
+      />
+    );
   }
 
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/news/${selectedSlug}` : '';
@@ -79,6 +87,9 @@ export default function HomePage() {
               className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6"
             >
               <div className="lg:col-span-2 space-y-8">
+                {/* PENTING: Pastikan di dalam NewsSlider & NewsList 
+                  sudah pakai URL: /api/news?status=published 
+                */}
                 <NewsSlider onReadMore={(slug) => setSelectedSlug(slug)} />
                 <NewsList onReadMore={(slug) => setSelectedSlug(slug)} />
               </div>
@@ -93,7 +104,7 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-6 flex flex-col items-center"
             >
-              {/* --- GULUNGAN ATAS BATIK --- */}
+              {/* GULUNGAN ATAS BATIK */}
               <div className="w-full max-w-4xl relative z-30">
                 <div className="w-full h-16 bg-amber-500 rounded-full shadow-2xl flex items-center justify-between px-12 relative overflow-hidden border-b-4 border-amber-700/30">
                   <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
@@ -137,17 +148,17 @@ export default function HomePage() {
                       <img src={article.image || "/placeholder.svg"} className="w-full h-full object-cover" alt="news" />
                     </div>
 
-                    {/* KONTEN UTAMA */}
+                    {/* KONTEN UTAMA DENGAN DUKUNGAN TABEL */}
                     <div className="text-lg lg:text-xl leading-[1.8] text-justify text-zinc-800 dark:text-zinc-200 article-body">
-                      {getCleanContent(article.content)}
+                      {renderRichContent(article.content)}
                     </div>
 
-                    {/* QUOTE / EXCERPT */}
-                    {(article.quote || article.excerpt) && (
+                    {/* QUOTE AREA */}
+                    {article.quote && (
                       <div className="relative py-12 px-8 lg:px-14 border-y-2 border-dashed border-amber-500/30 bg-amber-50/30 dark:bg-amber-900/10 italic text-center rounded-xl">
                          <Quote className="absolute top-4 left-6 w-10 h-10 opacity-10 text-amber-600" />
                          <p className="text-xl lg:text-2xl font-black leading-tight uppercase tracking-tighter text-amber-900 dark:text-amber-100 relative z-10">
-                           "{article.quote || article.excerpt}"
+                           "{article.quote}"
                          </p>
                          <Quote className="absolute bottom-4 right-6 w-10 h-10 opacity-10 text-amber-600 rotate-180" />
                       </div>
@@ -197,15 +208,50 @@ export default function HomePage() {
       <Footer />
 
       <style jsx global>{`
+        /* Dropcap Huruf Pertama */
         .article-body::first-letter {
           float: left;
           font-size: 5rem;
           line-height: 1;
           font-weight: 900;
-          color: #d97706; /* amber-600 */
+          color: #d97706;
           margin-right: 0.75rem;
           margin-top: 0.25rem;
           text-transform: uppercase;
+        }
+
+        /* Styling Tabel dari Editor (PENTING) */
+        .quill-html-content table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 24px 0;
+          font-family: sans-serif;
+          font-size: 1rem;
+        }
+        .quill-html-content td, .quill-html-content th {
+          border: 1px solid #e5e7eb;
+          padding: 12px 16px;
+          text-align: left;
+        }
+        .quill-html-content th {
+          background-color: #f9fafb;
+          font-weight: 800;
+          text-transform: uppercase;
+          font-size: 0.75rem;
+          letter-spacing: 0.1em;
+        }
+        .quill-html-content blockquote {
+          border-left: 4px solid #f59e0b;
+          padding-left: 20px;
+          margin: 20px 0;
+          font-style: italic;
+          color: #4b5563;
+        }
+        /* Memastikan gambar di dalam konten tidak pecah */
+        .quill-html-content img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 8px;
         }
       `}</style>
     </div>
