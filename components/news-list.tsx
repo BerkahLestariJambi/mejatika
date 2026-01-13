@@ -30,7 +30,9 @@ export function NewsList({ onReadMore }: NewsListProps) {
       .then((res) => res.json())
       .then((data) => {
         // Mengambil berita ke-6 sampai ke-9
-        setPreviousNews(data.slice(5, 9))
+        // Pastikan data yang diambil adalah array
+        const newsData = Array.isArray(data) ? data : data.data || [];
+        setPreviousNews(newsData.slice(5, 9))
         setLoading(false)
       })
       .catch((error) => {
@@ -39,25 +41,14 @@ export function NewsList({ onReadMore }: NewsListProps) {
       })
   }, [])
 
-  // State Loading (Skeleton)
+  // State Loading (Skeleton lebih ramping)
   if (loading) {
     return (
-      <section className="mt-8">
-        <h2 className="text-2xl font-bold mb-6 border-l-4 border-primary pl-4">Berita Sebelumnya</h2>
-        <div className="space-y-6">
+      <section className="mt-6 max-w-3xl mx-auto">
+        <h2 className="text-lg font-black mb-4 border-l-4 border-amber-500 pl-3 uppercase tracking-wider text-zinc-800">Berita Sebelumnya</h2>
+        <div className="space-y-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="overflow-hidden border-none shadow-sm">
-              <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row items-center py-4">
-                  <div className="w-[90%] md:w-1/3 h-[160px] bg-muted animate-pulse rounded-xl mx-4" />
-                  <div className="w-full md:w-2/3 p-4 md:p-6 space-y-3">
-                    <div className="h-4 bg-muted rounded w-1/4 animate-pulse" />
-                    <div className="h-6 bg-muted rounded w-3/4 animate-pulse" />
-                    <div className="h-4 bg-muted rounded w-full animate-pulse" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div key={i} className="h-24 bg-zinc-100 animate-pulse rounded-xl w-full" />
           ))}
         </div>
       </section>
@@ -67,67 +58,57 @@ export function NewsList({ onReadMore }: NewsListProps) {
   if (previousNews.length === 0) return null
 
   return (
-    <section className="mt-8">
-      <h2 className="text-2xl font-bold mb-6 border-l-4 border-primary pl-4 text-foreground">
+    <section className="mt-8 max-w-3xl mx-auto">
+      <h2 className="text-lg font-black mb-5 border-l-4 border-amber-500 pl-3 uppercase tracking-widest text-zinc-800">
         Berita Sebelumnya
       </h2>
       
-      <div className="space-y-6">
+      <div className="space-y-4">
         {previousNews.map((news) => (
-          <Card key={news.id} className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-none bg-card/50 backdrop-blur-sm">
+          <Card key={news.id} className="overflow-hidden group hover:shadow-md transition-all duration-300 border border-zinc-100 bg-white/80">
             <CardContent className="p-0">
-              <div className="flex flex-col md:flex-row items-stretch md:items-center py-5 md:py-4">
+              <div className="flex items-center p-3 gap-4">
                 
-                {/* BAGIAN GAMBAR DENGAN BATAS KIRI-KANAN */}
-                <div className="px-5 md:px-4 md:w-1/3">
-                  <div className="relative overflow-hidden rounded-xl aspect-video md:aspect-square lg:aspect-video shadow-sm ring-1 ring-border/50">
-                    <img
-                      src={news.image || "/placeholder.svg"}
-                      alt={news.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
-                    />
-                    <div className="absolute top-2 left-2">
-                      <span className="bg-primary/90 backdrop-blur-md text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-lg">
-                        {news.category.name}
-                      </span>
-                    </div>
-                  </div>
+                {/* GAMBAR LEBIH KECIL & KOTAK (64px - 80px) */}
+                <div className="flex-shrink-0 w-20 h-20 md:w-24 md:h-24 overflow-hidden rounded-lg shadow-sm border border-zinc-100">
+                  <img
+                    src={news.image || "/placeholder.svg"}
+                    alt={news.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={(e) => (e.currentTarget.src = "/placeholder.svg")}
+                  />
                 </div>
 
-                {/* BAGIAN KONTEN */}
-                <div className="md:w-2/3 p-5 md:p-6 flex flex-col justify-center">
-                  <div className="flex items-center gap-2 text-muted-foreground text-xs mb-3">
-                    <Calendar className="w-3.5 h-3.5 text-primary" />
-                    <span className="font-medium">
+                {/* KONTEN LEBIH PADAT */}
+                <div className="flex-1 min-w-0 pr-2">
+                  <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 uppercase tracking-tighter mb-1">
+                    <span className="bg-amber-50 px-1.5 py-0.5 rounded text-amber-700">{news.category.name}</span>
+                    <span className="text-zinc-400 font-medium">•</span>
+                    <span className="text-zinc-400 font-medium flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
                       {new Date(news.publishedAt).toLocaleDateString("id-ID", {
                         day: "numeric",
-                        month: "long",
+                        month: "short",
                         year: "numeric",
                       })}
                     </span>
                   </div>
 
-                  <h3 className="text-lg md:text-xl font-bold mb-2 group-hover:text-primary transition-colors leading-snug">
+                  {/* JUDUL LEBIH KECIL (text-sm ke text-base) */}
+                  <h3 className="text-sm md:text-md font-bold text-zinc-900 group-hover:text-amber-600 transition-colors leading-tight line-clamp-2 mb-2">
                     {news.title}
                   </h3>
 
-                  <p className="text-muted-foreground text-sm mb-5 line-clamp-2 leading-relaxed">
-                    {news.excerpt}
-                  </p>
-                  
-                  <div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onReadMore(news.slug)}
-                      className="group/btn rounded-full px-5 hover:bg-primary hover:text-white transition-all border-primary/20"
-                    >
-                      Baca Selengkapnya
-                      <ArrowRight className="w-3.5 h-3.5 ml-2 transition-transform group-hover/btn:translate-x-1" />
-                    </Button>
-                  </div>
+                  {/* TOMBOL BACA LEBIH MINI */}
+                  <button 
+                    onClick={() => onReadMore(news.slug)}
+                    className="flex items-center text-[10px] font-black uppercase tracking-widest text-zinc-400 hover:text-amber-600 transition-all group/btn"
+                  >
+                    Selengkapnya
+                    <ArrowRight className="w-3 h-3 ml-1 transition-transform group-hover/btn:translate-x-1" />
+                  </button>
                 </div>
+
               </div>
             </CardContent>
           </Card>
