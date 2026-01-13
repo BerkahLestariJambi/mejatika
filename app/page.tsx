@@ -28,7 +28,6 @@ export default function HomePage() {
     return () => clearTimeout(timer)
   }, [])
 
-  // LOGIKA FETCH DETAIL: ANTI-DRAF & KEAMANAN FRAME
   useEffect(() => {
     if (selectedSlug) {
       setLoadingDetail(true)
@@ -37,7 +36,6 @@ export default function HomePage() {
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
         .then((res) => res.json())
         .then((json) => {
-          // VALIDASI: Hanya terima jika status 'published'
           if (json.success && json.data.status === 'published') {
             setArticle(json.data)
           } else {
@@ -72,7 +70,7 @@ export default function HomePage() {
       <Header />
       <Navigation />
       
-      <main className="flex-grow container mx-auto max-w-5xl px-4 py-6 lg:py-10">
+      <main className="flex-grow container mx-auto max-w-5xl px-4 py-6">
         <RunningText />
 
         <AnimatePresence mode="wait">
@@ -85,7 +83,6 @@ export default function HomePage() {
               className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6"
             >
               <div className="lg:col-span-2 space-y-8">
-                {/* Pastikan komponen ini sudah pakai ?status=published di dalamnya */}
                 <NewsSlider onReadMore={(slug) => setSelectedSlug(slug)} />
                 <NewsList onReadMore={(slug) => setSelectedSlug(slug)} />
               </div>
@@ -96,105 +93,100 @@ export default function HomePage() {
           ) : (
             <motion.div 
               key="detail"
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               className="mt-6 flex flex-col items-center"
             >
-              {/* HEADER GULUNGAN */}
-              <div className="w-full max-w-4xl relative z-30">
-                <div className="w-full h-16 bg-amber-500 rounded-full shadow-2xl flex items-center justify-between px-12 relative overflow-hidden border-b-4 border-amber-700/30">
+              {/* HEADER GULUNGAN - Dibuat lebih slim */}
+              <div className="w-full max-w-3xl relative z-30">
+                <div className="w-full h-12 bg-amber-500 rounded-full shadow-xl flex items-center justify-between px-8 relative overflow-hidden border-b-2 border-amber-700/30">
                   <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-                  <span className="text-[12px] font-black text-white uppercase tracking-[0.5em] z-10 drop-shadow-md">MEJATIKA</span>
-                  <div className="flex gap-1.5 z-10">
-                    {[1,2,3].map(i => <div key={i} className="w-2 h-2 rounded-full bg-white/80" />)}
-                  </div>
-                  <span className="text-[12px] font-black text-amber-900/60 uppercase tracking-[0.5em] z-10 italic">Warta Digital</span>
+                  <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] z-10">MEJATIKA</span>
+                  <span className="text-[10px] font-black text-amber-900/60 uppercase tracking-[0.4em] z-10 italic">Warta Digital</span>
                 </div>
               </div>
 
-              {/* BODY KERTAS (DITAMBAHKAN OVERFLOW-HIDDEN AGAR TIDAK BOCOR) */}
-              <div className="w-full max-w-[96%] lg:max-w-[850px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-5 md:px-12 lg:px-20 py-16 -mt-8 relative border-x border-black/5 z-20 overflow-hidden">
+              {/* BODY KERTAS - Lebar dikurangi dari 850px ke 750px agar fokus */}
+              <div className="w-full max-w-[92%] lg:max-w-[750px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-6 md:px-12 lg:px-16 py-12 -mt-6 relative border-x border-black/5 z-20 overflow-hidden">
                 
                 {loadingDetail ? (
                   <div className="h-[40vh] flex flex-col items-center justify-center gap-4">
-                    <Loader2 className="h-10 w-10 animate-spin text-amber-600" />
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Membuka Gulungan...</p>
+                    <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">Memuat...</p>
                   </div>
                 ) : article && (
-                  <article className="space-y-10">
-                    <header className="space-y-4 text-center">
-                      <Badge className="bg-amber-100 text-amber-700 border border-amber-200 uppercase tracking-[0.4em] font-black text-[9px] px-4 py-1.5 mx-auto">
+                  <article className="space-y-8">
+                    <header className="space-y-3 text-center">
+                      <Badge className="bg-amber-100 text-amber-700 border-none uppercase tracking-[0.3em] font-bold text-[8px] px-3 py-1 mx-auto">
                         {article.category?.name || "Warta"}
                       </Badge>
 
-                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-black uppercase leading-tight tracking-tighter text-zinc-900 dark:text-white">
+                      <h1 className="text-xl md:text-2xl lg:text-3xl font-black uppercase leading-tight tracking-tighter text-zinc-900 dark:text-white">
                         {article.title}
                       </h1>
                       
-                      <div className="flex items-center justify-center gap-4 text-[9px] font-black uppercase text-zinc-400 tracking-[0.2em] pt-2">
-                        <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-amber-600" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
+                      <div className="flex items-center justify-center gap-3 text-[8px] font-bold uppercase text-zinc-400 tracking-widest pt-1">
+                        <span className="flex items-center gap-1"><Calendar className="w-3 h-3 text-amber-600" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
                         <span className="w-1 h-1 rounded-full bg-amber-500" />
-                        <span className="flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100 bg-amber-50 dark:bg-zinc-800 px-2 py-0.5 rounded">
-                          <User className="w-3.5 h-3.5 text-amber-600" /> {article.author || "Admin"}
+                        <span className="flex items-center gap-1 text-zinc-800 dark:text-zinc-200 bg-amber-50 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                          <User className="w-3 h-3 text-amber-600" /> {article.author || "Admin"}
                         </span>
                       </div>
                     </header>
 
-                    <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-2xl border border-black/5 bg-zinc-100">
+                    {/* Gambar Disesuaikan ukurannya agar tidak terlalu makan tempat */}
+                    <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden shadow-lg border border-black/5 bg-zinc-100">
                       <img src={article.image || "/placeholder.svg"} className="w-full h-full object-cover" alt="news" />
                     </div>
 
-                    {/* AREA KONTEN UTAMA */}
-                    <div className="text-lg lg:text-xl leading-[1.8] text-justify text-zinc-800 dark:text-zinc-200 article-body">
+                    {/* KONTEN UTAMA - Ukuran font dikurangi (text-base) agar elegan */}
+                    <div className="text-base md:text-lg leading-[1.7] text-justify text-zinc-800 dark:text-zinc-200 article-body">
                       {renderRichContent(article.content)}
                     </div>
 
                     {/* QUOTE AREA */}
                     {article.quote && (
-                      <div className="relative py-12 px-8 lg:px-14 border-y-2 border-dashed border-amber-500/30 bg-amber-50/30 dark:bg-amber-900/10 italic text-center rounded-xl">
-                         <Quote className="absolute top-4 left-6 w-10 h-10 opacity-10 text-amber-600" />
-                         <p className="text-xl lg:text-2xl font-black leading-tight uppercase tracking-tighter text-amber-900 dark:text-amber-100 relative z-10">
+                      <div className="relative py-8 px-6 border-y border-dashed border-amber-500/30 bg-amber-50/30 dark:bg-amber-900/10 italic text-center rounded-lg">
+                         <p className="text-lg font-bold leading-tight text-amber-900 dark:text-amber-100">
                            "{article.quote}"
                          </p>
-                         <Quote className="absolute bottom-4 right-6 w-10 h-10 opacity-10 text-amber-600 rotate-180" />
                       </div>
                     )}
 
-                    {/* SHARE & BACK */}
-                    <div className="flex flex-col items-center gap-8 pt-10 border-t border-black/5">
-                      <div className="flex flex-col items-center gap-4">
-                        <span className="text-[9px] font-black uppercase tracking-[0.5em] text-amber-600">Bagikan Warta</span>
-                        <div className="flex gap-4">
-                          <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="p-3 rounded-full bg-zinc-100 text-zinc-400 hover:bg-green-500 hover:text-white transition-all">
-                            <MessageCircle className="w-5 h-5" />
+                    {/* SHARE AREA */}
+                    <div className="flex flex-col items-center gap-6 pt-6 border-t border-black/5">
+                      <div className="flex flex-col items-center gap-3">
+                        <span className="text-[8px] font-black uppercase tracking-[0.3em] text-amber-600">Bagikan</span>
+                        <div className="flex gap-3">
+                          <a href={`https://wa.me/?text=${encodeURIComponent(article.title + ' ' + shareUrl)}`} target="_blank" className="p-2.5 rounded-full bg-zinc-100 text-zinc-500 hover:bg-green-500 hover:text-white transition-all">
+                            <MessageCircle className="w-4 h-4" />
                           </a>
-                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="p-3 rounded-full bg-zinc-100 text-zinc-400 hover:bg-blue-600 hover:text-white transition-all">
-                            <Facebook className="w-5 h-5" />
+                          <a href={`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`} target="_blank" className="p-2.5 rounded-full bg-zinc-100 text-zinc-500 hover:bg-blue-600 hover:text-white transition-all">
+                            <Facebook className="w-4 h-4" />
                           </a>
                           <button onClick={() => {
                             navigator.clipboard.writeText(shareUrl);
-                            alert("Tautan berhasil disalin!");
-                          }} className="p-3 rounded-full bg-zinc-100 text-zinc-400 hover:bg-amber-500 hover:text-white transition-all">
-                            <Share2 className="w-5 h-5" />
+                            alert("Tautan disalin!");
+                          }} className="p-2.5 rounded-full bg-zinc-100 text-zinc-500 hover:bg-amber-500 hover:text-white transition-all">
+                            <Share2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
 
                       <Button 
                         onClick={() => setSelectedSlug(null)}
-                        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-full px-8 font-black uppercase text-[10px] tracking-widest shadow-xl hover:scale-105 transition-transform"
+                        className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-full px-6 h-9 font-bold uppercase text-[9px] tracking-widest hover:scale-105 transition-transform"
                       >
-                        <ArrowLeft className="w-4 h-4 mr-2" /> Kembali ke Beranda
+                        <ArrowLeft className="w-3.5 h-3.5 mr-2" /> Kembali
                       </Button>
                     </div>
                   </article>
                 )}
               </div>
 
-              {/* FOOTER GULUNGAN */}
-              <div className="w-full max-w-4xl h-14 bg-amber-500 rounded-full shadow-2xl relative z-10 border-t-4 border-amber-700/30 flex items-center justify-center mb-20 overflow-hidden">
-                 <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-                 <div className="w-20 h-1.5 bg-white/20 rounded-full"></div>
+              {/* FOOTER GULUNGAN - Lebih tipis */}
+              <div className="w-full max-w-3xl h-10 bg-amber-500 rounded-full shadow-lg relative z-10 border-t-2 border-amber-700/30 flex items-center justify-center mb-16">
+                 <div className="w-16 h-1 bg-white/20 rounded-full"></div>
               </div>
             </motion.div>
           )}
@@ -203,74 +195,41 @@ export default function HomePage() {
 
       <Footer />
 
-      {/* CSS GLOBAL UNTUK MENGATASI KEBOCORAN KONTEN */}
       <style jsx global>{`
+        /* Ukuran Font Konten Lebih Proporsional */
         .article-body {
-          word-wrap: break-word;
-          overflow-wrap: break-word;
-          width: 100%;
+          font-size: 1.05rem; /* Tidak terlalu besar, tidak terlalu kecil */
         }
 
         .article-body::first-letter {
           float: left;
-          font-size: 4rem;
-          line-height: 0.8;
+          font-size: 3.5rem; /* Perkecil dari 4rem */
+          line-height: 0.7;
           font-weight: 900;
           color: #d97706;
-          margin-right: 0.6rem;
-          margin-top: 0.6rem;
-          text-transform: uppercase;
-        }
-
-        .quill-html-content {
-          width: 100%;
-          overflow-x: hidden;
-        }
-
-        /* Gambar Auto-Fit */
-        .quill-html-content img {
-          max-width: 100% !important;
-          height: auto !important;
-          border-radius: 12px;
-          margin: 24px 0;
-          display: block;
-          box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
-        }
-
-        /* Tabel Anti-Bocor (Bisa di-scroll horizontal dalam bingkai) */
-        .quill-html-content table {
-          display: block;
-          width: 100% !important;
-          overflow-x: auto;
-          border-collapse: collapse;
-          margin: 24px 0;
-          background: #fff;
-          -webkit-overflow-scrolling: touch;
-        }
-
-        .quill-html-content td, .quill-html-content th {
-          border: 1px solid #e5e7eb;
-          padding: 12px 15px;
-          min-width: 120px;
-        }
-
-        .quill-html-content th {
-          background-color: #f9fafb;
-          font-weight: 800;
-          text-transform: uppercase;
-          font-size: 0.7rem;
+          margin-right: 0.5rem;
+          margin-top: 0.5rem;
         }
 
         .quill-html-content p {
-          margin-bottom: 1.5rem;
+          margin-bottom: 1.25rem;
         }
 
-        .quill-html-content blockquote {
-          border-left: 4px solid #f59e0b;
-          padding-left: 1.5rem;
-          margin: 2rem 0;
-          font-style: italic;
-          color: #4b5563;
+        /* Gambar di dalam konten dibuat lebih manis */
+        .quill-html-content img {
+          max-width: 90% !important; /* Jangan penuhi frame */
+          margin: 1.5rem auto !important;
+          border-radius: 8px;
+        }
+
+        /* Tabel dibuat lebih ringkas */
+        .quill-html-content table {
+          font-size: 0.9rem;
+          margin: 1.5rem 0;
+        }
+
+        .quill-html-content td, .quill-html-content th {
+          padding: 8px 12px;
         }
       `}</style>
     </div>
