@@ -17,17 +17,19 @@ export default function BeritaPage() {
   };
 
   useEffect(() => {
-    fetch("https://backend.mejatika.com/api/news")
+    // 1. Tambahkan parameter ?status=published agar Backend hanya mengirim yang sudah terbit
+    fetch("https://backend.mejatika.com/api/news?status=published")
       .then((res) => res.json())
       .then((json) => {
-        // Ambil data dari json.data sesuai struktur Backend Laravel bos
         const allData = json.data || [];
 
-        // FILTER: Hanya munculkan yang BUKAN kategori "Cerpen"
+        // 2. FILTER GANDA: Bukan Cerpen & Pastikan statusnya Published (double check)
         const filtered = allData.filter((item: any) => {
           const catName = (item.category?.name || "").toLowerCase();
-          // Jika kategori mengandung kata 'cerpen', kita buang (return false)
-          return !catName.includes("cerpen");
+          const isNotCerpen = !catName.includes("cerpen");
+          const isPublished = item.status === 'published';
+          
+          return isNotCerpen && isPublished;
         });
 
         setNews(filtered)
@@ -61,7 +63,6 @@ export default function BeritaPage() {
                 <div className="px-5 pt-5"> 
                   <div className="relative h-56 w-full bg-zinc-100 rounded-[1.5rem] overflow-hidden">
                     <img src={item.image || "/placeholder.svg"} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    {/* Label Kategori untuk meyakinkan ini bukan cerpen */}
                     <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[8px] font-black uppercase text-zinc-900">
                       {item.category?.name}
                     </div>
@@ -74,6 +75,8 @@ export default function BeritaPage() {
                   <p className="text-zinc-500 text-sm leading-relaxed line-clamp-3 mb-8 flex-grow font-medium">
                     {item?.content ? stripHtml(item.content) : "Tidak ada konten."}
                   </p>
+                  
+                  {/* Pastikan link slug mengarah ke halaman yang benar */}
                   <Link href={`/berita/${item?.slug}`} className="w-full">
                     <button className="w-full flex items-center justify-center gap-2 bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[10px] tracking-widest py-4 rounded-2xl transition-all shadow-lg group">
                       Baca Selengkapnya <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
@@ -85,7 +88,7 @@ export default function BeritaPage() {
           </div>
         ) : (
           <div className="text-center py-20">
-            <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Belum ada warta terbaru.</p>
+            <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Belum ada warta terbaru yang dipublikasikan.</p>
           </div>
         )}
       </main>
