@@ -9,191 +9,198 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 
 export default function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  // 1. Resolve params di level paling atas sesuai standar Next.js 15
   const resolvedParams = use(params);
   const [article, setArticle] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (resolvedParams.slug) {
-      setLoading(true);
-      fetch(`https://backend.mejatika.com/api/news/${resolvedParams.slug}`)
-        .then((res) => {
-          if (!res.ok) throw new Error();
-          return res.json();
-        })
-        .then((json) => {
-          // KEAMANAN: Jika status bukan published, anggap tidak ditemukan (error)
-          if (json.success && json.data.status === 'published') {
-            setArticle(json.data);
-          } else {
-            setError(true);
-          }
-          setLoading(false);
-        })
-        .catch(() => {
+    // Gunakan fungsi async di dalam useEffect agar proses berurutan
+    const getArticle = async () => {
+      try {
+        setLoading(true);
+        
+        // Pastikan slug benar-benar ada
+        if (!resolvedParams.slug) {
           setError(true);
-          setLoading(false);
-        });
-    }
+          return;
+        }
+
+        const res = await fetch(`https://backend.mejatika.com/api/news/${resolvedParams.slug}`);
+        
+        if (!res.ok) throw new Error("Gagal mengambil data");
+
+        const json = await res.json();
+
+        // Cek data dan status
+        if (json.success && json.data && json.data.status === 'published') {
+          setArticle(json.data);
+          setError(false);
+        } else {
+          setError(true);
+        }
+      } catch (err) {
+        console.error("Fetch Error:", err);
+        setError(true);
+      } finally {
+        // INI KUNCINYA: Loading wajib mati di akhir proses apa pun hasilnya
+        setLoading(false);
+      }
+    };
+
+    getArticle();
   }, [resolvedParams.slug]);
 
+  // Loading Screen
   if (loading) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-zinc-50">
-      <Loader2 className="animate-spin text-amber-500 w-12 h-12 mb-4" />
-      <p className="font-black text-amber-600 tracking-widest text-xs uppercase animate-pulse">Memuat Warta Digital...</p>
+    <div className="h-screen flex flex-col items-center justify-center bg-zinc-50 font-sans">
+      <Loader2 className="animate-spin text-amber-500 w-10 h-10 mb-4" />
+      <p className="font-black text-amber-600 tracking-widest text-[10px] uppercase animate-pulse">Membuka Gulungan Warta...</p>
     </div>
   );
 
+  // Error Screen
   if (error || !article) return (
-    <div className="h-screen flex flex-col items-center justify-center gap-6">
-      <p className="font-black text-zinc-400 uppercase tracking-widest">Warta tidak ditemukan atau masih dalam draf.</p>
+    <div className="h-screen flex flex-col items-center justify-center gap-6 font-sans">
+      <p className="font-black text-zinc-400 uppercase tracking-widest text-sm px-6 text-center">Warta tidak ditemukan atau masih dalam draf.</p>
       <Link href="/berita">
-        <Button className="bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase text-xs px-8 rounded-full">Kembali</Button>
+        <Button className="bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase text-[10px] px-8 rounded-full">Kembali ke Beranda</Button>
       </Link>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-zinc-100 flex flex-col font-sans">
       <Navigation />
       
       <main className="mt-10 flex flex-col items-center px-4 overflow-x-hidden">
-        {/* --- GULUNGAN ATAS --- */}
-        <div className="w-full max-w-4xl relative z-30">
-          <div className="w-full h-16 bg-amber-500 rounded-full shadow-2xl flex items-center justify-between px-6 lg:px-12 relative overflow-hidden border-b-4 border-amber-700/30">
+        {/* --- HEADER GULUNGAN (Slim & Proporsional) --- */}
+        <div className="w-full max-w-3xl relative z-30">
+          <div className="w-full h-12 bg-amber-500 rounded-full shadow-xl flex items-center justify-between px-8 relative overflow-hidden border-b-2 border-amber-700/30">
             <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-            <span className="text-[10px] lg:text-[12px] font-black text-white uppercase tracking-[0.4em] z-10">MEJATIKA</span>
-            <span className="text-[10px] lg:text-[12px] font-black text-amber-900/60 uppercase tracking-[0.4em] z-10 italic">Warta Digital</span>
+            <span className="text-[10px] font-black text-white uppercase tracking-[0.4em] z-10">MEJATIKA</span>
+            <span className="text-[10px] font-black text-amber-900/60 uppercase tracking-[0.4em] z-10 italic">Warta Digital</span>
           </div>
         </div>
 
-        {/* --- BODY KERTAS --- */}
-        <div className="w-full max-w-[95%] lg:max-w-[850px] bg-[#fffdfa] shadow-2xl px-5 md:px-16 lg:px-20 py-16 -mt-8 relative border-x border-black/5 z-20 overflow-hidden">
-          <header className="space-y-4 text-center mb-10">
-            <Badge className="bg-amber-100 text-amber-700 border-amber-200 uppercase tracking-widest font-black text-[9px] px-4 py-1.5 mx-auto">
+        {/* --- BODY KERTAS (Ukuran 750px agar tidak terlalu besar) --- */}
+        <div className="w-full max-w-[92%] lg:max-w-[750px] bg-[#fffdfa] shadow-2xl px-6 md:px-12 lg:px-16 py-12 -mt-6 relative border-x border-black/5 z-20 overflow-hidden box-border">
+          
+          <header className="space-y-4 text-center mb-8">
+            <Badge className="bg-amber-100 text-amber-700 border-none uppercase tracking-widest font-bold text-[8px] px-3 py-1 mx-auto">
               {article?.category?.name || "UMUM"}
             </Badge>
 
-            <h1 className="text-2xl lg:text-4xl font-black uppercase leading-tight tracking-tight text-zinc-900 italic break-words">
+            <h1 className="text-xl md:text-2xl lg:text-3xl font-black uppercase leading-tight tracking-tight text-zinc-900 italic break-words">
               {article?.title}
             </h1>
 
-            <div className="flex items-center justify-center gap-4 text-[9px] font-black uppercase text-muted-foreground tracking-widest pt-2">
-              <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-amber-600" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
-              <span className="flex items-center gap-1.5 text-zinc-900 bg-amber-50 px-2 py-0.5 rounded">
-                <User className="w-3.5 h-3.5 text-amber-600" /> {article?.author || "Admin"}
+            <div className="flex items-center justify-center gap-4 text-[8px] font-black uppercase text-zinc-400 tracking-widest pt-1 border-y border-zinc-100 py-2">
+              <span className="flex items-center gap-1.5"><Calendar className="w-3 h-3 text-amber-600" /> {new Date(article.created_at).toLocaleDateString("id-ID")}</span>
+              <span className="flex items-center gap-1.5 text-zinc-800 bg-amber-50 px-2 py-0.5 rounded">
+                <User className="w-3 h-3 text-amber-600" /> {article?.author || "Admin"}
               </span>
             </div>
           </header>
 
           {/* GAMBAR UTAMA */}
-          <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-lg mb-12 bg-zinc-100 border border-black/5">
+          <div className="relative w-full aspect-video rounded-lg overflow-hidden shadow-lg mb-10 bg-zinc-100 border border-black/5">
             <img src={article.image || "/placeholder.svg"} className="w-full h-full object-cover" alt="" />
           </div>
 
-          {/* --- AREA KONTEN (Penyaring Kebocoran) --- */}
-          <div className="article-content-wrapper">
+          {/* AREA KONTEN (SUDAH ANTI-BOCOR) */}
+          <div className="content-lock">
             <div 
-              className="rich-text-body"
+              className="rich-content-render"
               dangerouslySetInnerHTML={{ __html: article.content }} 
             />
           </div>
 
-          {/* --- QUOTE / EXCERPT --- */}
+          {/* QUOTE AREA */}
           {(article.quote || article.excerpt) && (
-            <div className="relative my-16 py-10 px-8 border-y-2 border-dashed border-amber-500/30 bg-amber-50/30 italic text-center rounded-2xl">
-              <Quote className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 text-amber-500 bg-[#fffdfa] px-1" />
-              <p className="text-lg lg:text-xl font-black leading-snug uppercase tracking-tighter text-amber-950">
+            <div className="relative my-10 py-8 px-6 border-y border-dashed border-amber-500/30 bg-amber-50/30 italic text-center rounded-xl">
+              <Quote className="absolute -top-3 left-1/2 -translate-x-1/2 w-6 h-6 text-amber-500 bg-[#fffdfa] px-1" />
+              <p className="text-base lg:text-lg font-bold leading-snug text-amber-950">
                 "{ (article.quote || article.excerpt).replace(/<[^>]*>?/gm, '') }"
               </p>
             </div>
           )}
 
-          {/* NAVIGASI BAWAH */}
-          <div className="flex flex-col items-center gap-10 pt-12 border-t border-black/5 mt-12">
+          {/* NAVIGASI */}
+          <div className="flex flex-col items-center pt-8 border-t border-black/5 mt-10">
             <Link href="/berita">
-              <Button className="bg-zinc-900 hover:bg-amber-600 text-white rounded-full px-10 h-12 font-black uppercase text-[10px] tracking-widest transition-all shadow-xl">
-                <ArrowLeft className="w-4 h-4 mr-2" /> KEMBALI KE DAFTAR
+              <Button className="bg-zinc-900 hover:bg-amber-600 text-white rounded-full px-8 h-10 font-black uppercase text-[9px] tracking-widest transition-all shadow-lg">
+                <ArrowLeft className="w-3.5 h-3.5 mr-2" /> DAFTAR BERITA
               </Button>
             </Link>
           </div>
         </div>
 
         {/* GULUNGAN BAWAH */}
-        <div className="w-full max-w-4xl h-12 bg-amber-500 rounded-full shadow-2xl relative z-10 border-t-4 border-amber-700/30 flex items-center justify-center mb-20 overflow-hidden">
-          <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
-          <div className="w-20 h-1 bg-white/40 rounded-full"></div>
+        <div className="w-full max-w-3xl h-10 bg-amber-500 rounded-full shadow-xl relative z-10 border-t-2 border-amber-700/30 flex items-center justify-center mb-20 overflow-hidden">
+          <div className="w-16 h-1 bg-white/30 rounded-full"></div>
         </div>
       </main>
 
-      {/* STYLE CSS GLOBAL UNTUK PENYARING CONTENT QUILL */}
+      <Footer />
+
+      {/* --- CSS ANTI-BOCOR & UKURAN ELEGAN --- */}
       <style jsx global>{`
-        .article-content-wrapper {
+        .content-lock {
           width: 100%;
-          overflow-x: hidden;
+          max-width: 100%;
+          overflow: hidden;
+          box-sizing: border-box;
         }
 
-        .rich-text-body {
-          font-size: 1.125rem;
-          line-height: 1.8;
+        .rich-content-render {
+          font-size: 1.05rem; /* Tidak terlalu besar */
+          line-height: 1.75;
           color: #27272a;
           text-align: justify;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          word-break: break-word; /* Mencegah teks keluar frame */
         }
 
-        /* Dropcap */
-        .rich-text-body::first-letter {
+        .rich-content-render::first-letter {
           float: left;
-          font-size: 4.5rem;
-          line-height: 0.8;
+          font-size: 3.5rem;
+          line-height: 0.7;
           font-weight: 900;
           color: #d97706;
           margin-right: 0.6rem;
-          margin-top: 0.6rem;
+          margin-top: 0.5rem;
           text-transform: uppercase;
         }
 
-        .rich-text-body p {
-          margin-bottom: 1.5rem;
-          word-wrap: break-word;
-          overflow-wrap: break-word;
+        .rich-content-render p {
+          margin-bottom: 1.25rem;
         }
 
-        /* Anti-Bocor untuk Gambar di Dalam Konten */
-        .rich-text-body img {
+        .rich-content-render img {
           max-width: 100% !important;
           height: auto !important;
-          border-radius: 12px;
-          margin: 2rem 0;
+          border-radius: 8px;
+          margin: 1.5rem auto;
           display: block;
         }
 
-        /* Anti-Bocor untuk Tabel */
-        .rich-text-body table {
+        .rich-content-render table {
           display: block;
           width: 100% !important;
-          overflow-x: auto;
+          overflow-x: auto; /* Tabel bisa di-scroll di dalam frame */
           border-collapse: collapse;
-          margin: 2rem 0;
-          -webkit-overflow-scrolling: touch;
+          margin: 1.5rem 0;
         }
 
-        .rich-text-body td, .rich-text-body th {
+        .rich-content-render td, .rich-content-render th {
           border: 1px solid #e5e7eb;
-          padding: 10px 14px;
-          min-width: 100px;
-        }
-
-        .rich-text-body blockquote {
-          border-left: 4px solid #f59e0b;
-          padding-left: 1.5rem;
-          margin: 2rem 0;
-          font-style: italic;
-          color: #4b5563;
+          padding: 8px 12px;
+          min-width: 80px;
         }
       `}</style>
-      
-      <Footer />
     </div>
   )
 }
