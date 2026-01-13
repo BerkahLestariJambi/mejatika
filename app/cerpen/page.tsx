@@ -45,11 +45,11 @@ export default function CerpenPage() {
       <Navigation />
       
       {/* Hero Section */}
-      <div className="bg-zinc-950 py-3 px-4 relative overflow-hidden">
+      <div className="bg-zinc-950 py-2 px-4 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none" 
              style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/paper-fibers.png')` }} />
         <div className="container mx-auto text-center relative z-10">
-          <PenTool className="mx-auto text-amber-500 mb-6 h-12 w-12" />
+          <PenTool className="mx-auto text-amber-500 mb-6 h-6 w-4" />
           <h1 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter text-white">
             Ruang <span className="text-amber-500 font-outline-2">Cerpen</span>
           </h1>
