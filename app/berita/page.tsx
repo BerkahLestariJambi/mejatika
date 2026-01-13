@@ -40,10 +40,10 @@ export default function BeritaPage() {
     <div className="min-h-screen bg-zinc-50 flex flex-col font-sans">
       <Navigation />
       
-      <div className="bg-amber-500 py-16 px-4 relative overflow-hidden">
+      <div className="bg-amber-500 py-8 px-4 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }} />
         <div className="container mx-auto text-center relative z-10">
-          <h1 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter text-white drop-shadow-md">Warta Digital</h1>
+          <h1 className="text-4xl md:text-3xl font-black italic uppercase tracking-tighter text-white drop-shadow-md">Warta MEJATIKA</h1>
           <p className="text-amber-900 font-bold mt-2 uppercase tracking-widest text-xs">Informasi & Kabar Terbaru Mejatika</p>
         </div>
       </div>
