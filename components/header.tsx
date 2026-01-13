@@ -101,7 +101,7 @@ export function Header() {
         <div className="absolute inset-0 z-20 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end pb-16">
           <div className="container mx-auto px-6">
             <div className="max-w-2xl overflow-hidden">
-              <h2 className="text-4xl md:text-6xl font-black text-white uppercase italic tracking-tighter animate-scale-in mb-2">
+              <h2 className="text-6xl md:text-2xl font-black text-white uppercase italic tracking-tighter animate-scale-in mb-2">
                 {slides[currentSlide].title}
               </h2>
               {slides[currentSlide].description && (
