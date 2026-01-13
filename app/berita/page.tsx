@@ -5,14 +5,11 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, ArrowRight } from "lucide-react"
-// Hapus import Link jika tidak digunakan untuk navigasi halaman baru
+import Link from "next/link"
 
 export default function BeritaPage() {
   const [news, setNews] = useState([])
   const [loadingList, setLoadingList] = useState(true)
-  
-  // State untuk menangani tampilan detail jika ingin tetap di halaman yang sama
-  const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
 
   const stripHtml = (html: string) => {
     if (!html) return "";
@@ -20,23 +17,24 @@ export default function BeritaPage() {
   };
 
   useEffect(() => {
-    fetch("https://backend.mejatika.com/api/news?status=published")
+    fetch("https://backend.mejatika.com/api/news")
       .then((res) => res.json())
       .then((json) => {
+        // Ambil data dari json.data sesuai struktur Backend Laravel bos
         const allData = json.data || [];
+
+        // FILTER: Hanya munculkan yang BUKAN kategori "Cerpen"
         const filtered = allData.filter((item: any) => {
           const catName = (item.category?.name || "").toLowerCase();
-          return !catName.includes("cerpen") && item.status === 'published';
+          // Jika kategori mengandung kata 'cerpen', kita buang (return false)
+          return !catName.includes("cerpen");
         });
+
         setNews(filtered)
         setLoadingList(false)
       })
       .catch(() => setLoadingList(false))
   }, [])
-
-  // Jika Anda ingin detail berita tampil di halaman terpisah (/berita/[slug]), 
-  // maka pastikan Anda memiliki file /app/berita/[slug]/page.tsx.
-  // Tapi jika ingin detail muncul di sini (seperti HomePage), gunakan logika ini:
 
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col font-sans">
@@ -63,6 +61,7 @@ export default function BeritaPage() {
                 <div className="px-5 pt-5"> 
                   <div className="relative h-56 w-full bg-zinc-100 rounded-[1.5rem] overflow-hidden">
                     <img src={item.image || "/placeholder.svg"} alt="" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                    {/* Label Kategori untuk meyakinkan ini bukan cerpen */}
                     <div className="absolute top-4 left-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[8px] font-black uppercase text-zinc-900">
                       {item.category?.name}
                     </div>
@@ -75,14 +74,11 @@ export default function BeritaPage() {
                   <p className="text-zinc-500 text-sm leading-relaxed line-clamp-3 mb-8 flex-grow font-medium">
                     {item?.content ? stripHtml(item.content) : "Tidak ada konten."}
                   </p>
-                  
-                  {/* UBAH BAGIAN INI: Gunakan onClick untuk memicu detail */}
-                  <button 
-                    onClick={() => window.location.href = `/?slug=${item.slug}`}
-                    className="w-full flex items-center justify-center gap-2 bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[10px] tracking-widest py-4 rounded-2xl transition-all shadow-lg group"
-                  >
-                    Baca Selengkapnya <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
-                  </button>
+                  <Link href={`/berita/${item?.slug}`} className="w-full">
+                    <button className="w-full flex items-center justify-center gap-2 bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[10px] tracking-widest py-4 rounded-2xl transition-all shadow-lg group">
+                      Baca Selengkapnya <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                    </button>
+                  </Link>
                 </CardContent>
               </Card>
             ))}
