@@ -50,7 +50,7 @@ export default function CerpenPage() {
              style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/paper-fibers.png')` }} />
         <div className="container mx-auto text-center relative z-10">
           <PenTool className="mx-auto text-amber-500 mb-6 h-6 w-4" />
-          <h1 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter text-white">
+          <h1 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-white">
             Ruang <span className="text-amber-500 font-outline-2">Cerpen</span>
           </h1>
           <p className="text-zinc-400 font-bold mt-4 uppercase tracking-[0.3em] text-[10px]">Eksplorasi Imajinasi & Literasi Digital</p>
