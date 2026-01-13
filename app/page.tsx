@@ -28,7 +28,7 @@ export default function HomePage() {
     return () => clearTimeout(timer)
   }, [])
 
-  // LOGIKA FETCH DETAIL DENGAN KEAMANAN STATUS
+  // LOGIKA FETCH DETAIL: ANTI-DRAF & KEAMANAN FRAME
   useEffect(() => {
     if (selectedSlug) {
       setLoadingDetail(true)
@@ -37,11 +37,10 @@ export default function HomePage() {
       fetch(`https://backend.mejatika.com/api/news/${selectedSlug}`)
         .then((res) => res.json())
         .then((json) => {
-          // Hanya tampilkan jika success DAN statusnya 'published'
+          // VALIDASI: Hanya terima jika status 'published'
           if (json.success && json.data.status === 'published') {
             setArticle(json.data)
           } else {
-            // Jika draf diakses paksa lewat URL/Slug, tendang balik ke list
             setArticle(null)
             setSelectedSlug(null)
           }
@@ -54,7 +53,6 @@ export default function HomePage() {
     }
   }, [selectedSlug])
 
-  // FUNGSI RENDER KONTEN (Mendukung Tabel & Format Quill)
   const renderRichContent = (htmlContent: string) => {
     if (!htmlContent) return null;
     return (
@@ -87,9 +85,7 @@ export default function HomePage() {
               className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-6"
             >
               <div className="lg:col-span-2 space-y-8">
-                {/* PENTING: Pastikan di dalam NewsSlider & NewsList 
-                  sudah pakai URL: /api/news?status=published 
-                */}
+                {/* Pastikan komponen ini sudah pakai ?status=published di dalamnya */}
                 <NewsSlider onReadMore={(slug) => setSelectedSlug(slug)} />
                 <NewsList onReadMore={(slug) => setSelectedSlug(slug)} />
               </div>
@@ -104,7 +100,7 @@ export default function HomePage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-6 flex flex-col items-center"
             >
-              {/* GULUNGAN ATAS BATIK */}
+              {/* HEADER GULUNGAN */}
               <div className="w-full max-w-4xl relative z-30">
                 <div className="w-full h-16 bg-amber-500 rounded-full shadow-2xl flex items-center justify-between px-12 relative overflow-hidden border-b-4 border-amber-700/30">
                   <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
@@ -116,8 +112,8 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* BODY KERTAS */}
-              <div className="w-full max-w-[92%] lg:max-w-[850px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-6 md:px-12 lg:px-20 py-16 -mt-8 relative border-x border-black/5 z-20">
+              {/* BODY KERTAS (DITAMBAHKAN OVERFLOW-HIDDEN AGAR TIDAK BOCOR) */}
+              <div className="w-full max-w-[96%] lg:max-w-[850px] bg-[#fffdfa] dark:bg-zinc-950 shadow-2xl px-5 md:px-12 lg:px-20 py-16 -mt-8 relative border-x border-black/5 z-20 overflow-hidden">
                 
                 {loadingDetail ? (
                   <div className="h-[40vh] flex flex-col items-center justify-center gap-4">
@@ -148,7 +144,7 @@ export default function HomePage() {
                       <img src={article.image || "/placeholder.svg"} className="w-full h-full object-cover" alt="news" />
                     </div>
 
-                    {/* KONTEN UTAMA DENGAN DUKUNGAN TABEL */}
+                    {/* AREA KONTEN UTAMA */}
                     <div className="text-lg lg:text-xl leading-[1.8] text-justify text-zinc-800 dark:text-zinc-200 article-body">
                       {renderRichContent(article.content)}
                     </div>
@@ -164,7 +160,7 @@ export default function HomePage() {
                       </div>
                     )}
 
-                    {/* SHARE AREA */}
+                    {/* SHARE & BACK */}
                     <div className="flex flex-col items-center gap-8 pt-10 border-t border-black/5">
                       <div className="flex flex-col items-center gap-4">
                         <span className="text-[9px] font-black uppercase tracking-[0.5em] text-amber-600">Bagikan Warta</span>
@@ -195,7 +191,7 @@ export default function HomePage() {
                 )}
               </div>
 
-              {/* GULUNGAN BAWAH */}
+              {/* FOOTER GULUNGAN */}
               <div className="w-full max-w-4xl h-14 bg-amber-500 rounded-full shadow-2xl relative z-10 border-t-4 border-amber-700/30 flex items-center justify-center mb-20 overflow-hidden">
                  <div className="absolute inset-0 opacity-40 mix-blend-overlay" style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }}></div>
                  <div className="w-20 h-1.5 bg-white/20 rounded-full"></div>
@@ -207,51 +203,74 @@ export default function HomePage() {
 
       <Footer />
 
+      {/* CSS GLOBAL UNTUK MENGATASI KEBOCORAN KONTEN */}
       <style jsx global>{`
-        /* Dropcap Huruf Pertama */
+        .article-body {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          width: 100%;
+        }
+
         .article-body::first-letter {
           float: left;
-          font-size: 5rem;
-          line-height: 1;
+          font-size: 4rem;
+          line-height: 0.8;
           font-weight: 900;
           color: #d97706;
-          margin-right: 0.75rem;
-          margin-top: 0.25rem;
+          margin-right: 0.6rem;
+          margin-top: 0.6rem;
           text-transform: uppercase;
         }
 
-        /* Styling Tabel dari Editor (PENTING) */
-        .quill-html-content table {
-          border-collapse: collapse;
+        .quill-html-content {
           width: 100%;
-          margin: 24px 0;
-          font-family: sans-serif;
-          font-size: 1rem;
+          overflow-x: hidden;
         }
+
+        /* Gambar Auto-Fit */
+        .quill-html-content img {
+          max-width: 100% !important;
+          height: auto !important;
+          border-radius: 12px;
+          margin: 24px 0;
+          display: block;
+          box-shadow: 0 10px 30px -10px rgba(0,0,0,0.1);
+        }
+
+        /* Tabel Anti-Bocor (Bisa di-scroll horizontal dalam bingkai) */
+        .quill-html-content table {
+          display: block;
+          width: 100% !important;
+          overflow-x: auto;
+          border-collapse: collapse;
+          margin: 24px 0;
+          background: #fff;
+          -webkit-overflow-scrolling: touch;
+        }
+
         .quill-html-content td, .quill-html-content th {
           border: 1px solid #e5e7eb;
-          padding: 12px 16px;
-          text-align: left;
+          padding: 12px 15px;
+          min-width: 120px;
         }
+
         .quill-html-content th {
           background-color: #f9fafb;
           font-weight: 800;
           text-transform: uppercase;
-          font-size: 0.75rem;
-          letter-spacing: 0.1em;
+          font-size: 0.7rem;
         }
+
+        .quill-html-content p {
+          margin-bottom: 1.5rem;
+        }
+
         .quill-html-content blockquote {
           border-left: 4px solid #f59e0b;
-          padding-left: 20px;
-          margin: 20px 0;
+          padding-left: 1.5rem;
+          margin: 2rem 0;
           font-style: italic;
           color: #4b5563;
-        }
-        /* Memastikan gambar di dalam konten tidak pecah */
-        .quill-html-content img {
-          max-width: 100%;
-          height: auto;
-          border-radius: 8px;
         }
       `}</style>
     </div>
