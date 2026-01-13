@@ -13,6 +13,7 @@ interface NewsItem {
   content: string
   image: string
   created_at: string
+  status: string // Tambahkan interface status
   category: { name: string }
 }
 
@@ -23,29 +24,36 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
 
   // 1. Ambil Data
   useEffect(() => {
-    fetch("https://backend.mejatika.com/api/news")
+    // Tambahkan parameter ?status=published agar backend memfilter otomatis
+    fetch("https://backend.mejatika.com/api/news?status=published")
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {
-          const filtered = json.data.filter((item: NewsItem) => 
-            !(item.category?.name || "").toLowerCase().includes("cerpen")
-          )
+          const filtered = json.data.filter((item: NewsItem) => {
+            const isNotCerpen = !(item.category?.name || "").toLowerCase().includes("cerpen");
+            const isPublished = item.status === 'published'; // Filter manual sebagai pengaman
+            
+            return isNotCerpen && isPublished;
+          })
           setLatestNews(filtered.slice(0, 5))
         }
         setLoading(false)
       })
+      .catch(() => setLoading(false))
   }, [])
 
   // 2. Navigasi
   const nextSlide = useCallback(() => {
+    if (latestNews.length === 0) return
     setCurrentIndex((prev) => (prev + 1) % latestNews.length)
   }, [latestNews.length])
 
   const prevSlide = () => {
+    if (latestNews.length === 0) return
     setCurrentIndex((prev) => (prev - 1 + latestNews.length) % latestNews.length)
   }
 
-  // 3. AUTO PLAY (Ganti otomatis tiap 5 detik)
+  // 3. AUTO PLAY
   useEffect(() => {
     if (latestNews.length === 0) return
     const interval = setInterval(nextSlide, 5000)
@@ -101,15 +109,12 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
                 transition={{ duration: 0.8 }}
                 className="relative h-full w-full"
               >
-                {/* Efek Kotak Pecah Saat Transisi */}
                 <GridOverlay />
-                
                 <img
                   src={currentNews.image || "/placeholder.svg"}
                   alt={currentNews.title}
                   className="w-full h-full object-cover"
                 />
-                
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
               </motion.div>
             </AnimatePresence>
@@ -120,12 +125,11 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
               </span>
             </div>
 
-            {/* Tombol Navigasi Manual */}
             <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button onClick={prevSlide} className="rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-amber-500 h-12 w-12">
+              <Button onClick={prevSlide} className="rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-amber-500 h-12 w-12 border-none">
                 <ChevronLeft />
               </Button>
-              <Button onClick={nextSlide} className="rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-amber-500 h-12 w-12">
+              <Button onClick={nextSlide} className="rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-amber-500 h-12 w-12 border-none">
                 <ChevronRight />
               </Button>
             </div>
@@ -144,21 +148,21 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
               <span>{new Date(currentNews.created_at).toLocaleDateString("id-ID")}</span>
             </div>
 
-            <h3 className="text-xl md:text-4xl font-black mb-4 leading-tight text-zinc-900 dark:text-white uppercase italic">
+            <h3 className="text-xl md:text-4xl font-black mb-4 leading-tight text-zinc-900 dark:text-white uppercase italic line-clamp-2">
               {currentNews.title}
             </h3>
             
-            <p className="text-zinc-500 text-sm md:text-lg mb-8 line-clamp-2">
+            <p className="text-zinc-500 text-sm md:text-lg mb-8 line-clamp-2 leading-relaxed">
               {getExcerpt(currentNews.content)}
             </p>
           </motion.div>
 
-          <div className="flex justify-between items-center border-t border-zinc-50 pt-6">
+          <div className="flex justify-between items-center border-t border-zinc-100 pt-6">
             <Button 
               onClick={() => onReadMore(currentNews.slug)}
               className="rounded-2xl bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[11px] h-14 px-10 transition-all shadow-xl"
             >
-              Baca Selengkapnya <ArrowRight className="ml-2" />
+              Baca Selengkapnya <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
 
             <div className="flex gap-2">
