@@ -5,11 +5,14 @@ import { Navigation } from "@/components/navigation"
 import { Footer } from "@/components/footer"
 import { Card, CardContent } from "@/components/ui/card"
 import { Loader2, ArrowRight } from "lucide-react"
-import Link from "next/link"
+// Hapus import Link jika tidak digunakan untuk navigasi halaman baru
 
 export default function BeritaPage() {
   const [news, setNews] = useState([])
   const [loadingList, setLoadingList] = useState(true)
+  
+  // State untuk menangani tampilan detail jika ingin tetap di halaman yang sama
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
 
   const stripHtml = (html: string) => {
     if (!html) return "";
@@ -17,26 +20,23 @@ export default function BeritaPage() {
   };
 
   useEffect(() => {
-    // 1. Tambahkan parameter ?status=published agar Backend hanya mengirim yang sudah terbit
     fetch("https://backend.mejatika.com/api/news?status=published")
       .then((res) => res.json())
       .then((json) => {
         const allData = json.data || [];
-
-        // 2. FILTER GANDA: Bukan Cerpen & Pastikan statusnya Published (double check)
         const filtered = allData.filter((item: any) => {
           const catName = (item.category?.name || "").toLowerCase();
-          const isNotCerpen = !catName.includes("cerpen");
-          const isPublished = item.status === 'published';
-          
-          return isNotCerpen && isPublished;
+          return !catName.includes("cerpen") && item.status === 'published';
         });
-
         setNews(filtered)
         setLoadingList(false)
       })
       .catch(() => setLoadingList(false))
   }, [])
+
+  // Jika Anda ingin detail berita tampil di halaman terpisah (/berita/[slug]), 
+  // maka pastikan Anda memiliki file /app/berita/[slug]/page.tsx.
+  // Tapi jika ingin detail muncul di sini (seperti HomePage), gunakan logika ini:
 
   return (
     <div className="min-h-screen bg-zinc-50 flex flex-col font-sans">
@@ -76,19 +76,20 @@ export default function BeritaPage() {
                     {item?.content ? stripHtml(item.content) : "Tidak ada konten."}
                   </p>
                   
-                  {/* Pastikan link slug mengarah ke halaman yang benar */}
-                  <Link href={`/berita/${item?.slug}`} className="w-full">
-                    <button className="w-full flex items-center justify-center gap-2 bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[10px] tracking-widest py-4 rounded-2xl transition-all shadow-lg group">
-                      Baca Selengkapnya <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
-                    </button>
-                  </Link>
+                  {/* UBAH BAGIAN INI: Gunakan onClick untuk memicu detail */}
+                  <button 
+                    onClick={() => window.location.href = `/?slug=${item.slug}`}
+                    className="w-full flex items-center justify-center gap-2 bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[10px] tracking-widest py-4 rounded-2xl transition-all shadow-lg group"
+                  >
+                    Baca Selengkapnya <ArrowRight className="h-4 w-4 group-hover:translate-x-2 transition-transform" />
+                  </button>
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : (
           <div className="text-center py-20">
-            <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Belum ada warta terbaru yang dipublikasikan.</p>
+            <p className="text-zinc-400 font-bold uppercase tracking-widest text-xs">Belum ada warta terbaru.</p>
           </div>
         )}
       </main>
