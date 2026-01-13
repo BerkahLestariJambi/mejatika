@@ -45,7 +45,7 @@ export default function CerpenPage() {
       <Navigation />
       
       {/* Hero Section */}
-      <div className="bg-zinc-900 py-24 px-4 relative overflow-hidden">
+      <div className="bg-zinc-950 py-3 px-4 relative overflow-hidden">
         <div className="absolute inset-0 opacity-10 pointer-events-none" 
              style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/paper-fibers.png')` }} />
         <div className="container mx-auto text-center relative z-10">
