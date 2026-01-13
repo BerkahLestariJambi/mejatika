@@ -69,7 +69,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-zinc-100 dark:bg-zinc-900 flex flex-col overflow-x-hidden">
-      <Header />
+   
       <Navigation />
       
       <main className="flex-grow container mx-auto max-w-5xl px-4 py-6 lg:py-10">
