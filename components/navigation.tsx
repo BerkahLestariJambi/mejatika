@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, BookOpen, ChevronDown, X, Phone, Mail } from "lucide-react"
+import { Menu, BookOpen, ChevronDown, Phone, Mail, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import Link from "next/link"
 
 export function Navigation() {
@@ -22,47 +22,52 @@ export function Navigation() {
       .finally(() => setLoading(false));
   }, [])
 
-  const toggleExpand = (id: number) => {
-    setExpandedMenu(expandedMenu === id ? null : id)
-  }
-
-  if (loading) return <nav className="h-16 bg-amber-600 animate-pulse w-full" />;
+  if (loading) return <nav className="h-16 bg-zinc-900 animate-pulse w-full" />;
 
   return (
-    <nav className="sticky top-0 z-[100] w-full bg-amber-500 shadow-xl border-b-2 border-amber-700/20">
-      {/* Motif Batik Overlay */}
-      <div className="absolute inset-0 opacity-15 pointer-events-none" 
-           style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/batik-fractal.png')` }} />
+    <nav className="sticky top-0 z-[100] w-full bg-zinc-950/95 backdrop-blur-md border-b border-white/5 shadow-2xl">
+      {/* Subtle Texture Overlay */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none invert" 
+           style={{ backgroundImage: `url('https://www.transparenttextures.com/patterns/carbon-fibre.png')` }} />
       
       <div className="container mx-auto max-w-6xl px-4 relative z-10">
         <div className="flex items-center h-16">
           
-          {/* LOGO */}
-          <Link href="/" className="flex items-center gap-2 shrink-0">
-            <div className="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-              <BookOpen className="w-5 h-5 text-white" />
+          {/* BRAND LOGO */}
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="relative">
+                <div className="absolute -inset-1 bg-amber-500 rounded-full blur opacity-20 group-hover:opacity-50 transition duration-500"></div>
+                <div className="relative p-1.5 bg-zinc-900 border border-white/10 rounded-lg">
+                    <BookOpen className="w-5 h-5 text-amber-500" />
+                </div>
             </div>
-            <span className="font-black text-xl tracking-tighter text-white italic">MEJATIKA</span>
+            <div className="flex flex-col">
+                <span className="font-black text-xl tracking-tighter text-white italic leading-none">MEJATIKA</span>
+                <span className="text-[8px] font-bold text-amber-500 tracking-[0.2em] uppercase">Media Digital</span>
+            </div>
           </Link>
 
-          {/* DESKTOP MENU (Centered) */}
+          {/* DESKTOP MENU - Dipusatkan */}
           <div className="hidden md:flex flex-1 justify-center items-center gap-1">
             {menuItems.map((item) => (
-              <div key={item.id} className="relative group px-1">
+              <div key={item.id} className="relative group">
                 {item.sub_menus && item.sub_menus.length > 0 ? (
                   <div className="flex flex-col items-center">
-                    <button className="flex items-center gap-1 px-4 py-2 text-[11px] font-black uppercase text-white hover:bg-white/20 rounded-full transition-all">
-                      {item.name} <ChevronDown className="w-3 h-3 opacity-70 group-hover:rotate-180 transition-transform" />
+                    <button className="flex items-center gap-1.5 px-4 py-2 text-[10px] font-bold uppercase text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all">
+                      {item.name} 
+                      <ChevronDown className="w-3 h-3 text-amber-500 opacity-50 group-hover:rotate-180 transition-transform" />
                     </button>
                     
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-[110]">
-                      <div className="bg-white shadow-2xl rounded-xl py-2 min-w-[190px] border border-amber-100 overflow-hidden">
+                    {/* DROPDOWN MENU */}
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 pt-3 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform group-hover:translate-y-0 translate-y-2">
+                      <div className="bg-zinc-900 border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] rounded-2xl py-3 min-w-[200px] overflow-hidden backdrop-blur-xl">
                         {item.sub_menus.map((sub: any) => (
                           <Link 
                             key={sub.id} 
                             href={`/${sub.slug}`} 
-                            className="block px-5 py-2.5 text-[10px] font-bold text-zinc-700 hover:bg-amber-50 hover:text-amber-600 transition-colors uppercase"
+                            className="flex items-center gap-3 px-5 py-2.5 text-[10px] font-bold text-zinc-400 hover:text-amber-500 hover:bg-white/5 transition-all uppercase"
                           >
+                            <span className="w-1 h-1 rounded-full bg-zinc-700 group-hover:bg-amber-500"></span>
                             {sub.name}
                           </Link>
                         ))}
@@ -72,7 +77,7 @@ export function Navigation() {
                 ) : (
                   <Link 
                     href={`/${item.slug}`} 
-                    className="px-4 py-2 text-[11px] font-black uppercase text-white hover:bg-white/20 rounded-full transition-all"
+                    className="px-4 py-2 text-[10px] font-bold uppercase text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all"
                   >
                     {item.name}
                   </Link>
@@ -81,77 +86,67 @@ export function Navigation() {
             ))}
           </div>
 
+          {/* RIGHT SECTION (Call to Action / Info) */}
+          <div className="hidden md:flex items-center gap-4">
+             <div className="h-4 w-px bg-white/10"></div>
+             <button className="text-[10px] font-bold text-zinc-500 hover:text-white transition-colors flex items-center gap-2">
+                <Globe className="w-3.5 h-3.5" />
+                ID
+             </button>
+          </div>
+
           {/* MOBILE TOGGLE */}
           <div className="md:hidden ml-auto">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+                <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all">
                   <Menu className="w-6 h-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="p-0 bg-zinc-950 text-white border-l border-amber-500/20 w-[85%] sm:w-[350px]">
-                
-                {/* Header di dalam Sheet */}
-                <div className="p-6 border-b border-white/5 bg-gradient-to-b from-amber-600/20 to-transparent">
+              <SheetContent side="right" className="p-0 bg-zinc-950 text-white border-white/5 w-[85%]">
+                <div className="p-8 border-b border-white/5">
                    <div className="flex items-center gap-3">
                       <div className="p-2 bg-amber-500 rounded-xl">
                         <BookOpen className="w-5 h-5 text-black" />
                       </div>
-                      <span className="font-black text-xl tracking-tighter italic">MEJATIKA</span>
+                      <span className="font-black text-2xl tracking-tighter italic">MEJATIKA</span>
                    </div>
                 </div>
 
-                <div className="flex flex-col h-[calc(100vh-100px)] justify-between">
-                  {/* Link Menu List */}
-                  <div className="overflow-y-auto py-4 px-2 custom-scrollbar">
+                <div className="flex flex-col h-[calc(100vh-140px)] justify-between">
+                  <div className="py-6 px-4 space-y-2">
                     {menuItems.map((item) => (
-                      <div key={item.id} className="mb-1">
-                        {item.sub_menus && item.sub_menus.length > 0 ? (
-                          <div>
-                            <button 
-                              onClick={() => toggleExpand(item.id)}
-                              className="w-full flex items-center justify-between px-4 py-4 font-black uppercase text-sm hover:bg-white/5 rounded-xl transition-colors"
-                            >
-                              {item.name}
-                              <ChevronDown className={`w-4 h-4 text-amber-500 transition-transform duration-300 ${expandedMenu === item.id ? 'rotate-180' : ''}`} />
-                            </button>
-                            
-                            {/* Accordion Sub-Menus */}
-                            <div className={`overflow-hidden transition-all duration-300 bg-white/5 rounded-xl mx-2 ${expandedMenu === item.id ? 'max-h-96 py-2 opacity-100' : 'max-h-0 opacity-0'}`}>
-                              {item.sub_menus.map((sub: any) => (
-                                <Link 
-                                  key={sub.id} 
-                                  href={`/${sub.slug}`} 
-                                  onClick={() => setIsOpen(false)}
-                                  className="block px-8 py-3 text-[11px] font-bold uppercase text-zinc-400 hover:text-amber-500 transition-colors"
-                                >
-                                  {sub.name}
-                                </Link>
-                              ))}
-                            </div>
+                      <div key={item.id}>
+                        <button 
+                          onClick={() => setExpandedMenu(expandedMenu === item.id ? null : item.id)}
+                          className="w-full flex items-center justify-between p-4 font-bold uppercase text-sm hover:bg-white/5 rounded-xl transition-colors text-zinc-300"
+                        >
+                          {item.name}
+                          {item.sub_menus?.length > 0 && <ChevronDown className={`w-4 h-4 transition-transform ${expandedMenu === item.id ? 'rotate-180' : ''}`} />}
+                        </button>
+                        
+                        {item.sub_menus?.length > 0 && expandedMenu === item.id && (
+                          <div className="ml-4 mt-1 border-l border-white/5 space-y-1">
+                            {item.sub_menus.map((sub: any) => (
+                              <Link 
+                                key={sub.id} 
+                                href={`/${sub.slug}`} 
+                                onClick={() => setIsOpen(false)}
+                                className="block px-6 py-3 text-xs font-bold text-zinc-500 hover:text-amber-500 uppercase"
+                              >
+                                {sub.name}
+                              </Link>
+                            ))}
                           </div>
-                        ) : (
-                          <Link 
-                            href={`/${item.slug}`} 
-                            onClick={() => setIsOpen(false)} 
-                            className="block px-4 py-4 font-black uppercase text-sm hover:bg-white/5 rounded-xl transition-colors"
-                          >
-                            {item.name}
-                          </Link>
                         )}
                       </div>
                     ))}
                   </div>
 
-                  {/* Footer di dalam Sheet Menu */}
-                  <div className="p-6 bg-zinc-900/50 border-t border-white/5 space-y-4">
-                    <div className="flex items-center gap-3 text-xs text-zinc-500">
-                      <Phone className="w-3.5 h-3.5 text-amber-500" />
-                      <span>+62 812 3702 6025</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-zinc-500">
-                      <Mail className="w-3.5 h-3.5 text-amber-500" />
-                      <span>info@mejatika.com</span>
+                  <div className="p-8 bg-zinc-900/50 space-y-4">
+                    <div className="flex items-center gap-3 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                       <Phone className="w-4 h-4 text-amber-500" />
+                       +62 812 3702 6025
                     </div>
                   </div>
                 </div>
