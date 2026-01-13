@@ -224,3 +224,11 @@
   background: var(--muted-foreground); 
   border-radius: 10px; 
 }
+@keyframes logo-pulse {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.05); filter: brightness(1.2) drop-shadow(0 0 8px rgba(245, 158, 11, 0.4)); }
+}
+
+.animate-logo-pulse {
+  animation: logo-pulse 4s ease-in-out infinite;
+}
