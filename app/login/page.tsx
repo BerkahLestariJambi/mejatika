@@ -25,31 +25,39 @@ function LoginForm() {
     const msg = searchParams.get("success")
     if (msg) setSuccess(msg)
 
+    // Cek jika user sudah login sebelumnya
     const token = localStorage.getItem("token")
     const userData = localStorage.getItem("user")
     if (token && userData) {
-      const user = JSON.parse(userData)
-      redirectBasedOnRole(user.role)
+      try {
+        const user = JSON.parse(userData)
+        redirectBasedOnRole(user.role)
+      } catch (e) {
+        localStorage.clear() // Bersihkan jika data korup
+      }
     }
   }, [searchParams])
 
-  // --- LOGIKA REDIRECT LENGKAP SEMUA ROLE ---
+  // --- LOGIKA REDIRECT LENGKAP TERMASUK ROLE PELAJAR ---
   const redirectBasedOnRole = (role: string) => {
-    switch (role) {
+    // Normalisasi role ke lowercase untuk menghindari error typo dari API
+    const userRole = role?.toLowerCase()
+
+    switch (userRole) {
       case "admin":
         router.push("/admin")
         break
       case "kontributor":
       case "mentor":
-        // Keduanya diarahkan ke dashboard mentor yang kita buat
         router.push("/dashboard/mentor")
         break
+      case "pelajar": // <--- DASHBOARD KHUSUS PENULIS ARTIKEL SISWA
+        router.push("/dashboardpelajar")
+        break
       case "peserta":
-        // Dashboard utama untuk siswa/peserta
         router.push("/dashboard")
         break
       default:
-        // Fallback jika role tidak dikenal
         router.push("/")
         break
     }
@@ -103,7 +111,7 @@ function LoginForm() {
             Welcome <span className="text-amber-500">Back</span>
           </CardTitle>
           <CardDescription className="font-bold text-xs uppercase tracking-widest text-zinc-400">
-            Masuk untuk mengakses materi kursus Anda
+            Masuk untuk mengakses materi & karya Anda
           </CardDescription>
         </CardHeader>
         <CardContent className="p-8 pt-0">
@@ -191,14 +199,6 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  if (!isClient) return null
-
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center bg-zinc-50">
