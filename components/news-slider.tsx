@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { ChevronLeft, ChevronRight, Calendar, ArrowRight, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 
 interface NewsItem {
   id: string
@@ -13,7 +13,7 @@ interface NewsItem {
   content: string
   image: string
   created_at: string
-  status: string // Tambahkan interface status
+  status: string
   category: { name: string }
 }
 
@@ -22,17 +22,14 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
   const [latestNews, setLatestNews] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
 
-  // 1. Ambil Data
   useEffect(() => {
-    // Tambahkan parameter ?status=published agar backend memfilter otomatis
     fetch("https://backend.mejatika.com/api/news?status=published")
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {
           const filtered = json.data.filter((item: NewsItem) => {
             const isNotCerpen = !(item.category?.name || "").toLowerCase().includes("cerpen");
-            const isPublished = item.status === 'published'; // Filter manual sebagai pengaman
-            
+            const isPublished = item.status === 'published';
             return isNotCerpen && isPublished;
           })
           setLatestNews(filtered.slice(0, 5))
@@ -42,7 +39,6 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
       .catch(() => setLoading(false))
   }, [])
 
-  // 2. Navigasi
   const nextSlide = useCallback(() => {
     if (latestNews.length === 0) return
     setCurrentIndex((prev) => (prev + 1) % latestNews.length)
@@ -53,125 +49,96 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
     setCurrentIndex((prev) => (prev - 1 + latestNews.length) % latestNews.length)
   }
 
-  // 3. AUTO PLAY
   useEffect(() => {
     if (latestNews.length === 0) return
     const interval = setInterval(nextSlide, 5000)
     return () => clearInterval(interval)
   }, [nextSlide, latestNews.length])
 
-  const getExcerpt = (html: string) => {
-    if (!html) return ""
-    return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').substring(0, 100) + "..."
-  }
-
   if (loading) return (
-    <div className="h-[400px] flex items-center justify-center bg-white rounded-[2.5rem]">
-      <Loader2 className="h-8 w-8 animate-spin text-amber-500" />
+    <div className="h-[200px] flex items-center justify-center bg-zinc-50 rounded-3xl border border-dashed border-zinc-200">
+      <Loader2 className="h-6 w-6 animate-spin text-amber-500" />
     </div>
   )
 
   if (latestNews.length === 0) return null
   const currentNews = latestNews[currentIndex]
 
-  // Komponen kotak untuk efek pecah
-  const GridOverlay = () => (
-    <div className="absolute inset-0 grid grid-cols-5 grid-rows-4 pointer-events-none z-20">
-      {[...Array(20)].map((_, i) => (
-        <motion.div
-          key={i}
-          initial={{ opacity: 1, scale: 1 }}
-          animate={{ opacity: 0, scale: 0 }}
-          transition={{ duration: 0.5, delay: i * 0.02 }}
-          className="bg-amber-500/20 border border-white/10"
-        />
-      ))}
-    </div>
-  )
-
   return (
-    <section className="mb-8 group">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="h-8 w-2 bg-amber-500 rounded-full" />
-        <h2 className="text-2xl font-black uppercase italic tracking-tighter">Warta Terkini</h2>
+    <section className="mb-6 group">
+      <div className="flex items-center justify-between mb-4 px-2">
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-1.5 bg-amber-500 rounded-full" />
+          <h2 className="text-sm font-black uppercase tracking-widest text-zinc-800">Warta Terkini</h2>
+        </div>
+        <div className="flex gap-1.5">
+          {latestNews.map((_, i) => (
+            <div key={i} className={`h-1 rounded-full transition-all duration-300 ${i === currentIndex ? "bg-amber-500 w-6" : "bg-zinc-200 w-1.5"}`} />
+          ))}
+        </div>
       </div>
 
-      <Card className="overflow-hidden border-none shadow-2xl bg-white dark:bg-zinc-950 rounded-[2.5rem] relative">
-        <div className="p-4">
-          <div className="relative h-[250px] md:h-[400px] w-full overflow-hidden rounded-[2rem] bg-zinc-900">
-            
+      <Card className="overflow-hidden border border-zinc-100 shadow-sm bg-white dark:bg-zinc-950 rounded-[1.5rem] relative group/card">
+        <div className="flex flex-col md:flex-row items-stretch h-auto md:h-[220px]">
+          
+          {/* SISI GAMBAR - Lebih Kecil & Minimalis */}
+          <div className="relative w-full md:w-[280px] h-[180px] md:h-full overflow-hidden shrink-0">
             <AnimatePresence mode="wait">
-              <motion.div
+              <motion.img
                 key={currentIndex}
-                initial={{ opacity: 0, filter: "blur(10px)" }}
-                animate={{ opacity: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 1.1 }}
-                transition={{ duration: 0.8 }}
-                className="relative h-full w-full"
-              >
-                <GridOverlay />
-                <img
-                  src={currentNews.image || "/placeholder.svg"}
-                  alt={currentNews.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-              </motion.div>
+                initial={{ opacity: 0, scale: 1.1 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                src={currentNews.image || "/placeholder.svg"}
+                alt={currentNews.title}
+                className="w-full h-full object-cover"
+              />
             </AnimatePresence>
-
-            <div className="absolute top-6 left-6 z-30">
-              <span className="bg-amber-500 text-white px-5 py-2 rounded-full text-[10px] font-black uppercase shadow-xl">
+            <div className="absolute top-3 left-3">
+              <span className="bg-amber-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-lg text-[9px] font-bold uppercase tracking-tighter">
                 {currentNews.category?.name}
               </span>
             </div>
+          </div>
 
-            <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between z-30 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button onClick={prevSlide} className="rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-amber-500 h-12 w-12 border-none">
-                <ChevronLeft />
-              </Button>
-              <Button onClick={nextSlide} className="rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-amber-500 h-12 w-12 border-none">
-                <ChevronRight />
-              </Button>
+          {/* SISI KONTEN - Padat & Ringkas */}
+          <div className="p-5 md:p-6 flex flex-col justify-between flex-grow">
+            <motion.div
+              key={`text-${currentIndex}`}
+              initial={{ x: 10, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <div className="flex items-center gap-2 text-zinc-400 text-[9px] font-bold uppercase mb-2">
+                <Calendar className="w-3 h-3 text-amber-500" />
+                <span>{new Date(currentNews.created_at).toLocaleDateString("id-ID")}</span>
+              </div>
+
+              <h3 className="text-lg font-black mb-2 leading-tight text-zinc-900 dark:text-white uppercase line-clamp-2">
+                {currentNews.title}
+              </h3>
+            </motion.div>
+
+            <div className="flex items-center justify-between mt-4">
+              <button 
+                onClick={() => onReadMore(currentNews.slug)}
+                className="flex items-center gap-2 text-zinc-900 hover:text-amber-500 transition-colors font-black uppercase text-[10px] tracking-tighter"
+              >
+                Baca Detail <ArrowRight className="w-3 h-3" />
+              </button>
+
+              <div className="flex gap-2">
+                <Button onClick={prevSlide} variant="outline" size="icon" className="h-8 w-8 rounded-full border-zinc-100 hover:bg-amber-500 hover:text-white">
+                  <ChevronLeft className="h-4 h-4" />
+                </Button>
+                <Button onClick={nextSlide} variant="outline" size="icon" className="h-8 w-8 rounded-full border-zinc-100 hover:bg-amber-500 hover:text-white">
+                  <ChevronRight className="h-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-
-        <CardContent className="px-8 md:px-12 py-8">
-          <motion.div
-            key={`text-${currentIndex}`}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-black uppercase mb-3">
-              <Calendar className="w-3.5 h-3.5 text-amber-500" />
-              <span>{new Date(currentNews.created_at).toLocaleDateString("id-ID")}</span>
-            </div>
-
-            <h3 className="text-xl md:text-2xl font-black mb-2 leading-tight text-zinc-900 dark:text-white uppercase italic line-clamp-2">
-              {currentNews.title}
-            </h3>
-            
-            <p className="text-zinc-500 text-sm md:text-lg mb-8 line-clamp-2 leading-relaxed">
-              {getExcerpt(currentNews.content)}
-            </p>
-          </motion.div>
-
-          <div className="flex justify-between items-center border-t border-zinc-100 pt-6">
-            <Button 
-              onClick={() => onReadMore(currentNews.slug)}
-              className="rounded-2xl bg-zinc-900 hover:bg-amber-500 text-white font-black uppercase text-[11px] h-14 px-10 transition-all shadow-xl"
-            >
-              Baca Selengkapnya <ArrowRight className="ml-2 w-4 h-4" />
-            </Button>
-
-            <div className="flex gap-2">
-              {latestNews.map((_, i) => (
-                <div key={i} className={`h-1.5 rounded-full transition-all duration-500 ${i === currentIndex ? "bg-amber-500 w-10" : "bg-zinc-200 w-2"}`} />
-              ))}
-            </div>
-          </div>
-        </CardContent>
       </Card>
     </section>
   )
