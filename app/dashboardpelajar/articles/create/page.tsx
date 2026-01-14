@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ScannerResult } from "@/components/articles/scanner-result"
+import { ScannerResult } from "@/components/articles/ScannerResult"
 import Swal from 'sweetalert2'
 import { useRouter } from "next/navigation"
 
