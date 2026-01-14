@@ -70,15 +70,28 @@ export default function CreateArticlePelajarPage() {
     ],
   }), []);
 
+  // --- LOGIC AMBIL KATEGORI LANGSUNG DARI DATABASE ---
   useEffect(() => {
-    const getCats = async () => {
+    const fetchCategories = async () => {
       try {
-        const res = await fetch("https://backend.mejatika.com/api/categories");
+        const res = await fetch("https://backend.mejatika.com/api/categories", {
+          headers: {
+            "Accept": "application/json"
+          }
+        });
         const json = await res.json();
-        setCategories(json.data || []);
-      } catch (err) { console.error("Gagal load kategori"); }
+        
+        // Cek struktur data Laravel (biasanya di json.data atau langsung json)
+        if (json.data && Array.isArray(json.data)) {
+          setCategories(json.data);
+        } else if (Array.isArray(json)) {
+          setCategories(json);
+        }
+      } catch (err) {
+        console.error("Gagal mengambil kategori:", err);
+      }
     };
-    getCats();
+    fetchCategories();
   }, []);
 
   const handleScan = async () => {
@@ -248,20 +261,34 @@ export default function CreateArticlePelajarPage() {
                <Input 
                   value={authorName} onChange={(e) => setAuthorName(e.target.value)} 
                   placeholder="Nama Penulis" 
-                  className="rounded-xl h-11 bg-zinc-50 border-none font-bold text-center text-xs" required
+                  className="rounded-xl h-11 bg-zinc-50 border-none font-bold text-center text-xs shadow-inner" required
                />
 
-               <select 
-                  className="w-full h-12 rounded-xl bg-zinc-50 px-4 font-bold border-none text-xs outline-none focus:ring-1 focus:ring-amber-500 appearance-none cursor-pointer" 
-                  value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required
-               >
-                  <option value="">-- PILIH KATEGORI --</option>
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-               </select>
+               {/* SELECT KATEGORI YANG SUDAH DIPERBAIKI */}
+               <div className="relative">
+                 <select 
+                    className="w-full h-12 rounded-xl bg-zinc-50 px-4 font-bold border-none text-xs outline-none focus:ring-1 focus:ring-amber-500 appearance-none cursor-pointer shadow-inner" 
+                    value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required
+                 >
+                    <option value="">-- PILIH KATEGORI --</option>
+                    {categories.length > 0 ? (
+                      categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name || c.nama_kategori}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>Loading kategori...</option>
+                    )}
+                 </select>
+                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <BookOpen className="h-3 w-3 text-zinc-400" />
+                 </div>
+               </div>
 
                <Button 
                 type="submit" disabled={loading}
-                className="w-full h-20 rounded-[1.5rem] bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-amber-100 transition-all"
+                className="w-full h-20 rounded-[1.5rem] bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-amber-100 transition-all hover:scale-[1.02]"
                >
                  {loading ? <Loader2 className="animate-spin" /> : "Terbitkan Karya"}
                </Button>
