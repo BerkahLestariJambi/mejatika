@@ -148,7 +148,7 @@ export function NewsSlider({ onReadMore }: { onReadMore: (slug: string) => void 
               <span>{new Date(currentNews.created_at).toLocaleDateString("id-ID")}</span>
             </div>
 
-            <h3 className="text-xl md:text-4xl font-black mb-4 leading-tight text-zinc-900 dark:text-white uppercase italic line-clamp-2">
+            <h3 className="text-xl md:text-2xl font-black mb-2 leading-tight text-zinc-900 dark:text-white uppercase italic line-clamp-2">
               {currentNews.title}
             </h3>
             
