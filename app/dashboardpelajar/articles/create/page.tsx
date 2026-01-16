@@ -30,13 +30,18 @@ export default function CreateArticlePelajarPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
+  
+  // State Kategori dengan default Kategori Cadangan (Penyelamat jika API CORS)
+  const [categories, setCategories] = useState<any[]>([
+    { id: 1, name: "Karya Tulis" },
+    { id: 2, name: "Opini" },
+    { id: 3, name: "Cerpen" }
+  ]);
   
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [authorName, setAuthorName] = useState("");
-  const [authorBio, setAuthorBio] = useState("");
   const [authorImage, setAuthorImage] = useState<File | null>(null);
   const [authorPreview, setAuthorPreview] = useState<string | null>(null);
   const [coverImage, setCoverImage] = useState<File | null>(null);
@@ -62,28 +67,27 @@ export default function CreateArticlePelajarPage() {
     ],
   }), []);
 
-  // --- PERBAIKAN UTAMA: FETCH CATEGORY ---
+  // --- AUTO FETCH & FALLBACK SYSTEM ---
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        console.log("Memulai fetch kategori...");
-        const res = await fetch("https://backend.mejatika.com/api/categories");
+        console.log("Mencoba hubungkan ke Backend Mejatika...");
+        const res = await fetch("https://backend.mejatika.com/api/categories", {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
         
-        if (!res.ok) throw new Error("Gagal akses API");
-        
-        const json = await res.json();
-        console.log("Data dari API:", json);
-
-        // Menangani berbagai kemungkinan format JSON Laravel
-        if (Array.isArray(json)) {
-          setCategories(json);
-        } else if (json.data && Array.isArray(json.data)) {
-          setCategories(json.data);
-        } else if (json.categories && Array.isArray(json.categories)) {
-          setCategories(json.categories);
+        if (res.ok) {
+          const json = await res.json();
+          // Cek format data Laravel
+          const dataFromApi = json.data || json;
+          if (Array.isArray(dataFromApi) && dataFromApi.length > 0) {
+            setCategories(dataFromApi);
+            console.log("Kategori Database Berhasil Dimuat!");
+          }
         }
       } catch (err) {
-        console.error("Error Fetch:", err);
+        console.warn("Gagal ambil kategori database (CORS/Server). Menggunakan kategori standar.");
       }
     };
     fetchCategories();
@@ -91,7 +95,7 @@ export default function CreateArticlePelajarPage() {
 
   const handleScan = async () => {
     if (!content || content.length < 100) {
-      return Swal.fire('Teks Terlalu Singkat', 'Minimal 100 karakter.', 'info');
+      return Swal.fire('Teks Terlalu Singkat', 'Minimal 100 karakter untuk cek orisinalitas.', 'info');
     }
     setIsScanning(true);
     setTimeout(() => {
@@ -105,7 +109,7 @@ export default function CreateArticlePelajarPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!hasScanned) return Swal.fire('Cek Orisinalitas', 'Wajib scan dulu.', 'warning');
+    if (!hasScanned) return Swal.fire('Cek Orisinalitas', 'Wajib scan sebelum terbit.', 'warning');
     if (!coverImage) return Swal.fire('Cover Belum Ada', 'Upload banner artikel.', 'warning');
 
     setLoading(true);
@@ -116,6 +120,7 @@ export default function CreateArticlePelajarPage() {
     formData.append("author_name", authorName);
     formData.append("ai_score", aiScore.toString());
     formData.append("plagiarism_score", plagScore.toString());
+    
     if (coverImage) formData.append("cover_image", coverImage);
     if (authorImage) formData.append("author_image", authorImage);
 
@@ -128,7 +133,11 @@ export default function CreateArticlePelajarPage() {
       if (res.ok) {
         Swal.fire({ title: 'BERHASIL TERBIT!', icon: 'success' }).then(() => router.push("/dashboardpelajar/articles/my"));
       }
-    } catch (error) { Toast.fire({ icon: 'error', title: 'Gagal kirim data.' }); } finally { setLoading(false); }
+    } catch (error) { 
+        Toast.fire({ icon: 'error', title: 'Gagal kirim data.' }); 
+    } finally { 
+        setLoading(false); 
+    }
   };
 
   return (
@@ -138,7 +147,7 @@ export default function CreateArticlePelajarPage() {
         {/* HEADER */}
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-5">
-             <Button variant="ghost" onClick={() => router.back()} className="rounded-full h-12 w-12 bg-white shadow-sm hover:bg-zinc-100">
+             <Button variant="ghost" onClick={() => router.back()} className="rounded-full h-12 w-12 bg-white shadow-sm hover:bg-zinc-100 transition-all">
                 <ArrowLeft className="h-5 w-5" />
              </Button>
              <div>
@@ -151,11 +160,14 @@ export default function CreateArticlePelajarPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* KOLOM KIRI: EDITOR */}
           <div className="lg:col-span-8 space-y-6">
-            <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-8 md:p-10">
+            <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-8 md:p-10 transition-all hover:shadow-2xl">
+              
               <div className="mb-10">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-3 block">Cover Image</Label>
-                <div className="relative h-64 w-full rounded-[2rem] bg-zinc-50 border-2 border-dashed border-zinc-200 overflow-hidden cursor-pointer" onClick={() => document.getElementById('cover_input')?.click()}>
+                <div className="relative h-64 w-full rounded-[2rem] bg-zinc-50 border-2 border-dashed border-zinc-200 overflow-hidden cursor-pointer group hover:border-amber-400 transition-all" onClick={() => document.getElementById('cover_input')?.click()}>
                   {coverPreview ? <img src={coverPreview} className="h-full w-full object-cover" /> : <div className="h-full w-full flex flex-col items-center justify-center text-zinc-400 gap-2"><ImageIcon className="h-10 w-10 opacity-20" /><span className="text-[10px] font-bold uppercase tracking-widest">Upload Banner</span></div>}
                   <input id="cover_input" type="file" hidden onChange={(e) => {
                     const file = e.target.files?.[0];
@@ -166,7 +178,7 @@ export default function CreateArticlePelajarPage() {
 
               <div className="space-y-3 mb-8">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 ml-1">Judul Artikel</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Tulis judul..." className="h-14 text-xl font-bold border-none bg-zinc-50 rounded-2xl px-6 shadow-inner" />
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ketik judul di sini..." className="h-14 text-xl font-bold border-none bg-zinc-50 rounded-2xl px-6 shadow-inner focus:ring-2 focus:ring-amber-500/20" />
               </div>
 
               <div className="space-y-3">
@@ -178,11 +190,12 @@ export default function CreateArticlePelajarPage() {
             </Card>
           </div>
 
+          {/* KOLOM KANAN: SIDEBAR */}
           <div className="lg:col-span-4 space-y-6">
             <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-6 border-t-4 border-amber-500">
               <h3 className="font-black uppercase italic text-sm flex items-center gap-2 mb-4"><ShieldCheck className="h-4 w-4 text-amber-500" /> Orisinalitas</h3>
               <ScannerResult aiScore={aiScore} plagiarizedScore={plagScore} />
-              <Button type="button" onClick={handleScan} className="w-full h-12 mt-4 rounded-xl bg-zinc-900 text-white font-black uppercase text-[9px] tracking-widest shadow-lg">
+              <Button type="button" onClick={handleScan} className="w-full h-12 mt-4 rounded-xl bg-zinc-900 text-white font-black uppercase text-[9px] tracking-widest shadow-lg hover:bg-amber-600 transition-all">
                 {isScanning ? <Loader2 className="animate-spin" /> : "Analisis Karya"}
               </Button>
             </Card>
@@ -190,7 +203,7 @@ export default function CreateArticlePelajarPage() {
             <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-6 space-y-6">
                <div className="flex flex-col items-center gap-3">
                   <div className="relative group cursor-pointer" onClick={() => document.getElementById('author_input')?.click()}>
-                    <div className="h-20 w-20 rounded-full border-2 border-zinc-100 overflow-hidden bg-zinc-50 flex items-center justify-center">
+                    <div className="h-20 w-20 rounded-full border-2 border-zinc-100 overflow-hidden bg-zinc-50 flex items-center justify-center transition-all group-hover:border-amber-400">
                       {authorPreview ? <img src={authorPreview} className="h-full w-full object-cover" /> : <User className="text-zinc-200 h-10 w-10" />}
                     </div>
                     <div className="absolute bottom-0 right-0 bg-amber-500 p-1.5 rounded-full text-white shadow-md border-2 border-white"><Camera className="h-3 w-3" /></div>
@@ -199,30 +212,42 @@ export default function CreateArticlePelajarPage() {
                       if(file) { setAuthorImage(file); setAuthorPreview(URL.createObjectURL(file)); }
                     }} />
                   </div>
-                  <p className="text-[8px] font-black uppercase text-zinc-400">Foto Penulis</p>
+                  <p className="text-[8px] font-black uppercase text-zinc-400">Profil Penulis</p>
                </div>
 
-               <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nama Penulis" className="rounded-xl h-11 bg-zinc-50 border-none font-bold text-center text-xs shadow-inner" required />
+               <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nama Siswa" className="rounded-xl h-11 bg-zinc-50 border-none font-bold text-center text-xs shadow-inner" required />
 
-               {/* SELECT KATEGORI */}
-               <select className="w-full h-12 rounded-xl bg-zinc-50 px-4 font-bold border-none text-xs outline-none cursor-pointer shadow-inner" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} required>
-                  <option value="">-- PILIH KATEGORI --</option>
-                  {categories.length > 0 ? (
-                    categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name || c.nama_kategori || c.title}</option>
-                    ))
-                  ) : (
-                    <option disabled>Loading kategori...</option>
-                  )}
-               </select>
+               <div className="space-y-2">
+                 <Label className="text-[9px] font-black uppercase text-zinc-400 ml-1">Kategori Artikel</Label>
+                 <select 
+                   className="w-full h-12 rounded-xl bg-zinc-50 px-4 font-bold border-none text-xs outline-none cursor-pointer shadow-inner focus:ring-2 focus:ring-amber-500/20" 
+                   value={categoryId} 
+                   onChange={(e) => setCategoryId(e.target.value)} 
+                   required
+                 >
+                    <option value="">-- PILIH KATEGORI --</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name || c.nama_kategori || "Kategori"}
+                      </option>
+                    ))}
+                 </select>
+               </div>
 
-               <Button type="submit" disabled={loading} className="w-full h-20 rounded-[1.5rem] bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-xl transition-all">
+               <Button type="submit" disabled={loading} className="w-full h-20 rounded-[1.5rem] bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-amber-200 transition-all hover:scale-[1.02]">
                  {loading ? <Loader2 className="animate-spin" /> : "Terbitkan Karya"}
                </Button>
             </Card>
           </div>
         </form>
       </motion.div>
+
+      <style jsx global>{`
+        .ql-toolbar.ql-snow { border: none !important; background: #fafafa; border-radius: 1.5rem 1.5rem 0 0; padding: 15px !important; border-bottom: 1px solid #f4f4f5 !important; }
+        .ql-container.ql-snow { border: none !important; min-height: 400px; font-size: 1rem; }
+        .ql-editor { padding: 30px !important; }
+        .ql-editor.ql-blank::before { color: #d4d4d8 !important; font-style: normal !important; }
+      `}</style>
     </div>
   )
 }
