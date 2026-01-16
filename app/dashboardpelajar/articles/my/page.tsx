@@ -31,7 +31,7 @@ export default function MyArticlesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
 
-  // 1. Ambil data artikel
+  // 1. Ambil data artikel dengan proteksi struktur data
   const fetchMyArticles = async () => {
     setLoading(true)
     try {
@@ -46,6 +46,7 @@ export default function MyArticlesPage() {
       const json = await res.json()
       
       if (res.ok && json.success) {
+        // Antisipasi jika Laravel membungkus data dalam json.data atau json.data.data
         const actualData = Array.isArray(json.data) ? json.data : (json.data?.data || [])
         setArticles(actualData)
       } else {
@@ -63,7 +64,7 @@ export default function MyArticlesPage() {
     fetchMyArticles()
   }, [])
 
-  // 2. Fungsi Hapus
+  // 2. Fungsi Hapus dengan SweetAlert2 agar lebih keren
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
       title: 'Hapus Karya?',
@@ -106,7 +107,7 @@ export default function MyArticlesPage() {
   )
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 space-y-8 min-h-screen uppercase tracking-tight">
+    <div className="max-w-6xl mx-auto py-10 px-4 space-y-8 min-h-screen">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -154,7 +155,7 @@ export default function MyArticlesPage() {
                     {article.cover_image ? (
                       <img 
                         src={article.cover_image.startsWith('http') ? article.cover_image : `https://backend.mejatika.com/storage/${article.cover_image}`} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 font-bold italic" 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                         alt="cover"
                       />
                     ) : (
@@ -174,7 +175,7 @@ export default function MyArticlesPage() {
                         {article.category?.name || "Karya Umum"}
                       </span>
                     </div>
-                    <h3 className="text-xl font-black text-zinc-800 line-clamp-1 group-hover:translate-x-1 transition-transform italic uppercase">
+                    <h3 className="text-xl font-black text-zinc-800 line-clamp-1 group-hover:translate-x-1 transition-transform">
                       {article.title}
                     </h3>
                     <div className="flex items-center justify-center md:justify-start gap-5 text-zinc-400 text-[11px] font-bold uppercase tracking-tighter">
@@ -202,14 +203,9 @@ export default function MyArticlesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="rounded-[1.5rem] p-3 border-none shadow-2xl bg-white min-w-[160px]">
-                        
-                        {/* INI PERBAIKANNYA: BUNGKUS DENGAN LINK */}
-                        <Link href={`/dashboardpelajar/articles/edit/${article.id}`}>
-                          <DropdownMenuItem className="rounded-xl gap-3 py-3 font-black uppercase text-[9px] focus:bg-amber-50 focus:text-amber-600 cursor-pointer transition-all">
-                            <Edit3 className="w-4 h-4" /> Edit Tulisan
-                          </DropdownMenuItem>
-                        </Link>
-
+                        <DropdownMenuItem className="rounded-xl gap-3 py-3 font-black uppercase text-[9px] focus:bg-amber-50 focus:text-amber-600 cursor-pointer transition-all">
+                          <Edit3 className="w-4 h-4" /> Edit Tulisan
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDelete(article.id)}
                           className="rounded-xl gap-3 py-3 font-black uppercase text-[9px] focus:bg-red-50 focus:text-red-600 text-red-500 cursor-pointer transition-all"
@@ -226,7 +222,7 @@ export default function MyArticlesPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-[3.5rem] py-24 text-center border-2 border-dashed border-zinc-100 shadow-inner flex flex-col items-center justify-center uppercase italic font-bold">
+        <div className="bg-white rounded-[3.5rem] py-24 text-center border-2 border-dashed border-zinc-100 shadow-inner flex flex-col items-center justify-center">
           <div className="w-24 h-24 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
             <AlertCircle className="w-10 h-10 text-zinc-200" />
           </div>
