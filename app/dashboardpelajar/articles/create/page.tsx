@@ -4,10 +4,9 @@ import { useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { 
-  ArrowLeft, Image as ImageIcon, Send, Loader2, 
-  User, BookOpen, ShieldCheck, Sparkles, CheckCircle2, Camera
+  ArrowLeft, Image as ImageIcon, Loader2, 
+  User, ShieldCheck, Camera
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -31,12 +30,12 @@ export default function CreateArticlePelajarPage() {
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   
-  // State Kategori dengan default Kategori Cadangan (Penyelamat jika API CORS)
-  const [categories, setCategories] = useState<any[]>([
-    { id: 1, name: "Karya Tulis" },
-    { id: 2, name: "Opini" },
-    { id: 3, name: "Cerpen" }
-  ]);
+  // DAFTAR KATEGORI SESUAI REQUEST BOS
+  const categories = [
+    { id: "Cerpen", name: "Cerpen" },
+    { id: "Puisi", name: "Puisi" },
+    { id: "Artikel", name: "Artikel" }
+  ];
   
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -67,35 +66,9 @@ export default function CreateArticlePelajarPage() {
     ],
   }), []);
 
-  // --- AUTO FETCH & FALLBACK SYSTEM ---
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        console.log("Mencoba hubungkan ke Backend Mejatika...");
-        const res = await fetch("https://backend.mejatika.com/api/categories", {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' }
-        });
-        
-        if (res.ok) {
-          const json = await res.json();
-          // Cek format data Laravel
-          const dataFromApi = json.data || json;
-          if (Array.isArray(dataFromApi) && dataFromApi.length > 0) {
-            setCategories(dataFromApi);
-            console.log("Kategori Database Berhasil Dimuat!");
-          }
-        }
-      } catch (err) {
-        console.warn("Gagal ambil kategori database (CORS/Server). Menggunakan kategori standar.");
-      }
-    };
-    fetchCategories();
-  }, []);
-
   const handleScan = async () => {
     if (!content || content.length < 100) {
-      return Swal.fire('Teks Terlalu Singkat', 'Minimal 100 karakter untuk cek orisinalitas.', 'info');
+      return Swal.fire('Teks Terlalu Singkat', 'Minimal 100 karakter.', 'info');
     }
     setIsScanning(true);
     setTimeout(() => {
@@ -144,7 +117,6 @@ export default function CreateArticlePelajarPage() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto min-h-screen bg-[#fafafa]">
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
         
-        {/* HEADER */}
         <div className="flex justify-between items-center mb-10">
           <div className="flex items-center gap-5">
              <Button variant="ghost" onClick={() => router.back()} className="rounded-full h-12 w-12 bg-white shadow-sm hover:bg-zinc-100 transition-all">
@@ -160,11 +132,8 @@ export default function CreateArticlePelajarPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* KOLOM KIRI: EDITOR */}
           <div className="lg:col-span-8 space-y-6">
             <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-8 md:p-10 transition-all hover:shadow-2xl">
-              
               <div className="mb-10">
                 <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-3 block">Cover Image</Label>
                 <div className="relative h-64 w-full rounded-[2rem] bg-zinc-50 border-2 border-dashed border-zinc-200 overflow-hidden cursor-pointer group hover:border-amber-400 transition-all" onClick={() => document.getElementById('cover_input')?.click()}>
@@ -177,12 +146,12 @@ export default function CreateArticlePelajarPage() {
               </div>
 
               <div className="space-y-3 mb-8">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 ml-1">Judul Artikel</Label>
-                <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ketik judul di sini..." className="h-14 text-xl font-bold border-none bg-zinc-50 rounded-2xl px-6 shadow-inner focus:ring-2 focus:ring-amber-500/20" />
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600 ml-1">Judul Karya</Label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Ketik judul..." className="h-14 text-xl font-bold border-none bg-zinc-50 rounded-2xl px-6 shadow-inner focus:ring-2 focus:ring-amber-500/20" />
               </div>
 
               <div className="space-y-3">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-300 ml-1">Isi Narasi</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-300 ml-1">Isi Konten</Label>
                 <div className="bg-zinc-50 rounded-[2rem] overflow-hidden border border-zinc-100 shadow-inner p-1">
                   <ReactQuill theme="snow" value={content} onChange={setContent} modules={modules} />
                 </div>
@@ -190,12 +159,11 @@ export default function CreateArticlePelajarPage() {
             </Card>
           </div>
 
-          {/* KOLOM KANAN: SIDEBAR */}
           <div className="lg:col-span-4 space-y-6">
             <Card className="border-none shadow-xl rounded-[2.5rem] bg-white p-6 border-t-4 border-amber-500">
               <h3 className="font-black uppercase italic text-sm flex items-center gap-2 mb-4"><ShieldCheck className="h-4 w-4 text-amber-500" /> Orisinalitas</h3>
               <ScannerResult aiScore={aiScore} plagiarizedScore={plagScore} />
-              <Button type="button" onClick={handleScan} className="w-full h-12 mt-4 rounded-xl bg-zinc-900 text-white font-black uppercase text-[9px] tracking-widest shadow-lg hover:bg-amber-600 transition-all">
+              <Button type="button" onClick={handleScan} className="w-full h-12 mt-4 rounded-xl bg-zinc-900 text-white font-black uppercase text-[9px] tracking-widest shadow-lg">
                 {isScanning ? <Loader2 className="animate-spin" /> : "Analisis Karya"}
               </Button>
             </Card>
@@ -212,13 +180,13 @@ export default function CreateArticlePelajarPage() {
                       if(file) { setAuthorImage(file); setAuthorPreview(URL.createObjectURL(file)); }
                     }} />
                   </div>
-                  <p className="text-[8px] font-black uppercase text-zinc-400">Profil Penulis</p>
+                  <p className="text-[8px] font-black uppercase text-zinc-400">Foto Penulis</p>
                </div>
 
                <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} placeholder="Nama Siswa" className="rounded-xl h-11 bg-zinc-50 border-none font-bold text-center text-xs shadow-inner" required />
 
                <div className="space-y-2">
-                 <Label className="text-[9px] font-black uppercase text-zinc-400 ml-1">Kategori Artikel</Label>
+                 <Label className="text-[9px] font-black uppercase text-zinc-400 ml-1">Kategori</Label>
                  <select 
                    className="w-full h-12 rounded-xl bg-zinc-50 px-4 font-bold border-none text-xs outline-none cursor-pointer shadow-inner focus:ring-2 focus:ring-amber-500/20" 
                    value={categoryId} 
@@ -227,14 +195,12 @@ export default function CreateArticlePelajarPage() {
                  >
                     <option value="">-- PILIH KATEGORI --</option>
                     {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name || c.nama_kategori || "Kategori"}
-                      </option>
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                  </select>
                </div>
 
-               <Button type="submit" disabled={loading} className="w-full h-20 rounded-[1.5rem] bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-xl shadow-amber-200 transition-all hover:scale-[1.02]">
+               <Button type="submit" disabled={loading} className="w-full h-20 rounded-[1.5rem] bg-amber-500 hover:bg-zinc-900 text-white font-black uppercase tracking-[0.2em] text-[10px] shadow-xl transition-all">
                  {loading ? <Loader2 className="animate-spin" /> : "Terbitkan Karya"}
                </Button>
             </Card>
@@ -246,7 +212,6 @@ export default function CreateArticlePelajarPage() {
         .ql-toolbar.ql-snow { border: none !important; background: #fafafa; border-radius: 1.5rem 1.5rem 0 0; padding: 15px !important; border-bottom: 1px solid #f4f4f5 !important; }
         .ql-container.ql-snow { border: none !important; min-height: 400px; font-size: 1rem; }
         .ql-editor { padding: 30px !important; }
-        .ql-editor.ql-blank::before { color: #d4d4d8 !important; font-style: normal !important; }
       `}</style>
     </div>
   )
