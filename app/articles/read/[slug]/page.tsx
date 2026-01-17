@@ -81,28 +81,31 @@ export default function ArticleDetailPage() {
       </nav>
 
       <div className="pt-24 px-4 sm:px-6">
-        {/* CONTAINER KERTAS */}
-        <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-2xl rounded-sm border border-zinc-200 overflow-hidden">
+        {/* CONTAINER KERTAS BUKU */}
+        <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-sm border border-zinc-200 overflow-hidden">
           
           <div className="relative z-10 p-8 md:p-16 lg:p-20">
             
-            {/* Header Judul */}
-            <header className="mb-12 text-center border-b border-zinc-50 pb-12">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600 mb-4 block">
+            {/* Judul & Meta */}
+            <header className="mb-14 text-center border-b border-zinc-50 pb-12">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600 mb-5 block">
                 {article.category?.name || "Literasi Digital"}
               </span>
-              <h1 className="text-3xl md:text-5xl font-serif text-zinc-900 leading-[1.2] mb-8">
+              <h1 className="text-3xl md:text-5xl font-serif text-zinc-900 leading-[1.15] mb-8 px-4">
                 {article.title}
               </h1>
               <div className="flex items-center justify-center gap-3">
-                <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}`} className="w-8 h-8 rounded-full grayscale border border-zinc-100" alt="" />
-                <span className="text-xs font-serif italic text-zinc-500">Oleh {article.author_name}</span>
+                <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}`} className="w-8 h-8 rounded-full grayscale border border-zinc-100 shadow-sm" alt="" />
+                <div className="text-left">
+                  <p className="text-[10px] font-bold uppercase text-zinc-400 tracking-tighter">Penulis Konten</p>
+                  <p className="text-xs font-serif italic text-zinc-600">{article.author_name}</p>
+                </div>
               </div>
             </header>
 
-            {/* Gambar Utama (Thumbnail) yang Proporsional */}
-            <div className="mb-12 flex justify-center">
-               <div className="w-full max-w-2xl aspect-video rounded-sm overflow-hidden shadow-sm border border-zinc-100">
+            {/* Gambar Sampul (Kecil & Rapih) */}
+            <div className="mb-16 flex justify-center">
+               <div className="w-full max-w-2xl aspect-video rounded-sm overflow-hidden shadow-sm border border-zinc-100 bg-zinc-50">
                   <img 
                     src={article.cover_image?.startsWith('http') ? article.cover_image : `${API_BASE}/storage/${article.cover_image}`} 
                     className="w-full h-full object-cover" 
@@ -111,54 +114,63 @@ export default function ArticleDetailPage() {
                </div>
             </div>
 
-            {/* MAIN CONTENT - PERBAIKAN SPASI */}
+            {/* ISI ARTIKEL - FIX JARAK PARAGRAF & SPASI */}
             <main className="max-w-full">
               <article 
                 className="prose prose-zinc max-w-none 
                 w-full 
-                {/* SOLUSI SPASI: Menggunakan rata kiri agar tidak ada spasi bolong */}
+                {/* Rata Kiri & Word Wrapping rapi */}
                 text-left 
                 [overflow-wrap:anywhere]
                 [word-break:normal]
                 
-                {/* Tipografi Buku Premium */}
-                prose-p:font-serif prose-p:text-zinc-800 prose-p:leading-[1.8] prose-p:text-lg md:prose-p:text-xl prose-p:mb-8
-                prose-headings:font-serif prose-headings:text-zinc-900 prose-headings:font-bold prose-headings:tracking-tight
+                {/* SETTINGAN PARAGRAF: Paksa Jarak Bawah */}
+                prose-p:font-serif 
+                prose-p:text-zinc-800 
+                prose-p:leading-[1.9] 
+                prose-p:text-lg 
+                md:prose-p:text-xl 
+                prose-p:mb-10         {/* Menambah jarak antar paragraf */}
+                prose-p:block         {/* Memastikan paragraf punya ruang sendiri */}
+                
+                {/* Heading Settings */}
+                prose-headings:font-serif prose-headings:text-zinc-900 prose-headings:mt-14 prose-headings:mb-6
                 prose-strong:text-zinc-950 prose-strong:font-bold
                 
-                {/* Gambar dalam artikel: proporsional dan manis */}
-                prose-img:rounded-md 
+                {/* Gambar dalam konten (Proporsional) */}
+                prose-img:rounded-sm 
                 prose-img:max-w-[85%] 
                 md:prose-img:max-w-[65%] 
                 prose-img:mx-auto 
-                prose-img:my-10 
-                prose-img:shadow-lg
-                prose-img:border prose-img:border-zinc-100
+                prose-img:my-14
+                prose-img:shadow-md
+                prose-img:border prose-img:border-zinc-50
 
-                {/* List & Blockquote */}
-                prose-li:font-serif prose-li:text-zinc-800
-                prose-blockquote:font-serif prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-amber-500 prose-blockquote:bg-zinc-50/50 prose-blockquote:py-4 prose-blockquote:px-6
+                {/* List & Quote Styling */}
+                prose-li:font-serif prose-li:text-zinc-800 prose-li:mb-2
+                prose-blockquote:font-serif prose-blockquote:italic prose-blockquote:border-l-4 prose-blockquote:border-amber-500 prose-blockquote:bg-zinc-50/50 prose-blockquote:py-6 prose-blockquote:px-8 prose-blockquote:my-12
                 "
                 dangerouslySetInnerHTML={{ __html: article.content }}
               />
 
-              {/* Tanda Selesai */}
-              <div className="mt-20 flex justify-center items-center gap-4 opacity-20">
-                <div className="h-[1px] w-12 bg-zinc-900" />
-                <div className="w-2 h-2 rotate-45 border border-zinc-900" />
-                <div className="h-[1px] w-12 bg-zinc-900" />
+              {/* Tanda Selesai Khas Buku */}
+              <div className="mt-20 flex justify-center items-center gap-4 opacity-10">
+                <div className="h-[1px] w-16 bg-zinc-900" />
+                <div className="w-2 h-2 rounded-full bg-zinc-900" />
+                <div className="h-[1px] w-16 bg-zinc-900" />
               </div>
             </main>
           </div>
 
-          {/* Bio Penulis Footer */}
-          <footer className="bg-[#fafafa]/50 border-t border-zinc-100 p-10 md:p-16 mt-6">
+          {/* Biografi Penulis di bawah */}
+          <footer className="bg-[#fafafa]/80 border-t border-zinc-100 p-12 md:p-16">
              <div className="flex flex-col md:flex-row items-center gap-8 max-w-xl mx-auto">
                 <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}`} className="w-16 h-16 rounded-full grayscale border border-zinc-200 shadow-sm" alt="" />
                 <div className="text-center md:text-left">
+                   <p className="text-[10px] font-black uppercase text-amber-600 tracking-widest mb-1">Tentang Kontributor</p>
                    <h4 className="font-serif text-xl text-zinc-900 mb-2">{article.author_name}</h4>
                    <p className="text-sm font-serif italic text-zinc-400 leading-relaxed">
-                     {article.author_bio || "Kontributor literasi digital di Mejatika."}
+                     {article.author_bio || "Dedikasi dalam menyebarkan literasi bermanfaat melalui platform Mejatika."}
                    </p>
                 </div>
              </div>
@@ -166,13 +178,15 @@ export default function ArticleDetailPage() {
         </div>
       </div>
 
+      {/* FOOTER AKHIR */}
       <footer className="mt-20 text-center pb-10 opacity-30">
-         <p className="font-serif text-[10px] tracking-[0.4em] uppercase italic text-zinc-500">Mejatika Digital Press — 2026</p>
+         <p className="font-serif text-[10px] tracking-[0.5em] uppercase italic text-zinc-500">Mejatika Press House — 2026</p>
       </footer>
 
+      {/* TOMBOL KE ATAS */}
       <button 
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className={`fixed bottom-8 right-8 w-12 h-12 bg-zinc-900 text-white flex items-center justify-center rounded-full transition-all shadow-2xl z-50 ${scrollProgress > 20 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+        className={`fixed bottom-8 right-8 w-12 h-12 bg-zinc-900 text-white flex items-center justify-center rounded-full transition-all shadow-2xl z-50 active:scale-90 ${scrollProgress > 20 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
       >
         <ChevronUp className="w-6 h-6" />
       </button>
