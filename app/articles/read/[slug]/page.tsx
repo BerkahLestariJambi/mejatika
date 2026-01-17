@@ -21,7 +21,6 @@ export default function ArticleDetailPage() {
 
   const API_BASE = "https://backend.mejatika.com"
 
-  // 1. Logic untuk Progress Bar di atas
   useEffect(() => {
     const updateScrollProgress = () => {
       const currentScroll = window.scrollY;
@@ -95,13 +94,13 @@ export default function ArticleDetailPage() {
   return (
     <div className="bg-[#f4f4f5] min-h-screen pb-20 selection:bg-amber-200 overflow-x-hidden">
       
-      {/* 2. PROGRESS BAR (Warna Amber) */}
+      {/* PROGRESS BAR */}
       <div 
         className="fixed top-0 left-0 h-1.5 bg-amber-500 z-[60] transition-all duration-150"
         style={{ width: `${scrollProgress}%` }}
       />
 
-      {/* 3. NAVBAR HEADER */}
+      {/* NAVBAR */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100">
         <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
           <Button variant="ghost" onClick={() => router.back()} className="rounded-full gap-2 font-black text-[10px] uppercase tracking-widest">
@@ -116,10 +115,8 @@ export default function ArticleDetailPage() {
       </nav>
 
       <div className="pt-32 px-4 max-w-6xl mx-auto">
-        {/* 4. FRAME UTAMA KONTEN */}
         <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-2xl shadow-zinc-200/50 overflow-hidden border border-zinc-100 relative">
           
-          {/* Header Konten */}
           <header className="p-8 md:p-20 text-center border-b border-zinc-50 bg-gradient-to-b from-white to-zinc-50/30">
             <div className="flex justify-center items-center gap-3 mb-8">
               <span className="bg-zinc-900 text-white text-[9px] font-black uppercase px-4 py-2 rounded-full tracking-widest">
@@ -131,7 +128,7 @@ export default function ArticleDetailPage() {
               </span>
             </div>
 
-            <h1 className="text-4xl md:text-7xl font-black tracking-tighter leading-[0.95] text-zinc-900 mb-10 italic uppercase break-words">
+            <h1 className="text-4xl md:text-7xl font-black tracking-tighter leading-[0.95] text-zinc-900 mb-10 italic uppercase break-words px-4">
               {article.title}
             </h1>
 
@@ -154,9 +151,9 @@ export default function ArticleDetailPage() {
             </div>
           </header>
 
-          {/* Cover Image */}
-          <div className="px-4 md:px-16 mt-8">
-            <div className="aspect-video w-full rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl">
+          {/* COVER IMAGE - DIKECILKAN BIAR GAK TERLALU BESAR */}
+          <div className="flex justify-center px-4 md:px-16 mt-10">
+            <div className="w-full max-w-4xl aspect-[16/9] md:aspect-[21/9] rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl border-8 border-white">
               <img 
                 src={article.cover_image?.startsWith('http') ? article.cover_image : `${API_BASE}/storage/${article.cover_image}`} 
                 className="w-full h-full object-cover" 
@@ -165,25 +162,25 @@ export default function ArticleDetailPage() {
             </div>
           </div>
 
-          {/* 5. MAIN CONTENT (JUSTIFIED & CENTERED IMAGES) */}
-          <main className="flex flex-col items-center py-12 md:py-24 px-6 md:px-12 overflow-hidden">
+          <main className="flex flex-col items-center py-12 md:py-20 px-6 md:px-12 overflow-hidden">
             <div className="w-full max-w-3xl flex flex-col">
               <article 
                 className="prose prose-zinc prose-lg md:prose-xl max-w-none 
                 w-full overflow-visible break-words
                 text-justify [text-justify:inter-word] [hyphens:auto]
                 
-                {/* SETTING GAMBAR DALAM ARTIKEL */}
+                {/* SETTING GAMBAR DALAM ISI ARTIKEL: UKURAN MINI & ELEGAN */}
                 prose-img:rounded-2xl 
-                prose-img:shadow-xl 
+                prose-img:shadow-lg 
                 prose-img:mx-auto 
-                prose-img:max-w-[85%] 
-                md:prose-img:max-w-[70%] 
-                prose-img:border-4 
-                prose-img:border-zinc-50
+                prose-img:max-w-[75%] 
+                md:prose-img:max-w-[55%] 
+                prose-img:border-2 
+                prose-img:border-zinc-100
+                prose-img:my-10
 
                 prose-headings:font-black prose-headings:tracking-tighter prose-headings:uppercase prose-headings:italic prose-headings:text-zinc-900 prose-headings:text-left
-                prose-p:text-zinc-600 prose-p:leading-[1.8] prose-p:mb-8 prose-p:text-lg md:prose-p:text-xl
+                prose-p:text-zinc-600 prose-p:leading-[1.9] prose-p:mb-8 prose-p:text-lg md:prose-p:text-xl
                 prose-strong:text-zinc-950 prose-strong:font-black
                 prose-blockquote:border-l-[6px] prose-blockquote:border-amber-500 prose-blockquote:bg-zinc-50 prose-blockquote:py-6 prose-blockquote:px-10 prose-blockquote:rounded-r-3xl prose-blockquote:italic prose-blockquote:text-left
                 prose-li:text-zinc-600 prose-li:font-medium prose-li:text-left
@@ -191,7 +188,6 @@ export default function ArticleDetailPage() {
                 dangerouslySetInnerHTML={{ __html: article.content }}
               />
 
-              {/* Interaction Bar */}
               <div className="mt-20 pt-12 border-t border-zinc-100 flex flex-wrap items-center justify-between gap-8">
                  <div className="flex items-center gap-2 px-6 py-3 bg-zinc-950 rounded-full font-black uppercase text-[10px] tracking-widest text-white shadow-lg">
                    <BookOpen className="w-4 h-4 text-amber-500" /> {article.views || 0} Pembaca
@@ -205,7 +201,6 @@ export default function ArticleDetailPage() {
             </div>
           </main>
 
-          {/* 6. PENULIS CARD */}
           <footer className="bg-zinc-950 p-10 md:p-24 text-white relative overflow-hidden">
              <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
                 <div className="relative w-40 h-40 rounded-[2.2rem] overflow-hidden bg-white p-1">
@@ -221,7 +216,6 @@ export default function ArticleDetailPage() {
           </footer>
         </div>
 
-        {/* 7. RELATED ARTICLES */}
         {relatedArticles.length > 0 && (
           <div className="mt-24">
             <h4 className="text-zinc-400 font-black uppercase tracking-[0.6em] text-xs text-center mb-12">Karya Lainnya</h4>
@@ -248,7 +242,6 @@ export default function ArticleDetailPage() {
          <p className="text-zinc-300 font-black uppercase text-[9px] tracking-[1em]">Mejatika © 2024</p>
       </div>
 
-      {/* 8. BACK TO TOP BUTTON */}
       <Button 
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className={`fixed bottom-8 right-8 rounded-full w-12 h-12 p-0 shadow-2xl transition-all duration-300 ${scrollProgress > 20 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
