@@ -31,7 +31,7 @@ export default function MyArticlesPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
 
-  // 1. Ambil data artikel dengan proteksi struktur data
+  // 1. Fungsi Ambil Data (Sangat Detail)
   const fetchMyArticles = async () => {
     setLoading(true)
     try {
@@ -46,15 +46,16 @@ export default function MyArticlesPage() {
       const json = await res.json()
       
       if (res.ok && json.success) {
-        // Antisipasi jika Laravel membungkus data dalam json.data atau json.data.data
+        // Cek apakah data dibungkus paginate atau get biasa
         const actualData = Array.isArray(json.data) ? json.data : (json.data?.data || [])
         setArticles(actualData)
       } else {
         setArticles([])
+        if (res.status === 401) toast.error("Sesi habis, silakan login kembali")
       }
     } catch (err) {
       console.error("Fetch Error:", err)
-      toast.error("Koneksi ke server gagal")
+      toast.error("Gagal terhubung ke server")
     } finally {
       setLoading(false)
     }
@@ -64,11 +65,11 @@ export default function MyArticlesPage() {
     fetchMyArticles()
   }, [])
 
-  // 2. Fungsi Hapus dengan SweetAlert2 agar lebih keren
+  // 2. Fungsi Hapus
   const handleDelete = async (id: number) => {
     const result = await Swal.fire({
       title: 'Hapus Karya?',
-      text: "Karya yang dihapus tidak bisa dikembalikan!",
+      text: "Data yang dihapus tidak bisa dipulihkan kembali!",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
@@ -76,9 +77,9 @@ export default function MyArticlesPage() {
       confirmButtonText: 'Ya, Hapus!',
       cancelButtonText: 'Batal',
       customClass: {
-        popup: 'rounded-[2rem]',
-        confirmButton: 'rounded-xl font-bold uppercase text-xs px-6 py-3',
-        cancelButton: 'rounded-xl font-bold uppercase text-xs px-6 py-3'
+        popup: 'rounded-[2.5rem]',
+        confirmButton: 'rounded-2xl font-black uppercase text-[10px] px-8 py-4',
+        cancelButton: 'rounded-2xl font-black uppercase text-[10px] px-8 py-4'
       }
     })
 
@@ -92,7 +93,7 @@ export default function MyArticlesPage() {
           },
         })
         if (res.ok) {
-          toast.success("Karya berhasil dihapus")
+          toast.success("Karya berhasil dibuang")
           fetchMyArticles()
         }
       } catch (err) {
@@ -107,7 +108,7 @@ export default function MyArticlesPage() {
   )
 
   return (
-    <div className="max-w-6xl mx-auto py-10 px-4 space-y-8 min-h-screen">
+    <div className="max-w-6xl mx-auto py-10 px-4 space-y-8 min-h-screen uppercase tracking-tight italic">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -115,7 +116,7 @@ export default function MyArticlesPage() {
           <h1 className="text-4xl font-black uppercase italic tracking-tighter text-zinc-900 leading-none">
             Karya <span className="text-amber-500 text-5xl">SAYA</span>
           </h1>
-          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2">
+          <p className="text-zinc-400 font-bold text-[10px] uppercase tracking-[0.3em] mt-2 not-italic">
             Workspace / Article Management
           </p>
         </div>
@@ -127,7 +128,7 @@ export default function MyArticlesPage() {
       </div>
 
       {/* FILTER & SEARCH */}
-      <div className="relative group">
+      <div className="relative group not-italic">
         <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-zinc-400 w-5 h-5 group-focus-within:text-amber-500 transition-colors" />
         <Input 
           placeholder="Cari judul tulisanmu di sini..." 
@@ -141,7 +142,7 @@ export default function MyArticlesPage() {
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24">
           <Loader2 className="w-12 h-12 animate-spin text-amber-500" />
-          <p className="mt-4 text-zinc-400 font-black uppercase text-[9px] tracking-[0.4em]">Sinkronisasi Data...</p>
+          <p className="mt-4 text-zinc-400 font-black uppercase text-[9px] tracking-[0.4em]">Sinkronisasi Data Database...</p>
         </div>
       ) : filteredArticles.length > 0 ? (
         <div className="grid gap-5">
@@ -150,13 +151,16 @@ export default function MyArticlesPage() {
               <CardContent className="p-4 md:p-5">
                 <div className="flex flex-col md:flex-row items-center gap-6">
                   
-                  {/* Thumbnail / Cover */}
+                  {/* Thumbnail */}
                   <div className="w-full md:w-44 h-32 rounded-[1.8rem] bg-zinc-100 overflow-hidden flex-shrink-0 relative">
                     {article.cover_image ? (
                       <img 
-                        src={article.cover_image.startsWith('http') ? article.cover_image : `https://backend.mejatika.com/storage/${article.cover_image}`} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                        src={article.cover_image} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 font-black italic" 
                         alt="cover"
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://placehold.co/600x400?text=No+Image";
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-zinc-300"><FileText className="w-10 h-10 opacity-20" /></div>
@@ -168,30 +172,28 @@ export default function MyArticlesPage() {
                     </div>
                   </div>
 
-                  {/* Content Info */}
+                  {/* Info */}
                   <div className="flex-grow space-y-2 text-center md:text-left">
-                    <div className="flex items-center justify-center md:justify-start gap-2">
-                      <span className="text-[9px] font-black uppercase text-amber-500 tracking-widest">
-                        {article.category?.name || "Karya Umum"}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-black text-zinc-800 line-clamp-1 group-hover:translate-x-1 transition-transform">
+                    <span className="text-[9px] font-black uppercase text-amber-500 tracking-widest not-italic">
+                      {article.category?.name || "Karya Umum"}
+                    </span>
+                    <h3 className="text-xl font-black text-zinc-800 line-clamp-1 group-hover:translate-x-1 transition-transform uppercase italic">
                       {article.title}
                     </h3>
-                    <div className="flex items-center justify-center md:justify-start gap-5 text-zinc-400 text-[11px] font-bold uppercase tracking-tighter">
+                    <div className="flex items-center justify-center md:justify-start gap-5 text-zinc-400 text-[10px] font-bold uppercase tracking-tighter not-italic">
                       <div className="flex items-center gap-1.5">
-                        <Eye className="w-3.5 h-3.5" /> {article.views || 0} Views
+                        <Eye className="w-3.5 h-3.5" /> {article.views || 0}
                       </div>
                       <div>
-                        {new Date(article.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {new Date(article.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </div>
                     </div>
                   </div>
 
-                  {/* Actions Area */}
-                  <div className="flex items-center gap-3">
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3 not-italic">
                     <Link href={`/articles/read/${article.slug}`} target="_blank">
-                      <Button variant="ghost" size="icon" className="rounded-2xl w-12 h-12 bg-zinc-50 hover:bg-amber-50 hover:text-amber-600 transition-colors">
+                      <Button variant="ghost" size="icon" className="rounded-2xl w-12 h-12 bg-zinc-50 hover:bg-amber-50 hover:text-amber-600">
                         <ExternalLink className="w-5 h-5" />
                       </Button>
                     </Link>
@@ -203,9 +205,14 @@ export default function MyArticlesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="rounded-[1.5rem] p-3 border-none shadow-2xl bg-white min-w-[160px]">
-                        <DropdownMenuItem className="rounded-xl gap-3 py-3 font-black uppercase text-[9px] focus:bg-amber-50 focus:text-amber-600 cursor-pointer transition-all">
-                          <Edit3 className="w-4 h-4" /> Edit Tulisan
-                        </DropdownMenuItem>
+                        
+                        {/* LINK KE HALAMAN EDIT - SESUAIKAN FOLDER [id] */}
+                        <Link href={`/dashboardpelajar/articles/edit/${article.id}`}>
+                          <DropdownMenuItem className="rounded-xl gap-3 py-3 font-black uppercase text-[9px] focus:bg-amber-50 focus:text-amber-600 cursor-pointer transition-all">
+                            <Edit3 className="w-4 h-4" /> Edit Tulisan
+                          </DropdownMenuItem>
+                        </Link>
+
                         <DropdownMenuItem 
                           onClick={() => handleDelete(article.id)}
                           className="rounded-xl gap-3 py-3 font-black uppercase text-[9px] focus:bg-red-50 focus:text-red-600 text-red-500 cursor-pointer transition-all"
@@ -222,14 +229,14 @@ export default function MyArticlesPage() {
           ))}
         </div>
       ) : (
-        <div className="bg-white rounded-[3.5rem] py-24 text-center border-2 border-dashed border-zinc-100 shadow-inner flex flex-col items-center justify-center">
+        <div className="bg-white rounded-[3.5rem] py-24 text-center border-2 border-dashed border-zinc-100 shadow-inner flex flex-col items-center justify-center italic font-bold">
           <div className="w-24 h-24 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
             <AlertCircle className="w-10 h-10 text-zinc-200" />
           </div>
           <h3 className="text-xl font-black uppercase italic text-zinc-300">Belum Ada Karya Terdeteksi</h3>
-          <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mt-2 mb-8">Mulailah menulis dan jadilah inspirasi!</p>
+          <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mt-2 mb-8 not-italic">Mulailah menulis dan jadilah inspirasi!</p>
           <Link href="/dashboardpelajar/articles/create">
-            <Button className="bg-zinc-900 hover:bg-amber-500 text-white rounded-2xl px-10 h-14 font-black uppercase text-[10px] tracking-widest transition-all">
+            <Button className="bg-zinc-900 hover:bg-amber-500 text-white rounded-2xl px-10 h-14 font-black uppercase text-[10px] tracking-widest transition-all shadow-xl shadow-zinc-200">
               Mulai Menulis Sekarang
             </Button>
           </Link>
