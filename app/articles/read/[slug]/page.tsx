@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { 
-  Calendar, User, ChevronLeft, Share2, BookOpen, Clock,
-  Facebook, Twitter, Linkedin, Loader2, Bookmark, MessageCircle
+  ChevronLeft, Share2, BookOpen, Clock, 
+  Facebook, Twitter, Linkedin, Loader2, 
+  MessageCircle, ArrowRight, Award
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -14,6 +15,7 @@ export default function ArticleDetailPage() {
   const params = useParams()
   const router = useRouter()
   const [article, setArticle] = useState<any>(null)
+  const [relatedArticles, setRelatedArticles] = useState([])
   const [loading, setLoading] = useState(true)
 
   const API_BASE = "https://backend.mejatika.com"
@@ -30,6 +32,8 @@ export default function ArticleDetailPage() {
       const json = await res.json()
       if (json.success) {
         setArticle(json.data)
+        // Ambil data terkait (opsional, jika endpoint index tersedia)
+        fetchRelated()
       }
     } catch (err) {
       console.error("Gagal memuat artikel", err)
@@ -38,15 +42,32 @@ export default function ArticleDetailPage() {
     }
   }
 
+  const fetchRelated = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/articles`)
+      const json = await res.json()
+      if (json.success) {
+        // Filter agar tidak muncul artikel yang sama
+        const filtered = json.data.data.filter((a: any) => a.slug !== params.slug).slice(0, 2)
+        setRelatedArticles(filtered)
+      }
+    } catch (err) { /* silent error */ }
+  }
+
   const shareArticle = () => {
-    navigator.clipboard.writeText(window.location.href)
-    toast.success("Link berhasil disalin!")
+    if (navigator.share) {
+      navigator.share({ title: article.title, url: window.location.href })
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      toast.success("Link berhasil disalin!")
+    }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#fafafa]">
         <Loader2 className="w-12 h-12 animate-spin text-amber-500" />
+        <p className="mt-4 font-black text-zinc-300 uppercase italic tracking-widest text-[10px]">Menyusun Literasi...</p>
       </div>
     )
   }
@@ -54,111 +75,199 @@ export default function ArticleDetailPage() {
   if (!article) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-white text-center">
-        <h1 className="text-3xl font-black uppercase italic">Artikel Tidak Ditemukan</h1>
-        <Link href="/articles" className="mt-4 text-amber-500 font-bold underline">KEMBALI KE DAFTAR</Link>
+        <h1 className="text-3xl font-black uppercase italic text-zinc-900">Konten Hilang</h1>
+        <Link href="/articles" className="mt-4 text-amber-500 font-bold underline">KEMBALI KE PERPUSTAKAAN</Link>
       </div>
     )
   }
 
   return (
     <div className="bg-[#f4f4f5] min-h-screen pb-20 selection:bg-amber-200 overflow-x-hidden">
-      {/* FLOATING HEADER */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-zinc-100">
-        <div className="max-w-5xl mx-auto px-4 h-20 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => router.back()} className="rounded-full gap-2 font-black text-[10px] uppercase tracking-widest">
+      {/* FLOATING HEADER - GLASSMORPISM */}
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100">
+        <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
+          <Button variant="ghost" onClick={() => router.back()} className="rounded-full gap-2 font-black text-[10px] uppercase tracking-widest transition-all hover:bg-zinc-100">
             <ChevronLeft className="w-4 h-4" /> Kembali
           </Button>
+          
           <div className="flex items-center gap-2">
-            <Button size="icon" variant="outline" onClick={shareArticle} className="rounded-full"><Share2 className="w-4 h-4" /></Button>
+            <Button size="icon" variant="outline" onClick={shareArticle} className="rounded-full border-zinc-200">
+              <Share2 className="w-4 h-4" />
+            </Button>
+            <Button className="hidden md:flex bg-zinc-900 hover:bg-amber-500 text-white rounded-full font-black text-[10px] uppercase tracking-widest px-8 shadow-xl transition-all">
+              Ikuti Penulis
+            </Button>
           </div>
         </div>
       </nav>
 
-      <div className="pt-32 px-4 max-w-5xl mx-auto">
-        {/* FRAME PUTIH UTAMA */}
-        <div className="bg-white rounded-[2rem] md:rounded-[3.5rem] shadow-2xl shadow-zinc-200 overflow-hidden border border-zinc-100">
+      <div className="pt-32 px-4 max-w-6xl mx-auto">
+        {/* FRAME UTAMA */}
+        <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-2xl shadow-zinc-200/50 overflow-hidden border border-zinc-100 relative">
           
-          {/* HEADER DALAM FRAME */}
-          <div className="p-8 md:p-16 text-center border-b border-zinc-50 bg-gradient-to-b from-white to-zinc-50/30">
-            <div className="flex justify-center gap-3 mb-6">
-              <span className="bg-amber-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-full">
-                {article.category?.name || "KARYA SISWA"}
+          {/* TOP ACCENT */}
+          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500" />
+
+          {/* HEADER AREA */}
+          <header className="p-8 md:p-20 text-center border-b border-zinc-50 bg-gradient-to-b from-white to-zinc-50/30">
+            <div className="flex justify-center items-center gap-3 mb-8">
+              <span className="bg-zinc-900 text-white text-[9px] font-black uppercase px-4 py-2 rounded-full tracking-widest">
+                {article.category?.name || "Karya Pelajar"}
+              </span>
+              <div className="h-1 w-1 bg-zinc-300 rounded-full" />
+              <span className="text-zinc-400 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-500" /> 5 Menit Baca
               </span>
             </div>
 
-            <h1 className="text-3xl md:text-6xl font-black tracking-tighter leading-[1] text-zinc-900 mb-8 italic uppercase">
+            <h1 className="text-4xl md:text-7xl font-black tracking-tighter leading-[0.95] text-zinc-900 mb-10 italic uppercase break-words">
               {article.title}
             </h1>
 
-            <div className="flex justify-center items-center gap-4">
-               <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-md">
-                  <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}&background=f59e0b&color=fff`} className="w-full h-full object-cover" alt="Author" />
+            <div className="flex flex-col md:flex-row justify-center items-center gap-6">
+               <div className="flex items-center gap-3 bg-zinc-50 pr-6 py-2 pl-2 rounded-full border border-zinc-100 shadow-sm">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-md">
+                     <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}&background=f59e0b&color=fff`} className="w-full h-full object-cover" alt="Penulis" />
+                  </div>
+                  <div className="text-left leading-tight">
+                    <p className="text-[9px] font-black uppercase text-zinc-400">Kontributor</p>
+                    <p className="text-sm font-black text-zinc-900 uppercase italic">{article.author_name}</p>
+                  </div>
                </div>
-               <div className="text-left">
-                  <p className="text-[10px] font-black uppercase text-zinc-400 leading-none">Penulis</p>
-                  <p className="text-sm font-black text-zinc-900 uppercase italic">{article.author_name}</p>
+               <div className="hidden md:block w-px h-8 bg-zinc-200" />
+               <div className="text-center md:text-left">
+                  <p className="text-[9px] font-black uppercase text-zinc-400 mb-1 leading-none">Diterbitkan Pada</p>
+                  <p className="text-sm font-black text-zinc-900 uppercase italic">
+                    {new Date(article.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
                </div>
             </div>
-          </div>
+          </header>
 
-          {/* COVER IMAGE - Terkunci di dalam Frame */}
-          <div className="px-6 md:px-12 mt-4">
-            <div className="aspect-video w-full rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-xl">
+          {/* FEATURED IMAGE */}
+          <div className="px-4 md:px-16 mt-6">
+            <div className="aspect-video w-full rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl relative group">
               <img 
                 src={article.cover_image?.startsWith('http') ? article.cover_image : `${API_BASE}/storage/${article.cover_image}`} 
-                className="w-full h-full object-cover" 
-                alt="Cover" 
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
+                alt="Thumbnail" 
               />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-60" />
             </div>
           </div>
 
-          {/* KONTEN ARTIKEL - INI YANG SAYA PERBAIKI AGAR TIDAK KELUAR FRAME */}
-          <main className="px-6 py-12 md:px-20 md:py-20 flex justify-center">
-            <div className="w-full max-w-3xl overflow-hidden"> {/* PENGUNCI LEBAR TEKS */}
-              <div 
-                className="prose prose-zinc prose-lg md:prose-xl max-w-none
-                prose-headings:font-black prose-headings:tracking-tighter prose-headings:uppercase prose-headings:italic
-                prose-p:text-zinc-600 prose-p:leading-[1.8] prose-p:mb-6 prose-p:break-words
-                prose-img:rounded-2xl prose-img:shadow-lg prose-img:mx-auto
-                prose-blockquote:border-l-4 prose-blockquote:border-amber-500 prose-blockquote:italic prose-blockquote:bg-zinc-50 prose-blockquote:p-4 prose-blockquote:rounded-r-xl"
+          {/* CONTENT SECTION - TIDAK AKAN TERPOTONG */}
+          <main className="flex flex-col items-center py-12 md:py-24 px-6 md:px-12 overflow-hidden">
+            <div className="w-full max-w-3xl flex flex-col">
+              {/* HTML RENDERER */}
+              <article 
+                className="prose prose-zinc prose-lg md:prose-xl max-w-none 
+                w-full overflow-visible break-words
+                prose-headings:font-black prose-headings:tracking-tighter prose-headings:uppercase prose-headings:italic prose-headings:text-zinc-900
+                prose-p:text-zinc-600 prose-p:leading-[1.8] prose-p:mb-8 prose-p:text-lg md:prose-p:text-xl
+                prose-strong:text-zinc-950 prose-strong:font-black
+                prose-blockquote:border-l-[6px] prose-blockquote:border-amber-500 prose-blockquote:bg-zinc-50 prose-blockquote:py-6 prose-blockquote:px-10 prose-blockquote:rounded-r-3xl prose-blockquote:italic
+                prose-img:rounded-3xl prose-img:shadow-2xl prose-img:mx-auto prose-img:border-4 prose-img:border-white
+                prose-li:text-zinc-600 prose-li:font-medium
+                "
                 dangerouslySetInnerHTML={{ __html: article.content }}
               />
 
-              {/* BAR INTERAKSI BAWAH */}
-              <div className="mt-16 pt-10 border-t border-zinc-100 flex flex-wrap items-center justify-between gap-6">
-                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-zinc-50 rounded-full font-black uppercase text-[10px] tracking-widest text-zinc-500">
-                      <BookOpen className="w-4 h-4 text-amber-500" /> {article.views || 0} VIEWS
+              {/* FOOTER INTERACTION */}
+              <div className="mt-20 pt-12 border-t border-zinc-100 flex flex-wrap items-center justify-between gap-8">
+                 <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-6 py-3 bg-zinc-950 rounded-full font-black uppercase text-[10px] tracking-widest text-white shadow-lg">
+                      <BookOpen className="w-4 h-4 text-amber-500" /> {article.views || 0} Pembaca Telah Mempelajari Ini
                     </div>
                  </div>
-                 <div className="flex items-center gap-2">
-                    <Button size="icon" variant="ghost" className="rounded-full hover:text-blue-600"><Facebook className="w-4 h-4" /></Button>
-                    <Button size="icon" variant="ghost" className="rounded-full hover:text-sky-500"><Twitter className="w-4 h-4" /></Button>
-                    <Button size="icon" variant="ghost" className="rounded-full hover:text-blue-800"><Linkedin className="w-4 h-4" /></Button>
+                 
+                 <div className="flex items-center gap-4">
+                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Share:</p>
+                    <div className="flex gap-2">
+                       <Button size="icon" variant="ghost" className="rounded-full hover:bg-blue-50 hover:text-blue-600"><Facebook className="w-5 h-5" /></Button>
+                       <Button size="icon" variant="ghost" className="rounded-full hover:bg-sky-50 hover:text-sky-500"><Twitter className="w-5 h-5" /></Button>
+                       <Button size="icon" variant="ghost" className="rounded-full hover:bg-blue-50 hover:text-blue-700"><Linkedin className="w-5 h-5" /></Button>
+                    </div>
                  </div>
               </div>
             </div>
           </main>
 
-          {/* FOOTER PENULIS */}
-          <footer className="bg-zinc-900 p-8 md:p-16 text-white">
-             <div className="flex flex-col md:flex-row items-center gap-8">
-                <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white flex-shrink-0">
-                   <img 
-                    src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}&background=f59e0b&color=fff`} 
-                    className="w-full h-full object-cover" 
-                    alt="Author" 
-                   />
+          {/* PENULIS BIO CARD */}
+          <footer className="bg-zinc-950 p-10 md:p-24 text-white relative overflow-hidden">
+             <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-amber-500/10 blur-[120px] rounded-full" />
+             <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '30px 30px'}} />
+             
+             <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
+                <div className="group relative">
+                  <div className="absolute -inset-2 bg-amber-500 rounded-[2.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
+                  <div className="relative w-40 h-40 rounded-[2.2rem] overflow-hidden bg-white p-1 shadow-2xl">
+                    <img 
+                      src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}&background=f59e0b&color=fff`} 
+                      className="w-full h-full object-cover rounded-[2rem]" 
+                      alt="Avatar" 
+                    />
+                  </div>
                 </div>
-                <div className="text-center md:text-left">
-                   <h3 className="text-2xl font-black italic uppercase mb-2">{article.author_name}</h3>
-                   <p className="text-zinc-400 text-sm max-w-xl">
-                     {article.author_bio || "Pelajar aktif Mejatika yang fokus pada pengembangan literasi dan teknologi."}
+
+                <div className="text-center md:text-left flex-grow">
+                   <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
+                      <Award className="w-4 h-4 text-amber-500" />
+                      <span className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em]">Profil Kontributor</span>
+                   </div>
+                   <h3 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-6">{article.author_name}</h3>
+                   <p className="text-zinc-400 text-lg leading-relaxed max-w-2xl font-medium italic">
+                     "{article.author_bio || "Berdedikasi dalam menciptakan konten literasi digital berkualitas untuk membantu perkembangan ekosistem pendidikan di Mejatika."}"
                    </p>
+                   
+                   <div className="mt-10 flex flex-wrap justify-center md:justify-start gap-4">
+                      <Button className="rounded-full bg-white text-zinc-900 font-black uppercase text-[10px] tracking-widest px-10 py-7 hover:bg-amber-500 hover:text-white transition-all transform hover:-translate-y-1">
+                        Eksplorasi Seluruh Karya
+                      </Button>
+                      <Button variant="outline" className="rounded-full border-zinc-700 text-white font-black uppercase text-[10px] tracking-widest px-10 py-7 hover:bg-zinc-800 transition-all">
+                        Hubungi Penulis
+                      </Button>
+                   </div>
                 </div>
              </div>
           </footer>
         </div>
+
+        {/* RELATED ARTICLES - KARYA LAINNYA */}
+        {relatedArticles.length > 0 && (
+          <div className="mt-24">
+            <div className="flex items-center gap-4 mb-12">
+              <div className="h-px flex-grow bg-zinc-200" />
+              <h4 className="text-zinc-400 font-black uppercase tracking-[0.6em] text-xs">Karya Lainnya</h4>
+              <div className="h-px flex-grow bg-zinc-200" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              {relatedArticles.map((item: any) => (
+                <Link key={item.id} href={`/articles/read/${item.slug}`}>
+                  <div className="group bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-xl hover:shadow-2xl transition-all duration-500 flex flex-col md:flex-row items-center gap-6">
+                     <div className="w-full md:w-32 h-32 rounded-3xl overflow-hidden bg-zinc-100 flex-shrink-0">
+                        <img src={item.cover_image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Rel" />
+                     </div>
+                     <div className="text-center md:text-left">
+                        <span className="text-amber-500 font-black text-[9px] uppercase tracking-widest">{item.category?.name}</span>
+                        <h5 className="text-xl font-black uppercase italic tracking-tighter mt-1 line-clamp-2 leading-tight">{item.title}</h5>
+                        <div className="flex items-center justify-center md:justify-start gap-2 mt-4 text-zinc-400">
+                           <span className="text-[10px] font-bold">BACA SEKARANG</span>
+                           <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
+                        </div>
+                     </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* FOOTER AKHIR - OPSIONAL */}
+      <div className="mt-32 text-center pb-10">
+         <p className="text-zinc-300 font-black uppercase text-[9px] tracking-[1em]">Mejatika © 2024 - Ruang Literasi Pelajar</p>
       </div>
     </div>
   )
