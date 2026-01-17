@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { 
   ChevronLeft, Share2, BookOpen, Clock, 
   Facebook, Twitter, Linkedin, Loader2, 
-  MessageCircle, ArrowRight, Award
+  ArrowRight, Award, ChevronUp
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -17,8 +17,21 @@ export default function ArticleDetailPage() {
   const [article, setArticle] = useState<any>(null)
   const [relatedArticles, setRelatedArticles] = useState([])
   const [loading, setLoading] = useState(true)
+  const [scrollProgress, setScrollProgress] = useState(0)
 
   const API_BASE = "https://backend.mejatika.com"
+
+  // Efek Scroll Progress Bar
+  useEffect(() => {
+    const updateScrollProgress = () => {
+      const currentScroll = window.scrollY;
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = (currentScroll / scrollHeight) * 100;
+      setScrollProgress(progress);
+    };
+    window.addEventListener("scroll", updateScrollProgress);
+    return () => window.removeEventListener("scroll", updateScrollProgress);
+  }, []);
 
   useEffect(() => {
     if (params.slug) {
@@ -32,7 +45,6 @@ export default function ArticleDetailPage() {
       const json = await res.json()
       if (json.success) {
         setArticle(json.data)
-        // Ambil data terkait (opsional, jika endpoint index tersedia)
         fetchRelated()
       }
     } catch (err) {
@@ -47,7 +59,6 @@ export default function ArticleDetailPage() {
       const res = await fetch(`${API_BASE}/api/articles`)
       const json = await res.json()
       if (json.success) {
-        // Filter agar tidak muncul artikel yang sama
         const filtered = json.data.data.filter((a: any) => a.slug !== params.slug).slice(0, 2)
         setRelatedArticles(filtered)
       }
@@ -83,19 +94,23 @@ export default function ArticleDetailPage() {
 
   return (
     <div className="bg-[#f4f4f5] min-h-screen pb-20 selection:bg-amber-200 overflow-x-hidden">
-      {/* FLOATING HEADER - GLASSMORPISM */}
+      
+      {/* SCROLL PROGRESS BAR */}
+      <div 
+        className="fixed top-0 left-0 h-1.5 bg-amber-500 z-[60] transition-all duration-150"
+        style={{ width: `${scrollProgress}%` }}
+      />
+
+      {/* FLOATING HEADER */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-zinc-100">
         <div className="max-w-6xl mx-auto px-4 h-20 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => router.back()} className="rounded-full gap-2 font-black text-[10px] uppercase tracking-widest transition-all hover:bg-zinc-100">
+          <Button variant="ghost" onClick={() => router.back()} className="rounded-full gap-2 font-black text-[10px] uppercase tracking-widest">
             <ChevronLeft className="w-4 h-4" /> Kembali
           </Button>
           
           <div className="flex items-center gap-2">
             <Button size="icon" variant="outline" onClick={shareArticle} className="rounded-full border-zinc-200">
               <Share2 className="w-4 h-4" />
-            </Button>
-            <Button className="hidden md:flex bg-zinc-900 hover:bg-amber-500 text-white rounded-full font-black text-[10px] uppercase tracking-widest px-8 shadow-xl transition-all">
-              Ikuti Penulis
             </Button>
           </div>
         </div>
@@ -105,9 +120,6 @@ export default function ArticleDetailPage() {
         {/* FRAME UTAMA */}
         <div className="bg-white rounded-[2.5rem] md:rounded-[4rem] shadow-2xl shadow-zinc-200/50 overflow-hidden border border-zinc-100 relative">
           
-          {/* TOP ACCENT */}
-          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-500" />
-
           {/* HEADER AREA */}
           <header className="p-8 md:p-20 text-center border-b border-zinc-50 bg-gradient-to-b from-white to-zinc-50/30">
             <div className="flex justify-center items-center gap-3 mb-8">
@@ -126,7 +138,7 @@ export default function ArticleDetailPage() {
 
             <div className="flex flex-col md:flex-row justify-center items-center gap-6">
                <div className="flex items-center gap-3 bg-zinc-50 pr-6 py-2 pl-2 rounded-full border border-zinc-100 shadow-sm">
-                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-md">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white">
                      <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}&background=f59e0b&color=fff`} className="w-full h-full object-cover" alt="Penulis" />
                   </div>
                   <div className="text-left leading-tight">
@@ -134,9 +146,8 @@ export default function ArticleDetailPage() {
                     <p className="text-sm font-black text-zinc-900 uppercase italic">{article.author_name}</p>
                   </div>
                </div>
-               <div className="hidden md:block w-px h-8 bg-zinc-200" />
                <div className="text-center md:text-left">
-                  <p className="text-[9px] font-black uppercase text-zinc-400 mb-1 leading-none">Diterbitkan Pada</p>
+                  <p className="text-[9px] font-black uppercase text-zinc-400 mb-1">Diterbitkan Pada</p>
                   <p className="text-sm font-black text-zinc-900 uppercase italic">
                     {new Date(article.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
@@ -145,49 +156,42 @@ export default function ArticleDetailPage() {
           </header>
 
           {/* FEATURED IMAGE */}
-          <div className="px-4 md:px-16 mt-6">
-            <div className="aspect-video w-full rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl relative group">
+          <div className="px-4 md:px-16 mt-8">
+            <div className="aspect-video w-full rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl">
               <img 
                 src={article.cover_image?.startsWith('http') ? article.cover_image : `${API_BASE}/storage/${article.cover_image}`} 
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" 
+                className="w-full h-full object-cover" 
                 alt="Thumbnail" 
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-60" />
             </div>
           </div>
 
-          {/* CONTENT SECTION - TIDAK AKAN TERPOTONG */}
+          {/* CONTENT SECTION - RATA KIRI KANAN (JUSTIFY) */}
           <main className="flex flex-col items-center py-12 md:py-24 px-6 md:px-12 overflow-hidden">
             <div className="w-full max-w-3xl flex flex-col">
-              {/* HTML RENDERER */}
               <article 
                 className="prose prose-zinc prose-lg md:prose-xl max-w-none 
                 w-full overflow-visible break-words
-                prose-headings:font-black prose-headings:tracking-tighter prose-headings:uppercase prose-headings:italic prose-headings:text-zinc-900
+                text-justify [text-justify:inter-word] [hyphens:auto]
+                prose-headings:font-black prose-headings:tracking-tighter prose-headings:uppercase prose-headings:italic prose-headings:text-zinc-900 prose-headings:text-left
                 prose-p:text-zinc-600 prose-p:leading-[1.8] prose-p:mb-8 prose-p:text-lg md:prose-p:text-xl
                 prose-strong:text-zinc-950 prose-strong:font-black
-                prose-blockquote:border-l-[6px] prose-blockquote:border-amber-500 prose-blockquote:bg-zinc-50 prose-blockquote:py-6 prose-blockquote:px-10 prose-blockquote:rounded-r-3xl prose-blockquote:italic
+                prose-blockquote:border-l-[6px] prose-blockquote:border-amber-500 prose-blockquote:bg-zinc-50 prose-blockquote:py-6 prose-blockquote:px-10 prose-blockquote:rounded-r-3xl prose-blockquote:italic prose-blockquote:text-left
                 prose-img:rounded-3xl prose-img:shadow-2xl prose-img:mx-auto prose-img:border-4 prose-img:border-white
-                prose-li:text-zinc-600 prose-li:font-medium
+                prose-li:text-zinc-600 prose-li:font-medium prose-li:text-left
                 "
                 dangerouslySetInnerHTML={{ __html: article.content }}
               />
 
               {/* FOOTER INTERACTION */}
               <div className="mt-20 pt-12 border-t border-zinc-100 flex flex-wrap items-center justify-between gap-8">
-                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-6 py-3 bg-zinc-950 rounded-full font-black uppercase text-[10px] tracking-widest text-white shadow-lg">
-                      <BookOpen className="w-4 h-4 text-amber-500" /> {article.views || 0} Pembaca Telah Mempelajari Ini
-                    </div>
+                 <div className="flex items-center gap-2 px-6 py-3 bg-zinc-950 rounded-full font-black uppercase text-[10px] tracking-widest text-white shadow-lg">
+                   <BookOpen className="w-4 h-4 text-amber-500" /> {article.views || 0} Pembaca
                  </div>
-                 
-                 <div className="flex items-center gap-4">
-                    <p className="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Share:</p>
-                    <div className="flex gap-2">
-                       <Button size="icon" variant="ghost" className="rounded-full hover:bg-blue-50 hover:text-blue-600"><Facebook className="w-5 h-5" /></Button>
-                       <Button size="icon" variant="ghost" className="rounded-full hover:bg-sky-50 hover:text-sky-500"><Twitter className="w-5 h-5" /></Button>
-                       <Button size="icon" variant="ghost" className="rounded-full hover:bg-blue-50 hover:text-blue-700"><Linkedin className="w-5 h-5" /></Button>
-                    </div>
+                 <div className="flex gap-2">
+                    <Button size="icon" variant="ghost" className="rounded-full hover:bg-blue-50 hover:text-blue-600"><Facebook className="w-5 h-5" /></Button>
+                    <Button size="icon" variant="ghost" className="rounded-full hover:bg-sky-50 hover:text-sky-500"><Twitter className="w-5 h-5" /></Button>
+                    <Button size="icon" variant="ghost" className="rounded-full hover:bg-blue-50 hover:text-blue-700"><Linkedin className="w-5 h-5" /></Button>
                  </div>
               </div>
             </div>
@@ -195,67 +199,34 @@ export default function ArticleDetailPage() {
 
           {/* PENULIS BIO CARD */}
           <footer className="bg-zinc-950 p-10 md:p-24 text-white relative overflow-hidden">
-             <div className="absolute -bottom-20 -right-20 w-96 h-96 bg-amber-500/10 blur-[120px] rounded-full" />
-             <div className="absolute top-0 left-0 w-full h-full opacity-5 pointer-events-none" style={{backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '30px 30px'}} />
-             
              <div className="relative z-10 flex flex-col md:flex-row items-center gap-12">
-                <div className="group relative">
-                  <div className="absolute -inset-2 bg-amber-500 rounded-[2.5rem] blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                  <div className="relative w-40 h-40 rounded-[2.2rem] overflow-hidden bg-white p-1 shadow-2xl">
-                    <img 
-                      src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}&background=f59e0b&color=fff`} 
-                      className="w-full h-full object-cover rounded-[2rem]" 
-                      alt="Avatar" 
-                    />
-                  </div>
+                <div className="relative w-40 h-40 rounded-[2.2rem] overflow-hidden bg-white p-1">
+                  <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}&background=f59e0b&color=fff`} className="w-full h-full object-cover rounded-[2rem]" alt="Avatar" />
                 </div>
-
                 <div className="text-center md:text-left flex-grow">
-                   <div className="flex items-center justify-center md:justify-start gap-2 mb-4">
-                      <Award className="w-4 h-4 text-amber-500" />
-                      <span className="text-amber-500 text-[10px] font-black uppercase tracking-[0.4em]">Profil Kontributor</span>
-                   </div>
-                   <h3 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-6">{article.author_name}</h3>
+                   <h3 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter mb-4">{article.author_name}</h3>
                    <p className="text-zinc-400 text-lg leading-relaxed max-w-2xl font-medium italic">
-                     "{article.author_bio || "Berdedikasi dalam menciptakan konten literasi digital berkualitas untuk membantu perkembangan ekosistem pendidikan di Mejatika."}"
+                     "{article.author_bio || "Berdedikasi dalam menciptakan konten literasi digital berkualitas di Mejatika."}"
                    </p>
-                   
-                   <div className="mt-10 flex flex-wrap justify-center md:justify-start gap-4">
-                      <Button className="rounded-full bg-white text-zinc-900 font-black uppercase text-[10px] tracking-widest px-10 py-7 hover:bg-amber-500 hover:text-white transition-all transform hover:-translate-y-1">
-                        Eksplorasi Seluruh Karya
-                      </Button>
-                      <Button variant="outline" className="rounded-full border-zinc-700 text-white font-black uppercase text-[10px] tracking-widest px-10 py-7 hover:bg-zinc-800 transition-all">
-                        Hubungi Penulis
-                      </Button>
-                   </div>
                 </div>
              </div>
           </footer>
         </div>
 
-        {/* RELATED ARTICLES - KARYA LAINNYA */}
+        {/* RELATED ARTICLES */}
         {relatedArticles.length > 0 && (
           <div className="mt-24">
-            <div className="flex items-center gap-4 mb-12">
-              <div className="h-px flex-grow bg-zinc-200" />
-              <h4 className="text-zinc-400 font-black uppercase tracking-[0.6em] text-xs">Karya Lainnya</h4>
-              <div className="h-px flex-grow bg-zinc-200" />
-            </div>
-
+            <h4 className="text-zinc-400 font-black uppercase tracking-[0.6em] text-xs text-center mb-12">Karya Lainnya</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               {relatedArticles.map((item: any) => (
                 <Link key={item.id} href={`/articles/read/${item.slug}`}>
-                  <div className="group bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-xl hover:shadow-2xl transition-all duration-500 flex flex-col md:flex-row items-center gap-6">
-                     <div className="w-full md:w-32 h-32 rounded-3xl overflow-hidden bg-zinc-100 flex-shrink-0">
-                        <img src={item.cover_image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="Rel" />
+                  <div className="group bg-white rounded-[2.5rem] p-8 border border-zinc-100 shadow-xl flex items-center gap-6">
+                     <div className="w-24 h-24 rounded-2xl overflow-hidden bg-zinc-100 flex-shrink-0">
+                        <img src={item.cover_image} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt="Rel" />
                      </div>
-                     <div className="text-center md:text-left">
-                        <span className="text-amber-500 font-black text-[9px] uppercase tracking-widest">{item.category?.name}</span>
-                        <h5 className="text-xl font-black uppercase italic tracking-tighter mt-1 line-clamp-2 leading-tight">{item.title}</h5>
-                        <div className="flex items-center justify-center md:justify-start gap-2 mt-4 text-zinc-400">
-                           <span className="text-[10px] font-bold">BACA SEKARANG</span>
-                           <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
-                        </div>
+                     <div>
+                        <span className="text-amber-500 font-black text-[9px] uppercase">{item.category?.name}</span>
+                        <h5 className="text-xl font-black uppercase italic tracking-tighter mt-1 line-clamp-2">{item.title}</h5>
                      </div>
                   </div>
                 </Link>
@@ -265,10 +236,18 @@ export default function ArticleDetailPage() {
         )}
       </div>
 
-      {/* FOOTER AKHIR - OPSIONAL */}
+      {/* FOOTER AKHIR */}
       <div className="mt-32 text-center pb-10">
-         <p className="text-zinc-300 font-black uppercase text-[9px] tracking-[1em]">Mejatika © 2024 - Ruang Literasi Pelajar</p>
+         <p className="text-zinc-300 font-black uppercase text-[9px] tracking-[1em]">Mejatika © 2024</p>
       </div>
+
+      {/* BACK TO TOP */}
+      <Button 
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        className={`fixed bottom-8 right-8 rounded-full w-12 h-12 p-0 shadow-2xl transition-all duration-300 ${scrollProgress > 20 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+      >
+        <ChevronUp className="w-6 h-6" />
+      </Button>
     </div>
   )
 }
