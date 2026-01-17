@@ -64,18 +64,6 @@ export default function ArticleDetailPage() {
   return (
     <div className="bg-[#f0eee2] min-h-screen pb-20 selection:bg-amber-100 overflow-x-hidden">
       
-      {/* CSS INJECTION - Solusi Mati Jarak Paragraf */}
-      <style jsx global>{`
-        .book-content p {
-          margin-bottom: 2.5rem !important; 
-          display: block !important;
-          line-height: 2 !important;
-        }
-        .book-content {
-          white-space: pre-line !important;
-        }
-      `}</style>
-      
       {/* PROGRESS BAR */}
       <div className="fixed top-0 left-0 h-1 bg-zinc-800 z-[60] transition-all duration-150" style={{ width: `${scrollProgress}%` }} />
 
@@ -93,7 +81,7 @@ export default function ArticleDetailPage() {
       </nav>
 
       <div className="pt-24 px-4 sm:px-6">
-        {/* CONTAINER KERTAS BUKU */}
+        {/* CONTAINER KERTAS */}
         <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-[0_20px_60px_rgba(0,0,0,0.12)] rounded-sm border border-zinc-200 overflow-hidden">
           
           <div className="relative z-10 p-8 md:p-16 lg:p-20">
@@ -112,7 +100,7 @@ export default function ArticleDetailPage() {
               </div>
             </header>
 
-            {/* Gambar Sampul (Kecil & Proporsional) */}
+            {/* Gambar Sampul Proporsional */}
             <div className="mb-16 flex justify-center">
                <div className="w-full max-w-xl aspect-video rounded-sm overflow-hidden shadow-md border border-zinc-50">
                   <img 
@@ -123,15 +111,20 @@ export default function ArticleDetailPage() {
                </div>
             </div>
 
-            {/* MAIN ARTICLE CONTENT */}
+            {/* MAIN CONTENT - SOLUSI JARAK PARAGRAF BUILD-SAFE */}
             <main className="max-w-full">
               <article 
-                className="book-content prose prose-zinc max-w-none 
-                w-full text-left font-serif
-                
-                {/* Font & Warna */}
+                className="prose prose-zinc max-w-none w-full text-left font-serif
                 text-zinc-800 text-lg md:text-xl
                 
+                {/* 1. Paksa Jarak Paragraf via Tailwind Arbitrary */}
+                [&_p]:mb-10 
+                [&_p]:leading-[1.9] 
+                [&_p]:block
+                
+                {/* 2. Support Enter (New Line) dari Database */}
+                whitespace-pre-line
+
                 {/* Heading & Strong */}
                 prose-headings:font-serif prose-headings:text-zinc-950 prose-headings:mt-16 prose-headings:mb-8
                 prose-strong:text-zinc-950 prose-strong:font-bold
@@ -152,7 +145,6 @@ export default function ArticleDetailPage() {
                 dangerouslySetInnerHTML={{ __html: article.content }}
               />
 
-              {/* Tanda Selesai Khas Buku */}
               <div className="mt-20 flex justify-center items-center gap-4 opacity-20">
                 <div className="h-[1px] w-12 bg-zinc-900" />
                 <div className="w-2 h-2 rotate-45 border border-zinc-900" />
@@ -161,7 +153,6 @@ export default function ArticleDetailPage() {
             </main>
           </div>
 
-          {/* Footer Biografi Penulis */}
           <footer className="bg-zinc-50 border-t border-zinc-100 p-10 md:p-16">
              <div className="flex flex-col md:flex-row items-center gap-8 max-w-xl mx-auto">
                 <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}`} className="w-16 h-16 rounded-full grayscale border border-zinc-200" alt="" />
@@ -180,7 +171,6 @@ export default function ArticleDetailPage() {
          <p className="font-serif text-[10px] tracking-[0.5em] uppercase italic text-zinc-500">Mejatika Digital Press — 2026</p>
       </footer>
 
-      {/* BACK TO TOP */}
       <button 
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
         className={`fixed bottom-8 right-8 w-12 h-12 bg-zinc-950 text-white flex items-center justify-center rounded-full shadow-2xl z-50 transition-all ${scrollProgress > 20 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
