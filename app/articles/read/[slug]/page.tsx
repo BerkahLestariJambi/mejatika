@@ -44,14 +44,9 @@ export default function ArticleDetailPage() {
     }
   }
 
-  // FUNGSI MEMBERSIHKAN TEKS DARI DATABASE
   const formatContent = (content: string) => {
     if (!content) return ""
-    // Jika sudah ada HTML, hapus spasi/newline berlebih yang merusak wrapping
-    if (content.includes("<p>")) {
-      return content.replace(/>\s+</g, '><').trim()
-    }
-    // Jika teks mentah, ubah double enter jadi paragraf rapi
+    if (content.includes("<p>")) return content.trim()
     return content
       .split(/\n\s*\n/)
       .map(para => `<p>${para.replace(/\n/g, " ").trim()}</p>`)
@@ -73,7 +68,7 @@ export default function ArticleDetailPage() {
   if (!article) return null
 
   return (
-    <div className="bg-[#f0eee2] min-h-screen pb-20 selection:bg-amber-100 overflow-x-hidden">
+    <div className="bg-[#e5e3d8] min-h-screen pb-20 selection:bg-amber-100 overflow-x-hidden">
       
       <div className="fixed top-0 left-0 h-1 bg-zinc-800 z-[60] transition-all duration-150" style={{ width: `${scrollProgress}%` }} />
 
@@ -88,13 +83,15 @@ export default function ArticleDetailPage() {
         </div>
       </nav>
 
-      <div className="pt-24 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-2xl rounded-sm border border-zinc-200 overflow-hidden">
+      <div className="pt-24 px-4">
+        {/* FRAME KERTAS MODEL A4 */}
+        <div className="max-w-[210mm] mx-auto bg-[#fdfdfc] shadow-[0_0_50px_rgba(0,0,0,0.1)] min-h-[297mm] border border-zinc-200 overflow-hidden flex flex-col">
           
-          <div className="relative z-10 p-6 md:p-16 lg:p-20">
+          {/* MARGIN KONSISTEN 3CM (12 Tailwind units) DI SEMUA SISI */}
+          <div className="p-8 md:p-12 lg:p-12 flex-1 flex flex-col">
             
             <header className="mb-12 text-center border-b border-zinc-100 pb-10">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600 mb-4 block leading-none">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600 mb-4 block">
                 {article.category?.name || "LITERASI"}
               </span>
               <h1 className="text-3xl md:text-5xl font-serif text-zinc-900 leading-tight mb-8">
@@ -106,15 +103,15 @@ export default function ArticleDetailPage() {
                     src={getAuthorImage(article.author_photo || article.author_image)} 
                     className="w-full h-full object-cover grayscale" 
                     alt={article.author_name} 
-                    onError={(e: any) => e.target.src = `https://ui-avatars.com/api/?name=${article.author_name}`}
                   />
                 </div>
                 <span className="text-xs font-serif italic text-zinc-500">Karya {article.author_name}</span>
               </div>
             </header>
 
+            {/* Gambar Cover dalam Frame */}
             <div className="mb-12">
-               <div className="w-full max-w-2xl mx-auto aspect-video rounded-sm overflow-hidden shadow-sm">
+               <div className="w-full aspect-video rounded-sm overflow-hidden shadow-sm border border-zinc-50">
                   <img 
                     src={article.cover_image?.startsWith('http') ? article.cover_image : `${API_BASE}/storage/${article.cover_image}`} 
                     className="w-full h-full object-cover" 
@@ -123,41 +120,31 @@ export default function ArticleDetailPage() {
                </div>
             </div>
 
-            {/* AREA ARTIKEL - FIXED WRAPPING */}
-            <main className="w-full">
+            {/* KONTEN ARTIKEL RATA KIRI-KANAN (JUSTIFIED) */}
+            <main className="w-full flex-1">
               <article 
                 className="prose prose-zinc max-w-none font-serif text-zinc-800
-                {/* SOLUSI KATA TERPOTONG: Rata kiri lebih aman daripada Justify */}
-                text-left 
                 
-                {/* Mencegah kata putus di tengah (seperti 'd iselesaikan') */}
-                [word-break:normal] 
-                [overflow-wrap:break-word]
+                {/* SETTINGAN RATA KIRI-KANAN & ANTI KATA PECAH */}
+                text-justify [text-justify:inter-word] [hyphens:auto]
+                [word-break:normal] [overflow-wrap:break-word]
                 
-                {/* Jarak Paragraf */}
-                [&_p]:mb-10 
+                {/* Jarak Paragraf Konsisten */}
+                [&_p]:mb-8 
                 [&_p]:leading-[1.8] 
                 [&_p]:text-lg 
                 md:[&_p]:text-xl
 
-                {/* Heading & Styling */}
-                prose-headings:font-serif prose-headings:text-zinc-900
+                prose-headings:font-serif prose-headings:text-zinc-900 prose-headings:text-left
                 prose-strong:text-zinc-950 prose-strong:font-bold
                 prose-img:rounded-md prose-img:mx-auto prose-img:my-10 prose-img:max-w-full
                 "
                 dangerouslySetInnerHTML={{ __html: formatContent(article.content) }}
               />
-
-              <div className="mt-20 flex justify-center items-center gap-4 opacity-10">
-                <div className="h-[1px] w-12 bg-zinc-900" />
-                <div className="w-2 h-2 rotate-45 bg-zinc-900" />
-                <div className="h-[1px] w-12 bg-zinc-900" />
-              </div>
             </main>
-          </div>
 
-          <footer className="bg-zinc-50 border-t border-zinc-100 p-10">
-             <div className="flex flex-col md:flex-row items-center gap-6 max-w-xl mx-auto opacity-70">
+            {/* Footer Penulis tetap di dalam Margin 3 */}
+            <footer className="mt-20 pt-10 border-t border-zinc-100 flex flex-col md:flex-row items-center gap-6 opacity-70">
                 <div className="w-16 h-16 rounded-full overflow-hidden border border-zinc-200">
                   <img 
                     src={getAuthorImage(article.author_photo || article.author_image)} 
@@ -167,10 +154,10 @@ export default function ArticleDetailPage() {
                 </div>
                 <div className="text-center md:text-left">
                    <h4 className="font-serif text-lg text-zinc-900">{article.author_name}</h4>
-                   <p className="text-xs font-serif italic text-zinc-400">Patner Mejatika</p>
+                   <p className="text-xs font-serif italic text-zinc-400">Mejatika Digital Press — 2026</p>
                 </div>
-             </div>
-          </footer>
+            </footer>
+          </div>
         </div>
       </div>
 
