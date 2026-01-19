@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { 
   ChevronLeft, Share2, Loader2, 
-  ChevronUp, Bookmark, Clock
+  ChevronUp, Bookmark
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -44,6 +44,18 @@ export default function ArticleDetailPage() {
     }
   }
 
+  // FUNGSI SAKTI: Mengubah teks mentah menjadi paragraf HTML yang rapi
+  const formatContent = (content: string) => {
+    if (!content) return ""
+    // Jika konten sudah punya tag HTML <p>, biarkan saja
+    if (content.includes("<p>")) return content
+    // Jika tidak, ubah setiap double enter menjadi paragraf
+    return content
+      .split(/\n\s*\n/)
+      .map(para => `<p>${para.replace(/\n/g, " ")}</p>`)
+      .join("")
+  }
+
   const shareArticle = () => {
     if (navigator.share) {
       navigator.share({ title: article.title, url: window.location.href })
@@ -81,28 +93,27 @@ export default function ArticleDetailPage() {
       </nav>
 
       <div className="pt-24 px-4 sm:px-6">
-        {/* CONTAINER KERTAS */}
-        <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-[0_20px_60px_rgba(0,0,0,0.12)] rounded-sm border border-zinc-200 overflow-hidden">
+        {/* FRAME KERTAS - Kunci agar tidak bocor: overflow-hidden & break-words */}
+        <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-2xl rounded-sm border border-zinc-200 overflow-hidden break-words">
           
-          <div className="relative z-10 p-8 md:p-16 lg:p-20">
+          <div className="relative z-10 p-6 md:p-16 lg:p-20">
             
-            {/* Header Judul */}
-            <header className="mb-14 text-center border-b border-zinc-100 pb-12">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600 mb-5 block">
-                {article.category?.name || "Literasi Digital"}
+            <header className="mb-12 text-center border-b border-zinc-100 pb-10">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-600 mb-4 block leading-none">
+                {article.category?.name || "LITERASI"}
               </span>
-              <h1 className="text-3xl md:text-5xl font-serif text-zinc-900 leading-[1.2] mb-8">
+              <h1 className="text-3xl md:text-5xl font-serif text-zinc-900 leading-tight mb-8">
                 {article.title}
               </h1>
-              <div className="flex items-center justify-center gap-3 opacity-70">
+              <div className="flex items-center justify-center gap-3">
                 <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}`} className="w-8 h-8 rounded-full grayscale" alt="" />
-                <span className="text-xs font-serif italic text-zinc-500">Oleh {article.author_name}</span>
+                <span className="text-xs font-serif italic text-zinc-500">Karya {article.author_name}</span>
               </div>
             </header>
 
-            {/* Gambar Sampul Proporsional */}
-            <div className="mb-16 flex justify-center">
-               <div className="w-full max-w-xl aspect-video rounded-sm overflow-hidden shadow-md border border-zinc-50">
+            {/* Gambar Utama */}
+            <div className="mb-12">
+               <div className="w-full max-w-2xl mx-auto aspect-video rounded-sm overflow-hidden shadow-sm">
                   <img 
                     src={article.cover_image?.startsWith('http') ? article.cover_image : `${API_BASE}/storage/${article.cover_image}`} 
                     className="w-full h-full object-cover" 
@@ -111,65 +122,48 @@ export default function ArticleDetailPage() {
                </div>
             </div>
 
-            {/* MAIN CONTENT - SOLUSI JARAK PARAGRAF BUILD-SAFE */}
-            <main className="max-w-full">
+            {/* AREA ARTIKEL - FIXED FRAME */}
+            <main className="w-full max-w-full overflow-hidden">
               <article 
-                className="prose prose-zinc max-w-none w-full text-left font-serif
-                text-zinc-800 text-lg md:text-xl
+                className="prose prose-zinc max-w-none 
+                text-left font-serif text-zinc-800
                 
-                {/* 1. Paksa Jarak Paragraf via Tailwind Arbitrary */}
+                {/* Solusi Frame & Jarak Paragraf */}
                 [&_p]:mb-10 
-                [&_p]:leading-[1.9] 
-                [&_p]:block
-                
-                {/* 2. Support Enter (New Line) dari Database */}
-                whitespace-pre-line
+                [&_p]:leading-[1.8] 
+                [&_p]:text-lg 
+                md:[&_p]:text-xl
+                [&_p]:break-words
 
-                {/* Heading & Strong */}
-                prose-headings:font-serif prose-headings:text-zinc-950 prose-headings:mt-16 prose-headings:mb-8
+                {/* Heading & Tipografi */}
+                prose-headings:font-serif prose-headings:text-zinc-900
                 prose-strong:text-zinc-950 prose-strong:font-bold
                 
-                {/* Gambar dalam artikel (Mini & Cantik) */}
-                prose-img:rounded-md 
-                prose-img:max-w-[80%] 
-                md:prose-img:max-w-[60%] 
-                prose-img:mx-auto 
-                prose-img:my-14
-                prose-img:shadow-lg
-                prose-img:border prose-img:border-zinc-100
-
-                {/* List & Blockquote */}
-                prose-li:mb-4
-                prose-blockquote:border-l-4 prose-blockquote:border-amber-500 prose-blockquote:bg-zinc-50 prose-blockquote:py-4 prose-blockquote:px-6
+                {/* Gambar dalam teks */}
+                prose-img:rounded-md prose-img:mx-auto prose-img:my-10 prose-img:max-w-full
                 "
-                dangerouslySetInnerHTML={{ __html: article.content }}
+                dangerouslySetInnerHTML={{ __html: formatContent(article.content) }}
               />
 
-              <div className="mt-20 flex justify-center items-center gap-4 opacity-20">
+              <div className="mt-20 flex justify-center items-center gap-4 opacity-10">
                 <div className="h-[1px] w-12 bg-zinc-900" />
-                <div className="w-2 h-2 rotate-45 border border-zinc-900" />
+                <div className="w-2 h-2 rotate-45 bg-zinc-900" />
                 <div className="h-[1px] w-12 bg-zinc-900" />
               </div>
             </main>
           </div>
 
-          <footer className="bg-zinc-50 border-t border-zinc-100 p-10 md:p-16">
-             <div className="flex flex-col md:flex-row items-center gap-8 max-w-xl mx-auto">
-                <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}`} className="w-16 h-16 rounded-full grayscale border border-zinc-200" alt="" />
+          <footer className="bg-zinc-50 border-t border-zinc-100 p-10">
+             <div className="flex flex-col md:flex-row items-center gap-6 max-w-xl mx-auto opacity-70">
+                <img src={article.author_photo || `https://ui-avatars.com/api/?name=${article.author_name}`} className="w-14 h-14 rounded-full grayscale border border-zinc-200" alt="" />
                 <div className="text-center md:text-left">
-                   <h4 className="font-serif text-xl text-zinc-900 mb-2">{article.author_name}</h4>
-                   <p className="text-sm font-serif italic text-zinc-400 leading-relaxed">
-                     {article.author_bio || "Kontributor konten berdedikasi di Mejatika."}
-                   </p>
+                   <h4 className="font-serif text-lg text-zinc-900">{article.author_name}</h4>
+                   <p className="text-xs font-serif italic text-zinc-400">Kontributor Mejatika</p>
                 </div>
              </div>
           </footer>
         </div>
       </div>
-
-      <footer className="mt-20 text-center pb-10 opacity-30">
-         <p className="font-serif text-[10px] tracking-[0.5em] uppercase italic text-zinc-500">Mejatika Digital Press — 2026</p>
-      </footer>
 
       <button 
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
