@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { 
   ChevronLeft, Share2, Loader2, 
-  ChevronUp, Bookmark, User
+  ChevronUp, Bookmark
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -44,20 +44,24 @@ export default function ArticleDetailPage() {
     }
   }
 
-  // Fungsi untuk mengecek dan membetulkan URL Foto Penulis
-  const getAuthorImage = (authorPhoto: string) => {
-    if (!authorPhoto) return `https://ui-avatars.com/api/?name=${article?.author_name || 'Admin'}&background=random`
-    if (authorPhoto.startsWith('http')) return authorPhoto
-    return `${API_BASE}/storage/${authorPhoto}`
-  }
-
+  // FUNGSI MEMBERSIHKAN TEKS DARI DATABASE
   const formatContent = (content: string) => {
     if (!content) return ""
-    if (content.includes("<p>")) return content
+    // Jika sudah ada HTML, hapus spasi/newline berlebih yang merusak wrapping
+    if (content.includes("<p>")) {
+      return content.replace(/>\s+</g, '><').trim()
+    }
+    // Jika teks mentah, ubah double enter jadi paragraf rapi
     return content
       .split(/\n\s*\n/)
-      .map(para => `<p>${para.replace(/\n/g, " ")}</p>`)
+      .map(para => `<p>${para.replace(/\n/g, " ").trim()}</p>`)
       .join("")
+  }
+
+  const getAuthorImage = (authorPhoto: string) => {
+    if (!authorPhoto) return `https://ui-avatars.com/api/?name=${article?.author_name || 'Admin'}`
+    if (authorPhoto.startsWith('http')) return authorPhoto
+    return `${API_BASE}/storage/${authorPhoto}`
   }
 
   if (loading) return (
@@ -85,7 +89,7 @@ export default function ArticleDetailPage() {
       </nav>
 
       <div className="pt-24 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-2xl rounded-sm border border-zinc-200 overflow-hidden break-words">
+        <div className="max-w-3xl mx-auto bg-[#fdfdfc] shadow-2xl rounded-sm border border-zinc-200 overflow-hidden">
           
           <div className="relative z-10 p-6 md:p-16 lg:p-20">
             
@@ -96,8 +100,6 @@ export default function ArticleDetailPage() {
               <h1 className="text-3xl md:text-5xl font-serif text-zinc-900 leading-tight mb-8">
                 {article.title}
               </h1>
-              
-              {/* PERBAIKAN FOTO PENULIS DI HEADER */}
               <div className="flex items-center justify-center gap-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden border border-zinc-100 bg-zinc-50">
                   <img 
@@ -107,9 +109,7 @@ export default function ArticleDetailPage() {
                     onError={(e: any) => e.target.src = `https://ui-avatars.com/api/?name=${article.author_name}`}
                   />
                 </div>
-                <span className="text-xs font-serif italic text-zinc-500 underline decoration-zinc-200 underline-offset-4">
-                  Karya {article.author_name}
-                </span>
+                <span className="text-xs font-serif italic text-zinc-500">Karya {article.author_name}</span>
               </div>
             </header>
 
@@ -123,22 +123,42 @@ export default function ArticleDetailPage() {
                </div>
             </div>
 
-            <main className="w-full max-w-full overflow-hidden">
+            {/* AREA ARTIKEL - FIXED WRAPPING */}
+            <main className="w-full">
               <article 
-                className="prose prose-zinc max-w-none text-left font-serif text-zinc-800
-                [&_p]:mb-10 [&_p]:leading-[1.8] [&_p]:text-lg md:[&_p]:text-xl [&_p]:break-words
+                className="prose prose-zinc max-w-none font-serif text-zinc-800
+                {/* SOLUSI KATA TERPOTONG: Rata kiri lebih aman daripada Justify */}
+                text-left 
+                
+                {/* Mencegah kata putus di tengah (seperti 'd iselesaikan') */}
+                [word-break:normal] 
+                [overflow-wrap:break-word]
+                
+                {/* Jarak Paragraf */}
+                [&_p]:mb-10 
+                [&_p]:leading-[1.8] 
+                [&_p]:text-lg 
+                md:[&_p]:text-xl
+
+                {/* Heading & Styling */}
                 prose-headings:font-serif prose-headings:text-zinc-900
                 prose-strong:text-zinc-950 prose-strong:font-bold
-                prose-img:rounded-md prose-img:mx-auto prose-img:my-10 prose-img:max-w-full"
+                prose-img:rounded-md prose-img:mx-auto prose-img:my-10 prose-img:max-w-full
+                "
                 dangerouslySetInnerHTML={{ __html: formatContent(article.content) }}
               />
+
+              <div className="mt-20 flex justify-center items-center gap-4 opacity-10">
+                <div className="h-[1px] w-12 bg-zinc-900" />
+                <div className="w-2 h-2 rotate-45 bg-zinc-900" />
+                <div className="h-[1px] w-12 bg-zinc-900" />
+              </div>
             </main>
           </div>
 
-          <footer className="bg-zinc-50 border-t border-zinc-100 p-10 mt-10">
-             <div className="flex flex-col md:flex-row items-center gap-6 max-w-xl mx-auto opacity-80">
-                {/* PERBAIKAN FOTO PENULIS DI FOOTER */}
-                <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow-sm bg-white">
+          <footer className="bg-zinc-50 border-t border-zinc-100 p-10">
+             <div className="flex flex-col md:flex-row items-center gap-6 max-w-xl mx-auto opacity-70">
+                <div className="w-16 h-16 rounded-full overflow-hidden border border-zinc-200">
                   <img 
                     src={getAuthorImage(article.author_photo || article.author_image)} 
                     className="w-full h-full object-cover grayscale" 
@@ -146,10 +166,8 @@ export default function ArticleDetailPage() {
                   />
                 </div>
                 <div className="text-center md:text-left">
-                   <h4 className="font-serif text-xl text-zinc-900 mb-1">{article.author_name}</h4>
-                   <p className="text-xs font-serif italic text-zinc-400">
-                     {article.author_bio || "Kontributor literasi digital yang berfokus pada perkembangan teknologi masa kini."}
-                   </p>
+                   <h4 className="font-serif text-lg text-zinc-900">{article.author_name}</h4>
+                   <p className="text-xs font-serif italic text-zinc-400">Patner Mejatika</p>
                 </div>
              </div>
           </footer>
