@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { Play, Trash2, Save, Download, ChevronRight, Layout } from 'lucide-react';
