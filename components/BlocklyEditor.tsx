@@ -6,9 +6,10 @@ import { javascriptGenerator } from 'blockly/javascript';
 interface BlocklyProps {
   onCodeChange: (code: string) => void;
   onJsonChange: (json: string) => void;
+  initialData?: string; // Menampung JSON dari demo materi
 }
 
-export default function BlocklyEditor({ onCodeChange, onJsonChange }: BlocklyProps) {
+export default function BlocklyEditor({ onCodeChange, onJsonChange, initialData }: BlocklyProps) {
   const blocklyDiv = useRef<HTMLDivElement>(null);
   const workspace = useRef<Blockly.WorkspaceSvg | null>(null);
 
@@ -66,6 +67,7 @@ export default function BlocklyEditor({ onCodeChange, onJsonChange }: BlocklyPro
     ]
   };
 
+  // 1. Inisialisasi Workspace (Hanya sekali)
   useEffect(() => {
     if (blocklyDiv.current && !workspace.current) {
       workspace.current = Blockly.inject(blocklyDiv.current, {
@@ -77,16 +79,37 @@ export default function BlocklyEditor({ onCodeChange, onJsonChange }: BlocklyPro
 
       workspace.current.addChangeListener(() => {
         const code = javascriptGenerator.workspaceToCode(workspace.current!);
-        const json = JSON.stringify(Blockly.serialization.workspaces.save(workspace.current!));
+        const state = Blockly.serialization.workspaces.save(workspace.current!);
         onCodeChange(code);
-        onJsonChange(json);
+        onJsonChange(JSON.stringify(state));
       });
 
-      const handleResize = () => Blockly.svgResize(workspace.current!);
+      const handleResize = () => {
+        if (workspace.current) Blockly.svgResize(workspace.current);
+      };
+      
       window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (workspace.current) workspace.current.dispose();
+      };
     }
   }, []);
+
+  // 2. Logic Auto-Load: Berjalan setiap kali menu materi diklik (initialData berubah)
+  useEffect(() => {
+    if (workspace.current && initialData) {
+      try {
+        const json = JSON.parse(initialData);
+        // Hapus blok lama agar tidak bertumpuk
+        workspace.current.clear(); 
+        // Muat susunan blok baru ke workspace
+        Blockly.serialization.workspaces.load(json, workspace.current);
+      } catch (e) {
+        console.error("Gagal memuat blok materi:", e);
+      }
+    }
+  }, [initialData]);
 
   return <div ref={blocklyDiv} className="w-full h-full" />;
 }
