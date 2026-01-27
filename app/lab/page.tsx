@@ -18,9 +18,9 @@ const DEMO_SAMPLES: any = {
       { id: "input_1", type: "input", props: { placeholder: "Angka Pertama", text: "" } },
       { id: "input_2", type: "input", props: { placeholder: "Angka Kedua", text: "" } },
       { id: "btn_hitung1", type: "button", props: { text: "+", bgColor: "#4f46e5" } },
-      { id: "btn_hitung2", type: "button", props: { text: "-", bgColor: "#4f46e5" } },      
-      { id: "btn_hitung3", type: "button", props: { text: "*", bgColor: "#4f46e5" } },      
-      { id: "btn_hitung4", type: "button", props: { text: "/", bgColor: "#4f46e5" } },
+      //{ id: "btn_hitung2", type: "button", props: { text: "-", bgColor: "#4f46e5" } },      
+      //{ id: "btn_hitung3", type: "button", props: { text: "*", bgColor: "#4f46e5" } },      
+      //{ id: "btn_hitung4", type: "button", props: { text: "/", bgColor: "#4f46e5" } },
       { id: "label_hasil", type: "label", props: { text: "Hasil akan muncul di sini", color: "#10b981" } }
     ],
     json: JSON.stringify({
