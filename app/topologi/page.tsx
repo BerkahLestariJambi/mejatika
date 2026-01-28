@@ -28,7 +28,10 @@ import {
   Edit3,
   BookOpen,
   X,
-  ChevronRight
+  ChevronRight,
+  Network,
+  Cpu,
+  Globe
 } from 'lucide-react';
 
 const nodeTypes = { device: DeviceNode };
@@ -113,7 +116,6 @@ function NetworkLabContent() {
 
       setNodes((nds) => nds.concat(newNode));
 
-      // Otomatisasi Jaringan sesuai Mode
       if (mode === 'bus' && nodes.length > 0) {
         const lastNode = nodes[nodes.length - 1];
         setEdges((eds) => addEdge({ id: `e-${lastNode.id}-${newId}`, source: lastNode.id, target: newId, animated: true }, eds));
@@ -152,7 +154,6 @@ function NetworkLabContent() {
       </nav>
 
       <div className="flex flex-grow overflow-hidden relative">
-        
         <Sidebar activeMode={mode} onSelectLesson={(lesson: any) => setActiveLesson(lesson)} />
         
         <div className="flex-grow relative bg-[#f8fafc]" ref={reactFlowWrapper}>
@@ -180,79 +181,77 @@ function NetworkLabContent() {
             <Background gap={30} size={1} color="#cbd5e1" />
             <Controls className="print:hidden" />
 
-            {/* 4. MODAL MATERI (FRAME LENGKAP DENGAN ANIMASI) */}
+            {/* 4. MODAL PETA KONSEP (ANIMASI GARIS KE KANAN) */}
             {activeLesson && (
-              <Panel position="top-left" className="ml-4 mt-4 z-50">
-                <div className="bg-white/95 backdrop-blur-xl border-t-4 border-t-blue-600 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl w-[380px] overflow-hidden animate-in slide-in-from-left-10 fade-in duration-500 ease-out">
-                  
-                  {/* Header Frame dengan Progress Bar Animasi */}
-                  <div className="relative h-24 bg-slate-900 flex items-center px-6 overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-blue-600/20">
-                      <div className="h-full bg-blue-500 animate-[progress_3s_linear_infinite] w-full origin-left" style={{ animationName: 'progress-loading' }} />
-                    </div>
-                    
-                    <div className="z-10">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="bg-blue-600 text-[9px] font-black px-2 py-0.5 rounded text-white uppercase tracking-widest">
-                          {activeLesson.category || 'Materi Bab 4'}
-                        </span>
-                      </div>
-                      <h2 className="text-white text-lg font-black leading-tight tracking-tight uppercase italic">
-                        {activeLesson.title}
-                      </h2>
-                    </div>
-
-                    <button 
-                      onClick={() => setActiveLesson(null)} 
-                      className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-red-500 text-white rounded-full transition-all group"
-                    >
-                      <X size={16} className="group-hover:rotate-90 transition-transform" />
+              <Panel position="top-left" className="ml-4 mt-4 z-50 flex items-center gap-0">
+                
+                {/* AKAR MATERI (SISI KIRI) */}
+                <div className="bg-slate-900 border-2 border-blue-500 shadow-2xl rounded-2xl w-[260px] overflow-hidden animate-in fade-in zoom-in duration-300">
+                  <div className="p-4 border-b border-white/10 flex justify-between items-center bg-blue-600/10">
+                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-[0.2em]">Peta Konsep</span>
+                    <button onClick={() => setActiveLesson(null)} className="text-white/50 hover:text-white transition-colors">
+                        <X size={16}/>
                     </button>
                   </div>
-
-                  {/* Body Konten */}
-                  <div className="p-6 space-y-5">
-                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 animate-in zoom-in-95 delay-150 duration-500">
-                      <p className="text-sm font-bold text-slate-700 leading-relaxed italic">
-                        "{activeLesson.content}"
-                      </p>
-                    </div>
-
-                    <div className="space-y-3">
-                      {activeLesson.points.map((p, i) => (
-                        <div 
-                          key={i} 
-                          className="flex gap-3 items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-blue-300 hover:translate-x-2 transition-all duration-300 animate-in slide-in-from-left-5"
-                          style={{ animationDelay: `${(i + 1) * 150}ms` }}
-                        >
-                          <div className="flex-shrink-0 w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-blue-600 font-black text-xs">
-                            {i + 1}
-                          </div>
-                          <p className="text-[11px] font-bold text-slate-600 leading-tight tracking-wide">
-                            {p}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-
-                    <button className="w-full py-3 bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
-                      Simulasikan Sekarang <ChevronRight size={14} />
-                    </button>
-                  </div>
-
-                  {/* Footer Frame */}
-                  <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                    <span>Informatika Fase E</span>
-                    <span>Kurikulum Merdeka</span>
+                  <div className="p-5">
+                    <h2 className="text-white text-lg font-black leading-tight uppercase italic mb-2">{activeLesson.title}</h2>
+                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed">{activeLesson.content}</p>
                   </div>
                 </div>
 
-                {/* CSS Inline untuk Progress Bar */}
+                {/* ANIMASI GARIS PENGHUBUNG */}
+                <div className="w-20 h-1 relative flex items-center">
+                  <div className="h-[2px] bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-expand-line origin-left w-full" />
+                  <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,1)] absolute right-0 animate-pulse" />
+                </div>
+
+                {/* DETAIL PENJELASAN (SISI KANAN) */}
+                <div className="bg-white border-2 border-slate-200 shadow-2xl rounded-3xl w-[420px] overflow-hidden animate-in slide-in-from-left-10 fade-in duration-700 delay-300">
+                  <div className="bg-slate-50 p-4 border-b flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white shadow-lg">
+                      <BookOpen size={20} />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-black text-slate-800 uppercase leading-none tracking-tight">Eksplorasi Detail</h3>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Bab 4 Jaringan Komputer</p>
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-4 max-h-[400px] overflow-y-auto">
+                    {activeLesson.points.map((p, i) => (
+                      <div 
+                        key={i} 
+                        className="group flex gap-4 p-4 rounded-2xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-400 hover:shadow-xl transition-all duration-300"
+                      >
+                        <div className="flex-shrink-0 w-12 h-12 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                           {i === 0 ? <Network size={22} /> : i === 1 ? <Cpu size={22} /> : <Globe size={22} />}
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-black text-slate-800 leading-snug mb-1 uppercase tracking-tighter">
+                            {p.includes(':') ? p.split(':')[0] : `Poin Materi ${i+1}`}
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-500 leading-relaxed italic">
+                            {p.includes(':') ? p.split(':')[1] : p}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-4 bg-slate-900 text-white flex justify-between items-center group cursor-pointer hover:bg-blue-600 transition-colors">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">Mulai Praktikum Mandiri</span>
+                    <ChevronRight size={18} className="group-hover:translate-x-2 transition-transform" />
+                  </div>
+                </div>
+
+                {/* STYLE KHUSUS ANIMASI */}
                 <style jsx>{`
-                  @keyframes progress-loading {
-                    0% { transform: scaleX(0); }
-                    50% { transform: scaleX(1); }
-                    100% { transform: scaleX(0); transform-origin: right; }
+                  @keyframes expand-line {
+                    from { width: 0; opacity: 0; }
+                    to { width: 100%; opacity: 1; }
+                  }
+                  .animate-expand-line {
+                    animation: expand-line 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
                   }
                 `}</style>
               </Panel>
