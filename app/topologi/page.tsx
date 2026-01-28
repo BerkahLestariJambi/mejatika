@@ -17,49 +17,57 @@ import '@xyflow/react/dist/style.css';
 import { 
   ShieldCheck, Eraser, Camera, 
   Monitor, Network, Router, Server, Wifi, 
-  Circle, Cloud, Square, MessageSquare, PlusSquare, Copy, Edit3
+  Circle, Cloud, Square, MessageSquare, PlusSquare, Copy, Edit3,
+  Zap, HardDrive, DoorOpen, Flame, Radio
 } from 'lucide-react';
 
-// --- SVG CLOUD GENERATOR (MURNI AWAN) ---
+// --- SVG CLOUD GENERATOR ---
 const getCloudPath = (color: string, stroke: string) => {
   const encodedColor = encodeURIComponent(color);
   const encodedStroke = encodeURIComponent(stroke);
-  // Menggunakan viewBox yang pas agar tidak terpotong
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Cpath d='M200 120c15 0 30-15 30-35s-15-35-30-35c0-25-25-45-55-45-20 0-40 10-50 25-10-15-30-25-50-25-30 0-55 20-55 45-15 0-30 15-30 35s15 35 30 35c0 25 25 45 55 45 20 0 40-10 50-25 10 15 30 25 50 25 30 0 55-20 55-45z' fill='${encodedColor}' stroke='${encodedStroke}' stroke-width='6'/%3E%3C/svg%3E")`;
+};
+
+// --- MAP ICON UNTUK REUSABILITY ---
+const iconLib: any = {
+  router: <Router size={48} strokeWidth={1.5}/>,
+  switch: <Network size={48} strokeWidth={1.5}/>,
+  pc: <Monitor size={48} strokeWidth={1.5}/>,
+  wifi: <Wifi size={48} strokeWidth={1.5}/>,
+  server: <Server size={48} strokeWidth={1.5}/>,
+  hub: <Zap size={48} strokeWidth={1.5}/>,
+  bridge: <HardDrive size={48} strokeWidth={1.5}/>,
+  gateway: <DoorOpen size={48} strokeWidth={1.5}/>,
+  firewall: <Flame size={48} strokeWidth={1.5}/>,
+  ap: <Radio size={48} strokeWidth={1.5}/>,
+  cloud: <Cloud size={40}/>,
+  circle: <Circle size={40}/>,
+  square: <Square size={40}/>,
+  chat: <MessageSquare size={40}/>
 };
 
 // --- CUSTOM NODE ENGINE ---
 const UniversalNode = ({ data, selected }: any) => {
   const isDevice = data.type === 'device';
   const isCloud = data.shapeType === 'cloud';
-  const isCircle = data.shapeType === 'circle';
-  const isChat = data.shapeType === 'chat';
-
+  
   const getNodeStyle = (): React.CSSProperties => {
     if (isDevice) return { background: 'transparent', border: 'none' };
-    
-    // Fitur Utama: Jika Cloud, hilangkan border kotak dan gunakan background SVG murni
     if (isCloud) return { 
       backgroundImage: getCloudPath(data.bgColor || '#f0fdf4', data.borderColor || '#22c55e'), 
-      backgroundSize: '100% 100%', 
-      backgroundRepeat: 'no-repeat',
-      backgroundPosition: 'center',
-      padding: '45px 30px', // Padding lebih besar agar teks di tengah awan
-      border: 'none',
-      backgroundColor: 'transparent'
+      backgroundSize: '100% 100%', backgroundRepeat: 'no-repeat', backgroundPosition: 'center',
+      padding: '45px 30px', border: 'none', backgroundColor: 'transparent'
     };
-
     return {
       background: data.bgColor || '#ffffff',
       border: `3px solid ${data.borderColor || '#cbd5e1'}`,
-      borderRadius: isCircle ? '50%' : isChat ? '15px 15px 15px 0' : '12px',
+      borderRadius: data.shapeType === 'circle' ? '50%' : data.shapeType === 'chat' ? '15px 15px 15px 0' : '12px',
       padding: '15px',
     };
   };
 
   return (
     <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''}`}>
-      {/* Handles untuk koneksi kabel */}
       <Handle type="source" position={Position.Top} className="!bg-blue-600 !w-2.5 !h-2.5 border-none" />
       <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2.5 !h-2.5 border-none" />
       <Handle type="source" position={Position.Left} className="!bg-blue-600 !w-2.5 !h-2.5 border-none" />
@@ -72,7 +80,6 @@ const UniversalNode = ({ data, selected }: any) => {
         <textarea
           value={data.label}
           onChange={(e) => data.onChange(e.target.value)}
-          placeholder="Tulis..."
           className={`bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1 overflow-hidden transition-all ${isDevice ? 'text-blue-900 bg-white/60 rounded px-1' : 'text-slate-800'}`}
           rows={isDevice ? 1 : 3}
         />
@@ -89,66 +96,20 @@ function NetworkLabContent() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'inventory' | 'shapes'>('inventory');
-  const [activeView, setActiveView] = useState<'simulasi' | 'bus' | 'mesh'>('simulasi');
-
-  useEffect(() => {
-    setNodes([]); setEdges([]);
-    setActiveView('simulasi');
-  }, [activeTab]);
 
   const onNodeLabelChange = (id: string, label: string) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
-  };
-
-  const updateNodeIcon = (id: string, icon: any) => {
-    setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, icon } } : n));
-    setMenu(null);
-  };
-
-  const renameNode = (nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId);
-    const newLabel = prompt("Masukkan Nama/Materi Baru:", node?.data.label);
-    if (newLabel !== null) onNodeLabelChange(nodeId, newLabel);
-    setMenu(null);
   };
 
   const duplicateNode = (nodeId: string) => {
     const nodeToCopy = nodes.find(n => n.id === nodeId);
     if (!nodeToCopy) return;
     const newId = `node_dup_${Date.now()}`;
-    const newNode = {
-      ...nodeToCopy,
-      id: newId,
-      position: { x: nodeToCopy.position.x + 50, y: nodeToCopy.position.y + 50 },
-      selected: false,
+    setNodes((nds) => nds.concat({
+      ...nodeToCopy, id: newId, position: { x: nodeToCopy.position.x + 50, y: nodeToCopy.position.y + 50 },
       data: { ...nodeToCopy.data, onChange: (v: string) => onNodeLabelChange(newId, v) }
-    };
-    setNodes((nds) => nds.concat(newNode));
+    }));
     setMenu(null);
-  };
-
-  const handleTopologyChange = (view: 'simulasi' | 'bus' | 'mesh') => {
-    setActiveView(view);
-    if (view === 'simulasi') { setNodes([]); setEdges([]); return; }
-    const count = 5;
-    const newNodes = []; const newEdges = [];
-    for (let i = 0; i < count; i++) {
-      const id = `auto-${i}-${Date.now()}`;
-      newNodes.push({
-        id, type: 'universal',
-        position: { x: view === 'bus' ? i * 220 + 50 : 350 + 180 * Math.cos(2*Math.PI*i/count), y: 250 + (view === 'mesh' ? 180 * Math.sin(2*Math.PI*i/count) : 0) },
-        data: { type: 'device', icon: <Monitor size={48} strokeWidth={1.5}/>, label: `PC-${i+1}`, onChange: (v: string) => onNodeLabelChange(id, v) },
-        style: { width: 85, height: 85 }
-      });
-    }
-    if (view === 'bus') {
-      for (let i = 0; i < count - 1; i++) newEdges.push({ id: `e${i}`, source: newNodes[i].id, target: newNodes[i+1].id, animated: true, style: { strokeWidth: 4, stroke: '#2563eb' } });
-    } else {
-      for (let i = 0; i < count; i++) {
-        for (let j = i + 1; j < count; j++) newEdges.push({ id: `e${i}-${j}`, source: newNodes[i].id, target: newNodes[j].id, animated: true, style: { strokeWidth: 2, stroke: '#3b82f6' } });
-      }
-    }
-    setNodes(newNodes); setEdges(newEdges);
   };
 
   const onDrop = useCallback((event: any) => {
@@ -160,17 +121,10 @@ function NetworkLabContent() {
     const position = { x: event.clientX - rect.left - 75, y: event.clientY - rect.top - 75 };
     const id = `node_${Date.now()}`;
 
-    const iconMap: any = {
-      router: <Router size={48} strokeWidth={1.5}/>, switch: <Network size={48} strokeWidth={1.5}/>, 
-      pc: <Monitor size={48} strokeWidth={1.5}/>, wifi: <Wifi size={48} strokeWidth={1.5}/>, 
-      server: <Server size={48} strokeWidth={1.5}/>, cloud: <Cloud size={40}/>,
-      circle: <Circle size={40}/>, square: <Square size={40}/>, chat: <MessageSquare size={40}/>
-    };
-
     setNodes((nds) => nds.concat({
       id, type: 'universal', position,
       data: { 
-        type, shapeType: val, icon: (type === 'device' || val === 'chat') ? iconMap[val] : null, label: val.toUpperCase(), 
+        type, shapeType: val, icon: (type === 'device' || val === 'chat') ? iconLib[val] : null, label: val.toUpperCase(), 
         bgColor: type === 'device' ? '#ffffff' : (val === 'cloud' ? '#f0fdf4' : '#ffffff'), 
         borderColor: type === 'device' ? '#2563eb' : '#64748b',
         onChange: (v: string) => onNodeLabelChange(id, v) 
@@ -183,7 +137,7 @@ function NetworkLabContent() {
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
       <aside className="w-80 bg-white border-r flex flex-col z-50 shadow-2xl print:hidden">
         <div className="p-6 bg-blue-900 text-white font-black italic uppercase tracking-tighter flex items-center gap-2">
-          <ShieldCheck size={28}/> MEJATIKA LAB V15
+          <ShieldCheck size={28}/> MEJATIKA LAB V16
         </div>
         
         <div className="flex bg-slate-50 border-b">
@@ -193,18 +147,18 @@ function NetworkLabContent() {
 
         <div className="p-4 grid grid-cols-2 gap-4 overflow-y-auto">
           {activeTab === 'inventory' ? (
-            ['router', 'switch', 'pc', 'wifi', 'server'].map(d => (
-              <div key={d} draggable onDragStart={e => { e.dataTransfer.setData('application/type', 'device'); e.dataTransfer.setData('application/value', d); }} className="flex flex-col items-center justify-center p-4 border border-transparent hover:border-blue-200 hover:bg-blue-50 rounded-2xl cursor-grab transition-all group">
+            ['router', 'switch', 'pc', 'wifi', 'server', 'hub', 'bridge', 'gateway', 'firewall', 'ap'].map(d => (
+              <div key={d} draggable onDragStart={e => { e.dataTransfer.setData('application/type', 'device'); e.dataTransfer.setData('application/value', d); }} className="flex flex-col items-center justify-center p-4 border border-transparent hover:border-blue-200 hover:bg-blue-50 rounded-2xl cursor-grab transition-all group text-center">
                 <div className="text-blue-600 group-hover:scale-110 transition-transform">
-                    {d === 'router' ? <Router size={40}/> : d === 'switch' ? <Network size={40}/> : d === 'pc' ? <Monitor size={40}/> : d === 'wifi' ? <Wifi size={40}/> : <Server size={40}/>}
+                  {iconLib[d] || <Network size={40}/>}
                 </div>
-                <span className="text-[10px] font-bold uppercase mt-2 text-slate-600">{d}</span>
+                <span className="text-[9px] font-bold uppercase mt-2 text-slate-600">{d === 'ap' ? 'Access Point' : d}</span>
               </div>
             ))
           ) : (
             ['cloud', 'circle', 'square', 'chat'].map(s => (
               <div key={s} draggable onDragStart={e => { e.dataTransfer.setData('application/type', 'shape'); e.dataTransfer.setData('application/value', s); }} className="p-4 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center hover:bg-emerald-50 hover:border-emerald-500 cursor-grab transition-all group">
-                {s === 'cloud' ? <Cloud size={32} className="text-emerald-500"/> : <PlusSquare size={32} className="text-emerald-500"/>}
+                {iconLib[s]}
                 <span className="text-[10px] font-bold uppercase mt-2 text-slate-500">{s}</span>
               </div>
             ))
@@ -221,7 +175,7 @@ function NetworkLabContent() {
           nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} 
           onDrop={onDrop} onDragOver={e => e.preventDefault()}
           nodeTypes={nodeTypes} connectionMode={ConnectionMode.Loose}
-          onConnect={p => setEdges(eds => addEdge({...p, animated: activeTab === 'inventory', style:{strokeWidth: 4, stroke: activeTab === 'inventory' ? '#2563eb' : '#94a3b8'}}, eds))}
+          onConnect={p => setEdges(eds => addEdge({...p, animated: true, style:{strokeWidth: 4, stroke: '#2563eb'}}, eds))}
           onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY }); }}
           fitView
         >
@@ -229,21 +183,27 @@ function NetworkLabContent() {
           <Controls className="print:hidden" />
           
           {menu && (
-            <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 min-w-[220px] animate-in zoom-in-95 duration-200">
-              <p className="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest border-b pb-2">Konfigurasi Objek</p>
+            <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 min-w-[240px] animate-in zoom-in-95 duration-200">
+              <p className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest border-b pb-2">Palet Warna & Aksi</p>
               
-              <div className="flex gap-2 mb-4">
-                {['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff'].map(c => (
-                  <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, [activeTab === 'shapes' ? 'bgColor' : 'borderColor']: c}} : n))} className="w-8 h-8 rounded-full border-2 border-white shadow-md hover:scale-110 transition-transform" style={{ background: c }} />
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                {['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#a855f7', '#ec4899', '#06b6d4', '#10b981', '#64748b', '#ffffff'].map(c => (
+                  <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, [activeTab === 'shapes' ? 'bgColor' : 'borderColor']: c}} : n))} className="w-8 h-8 rounded-full border border-slate-200 shadow-sm hover:scale-125 transition-transform" style={{ background: c }} />
                 ))}
               </div>
 
-              <div className="flex flex-col gap-1 mb-4 pt-2 border-t">
-                <button onClick={() => renameNode(menu.id)} className="w-full py-2 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-lg hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2"><Edit3 size={14}/> Rename Objek</button>
-                <button onClick={() => duplicateNode(menu.id)} className="w-full py-2 bg-blue-50 text-blue-700 text-[10px] font-black uppercase rounded-lg hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"><Copy size={14}/> Duplicate Objek</button>
+              <div className="flex flex-col gap-1 mb-3 pt-2 border-t">
+                <button onClick={() => {
+                  const n = nodes.find(x => x.id === menu.id);
+                  const l = prompt("Rename:", n?.data.label);
+                  if(l) onNodeLabelChange(menu.id, l);
+                  setMenu(null);
+                }} className="w-full py-2 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-lg hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2"><Edit3 size={14}/> Rename</button>
+                
+                <button onClick={() => duplicateNode(menu.id)} className="w-full py-2 bg-blue-50 text-blue-700 text-[10px] font-black uppercase rounded-lg hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"><Copy size={14}/> Duplicate</button>
               </div>
 
-              <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2.5 bg-red-50 text-red-600 text-[10px] font-black uppercase rounded-lg hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Eraser size={14}/> Hapus Objek</button>
+              <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2.5 bg-red-50 text-red-600 text-[10px] font-black uppercase rounded-lg hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Eraser size={14}/> Hapus</button>
             </div>
           )}
         </ReactFlow>
