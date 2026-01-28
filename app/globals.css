@@ -232,3 +232,23 @@
 .animate-logo-pulse {
   animation: logo-pulse 4s ease-in-out infinite;
 }
+@keyframes progress-loading {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-progress-loading {
+  animation: progress-loading 3s infinite linear;
+}
+
+/* Custom Scrollbar untuk Sidebar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
