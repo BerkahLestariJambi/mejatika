@@ -20,19 +20,22 @@ import {
   LayoutGrid, Share2, Network as MeshIcon, Camera, 
   ShieldCheck, XCircle, Edit3, X, ChevronRight,
   Cpu, Router as RouterIcon, Server, Globe, Wifi,
-  Eraser, StickyNote, Type
+  Eraser, Type, Info
 } from 'lucide-react';
 
 const nodeTypes = { device: DeviceNode };
 
-// Data detail khusus untuk hardware agar tampilannya tetap keren
-const hardwareDetails = [
-  { label: 'NIC (LAN Card)', desc: 'Menghubungkan komputer ke kabel jaringan.', icon: <Cpu size={24}/> },
-  { label: 'Router', desc: 'Penghubung antar jaringan (Gateway).', icon: <RouterIcon size={24}/> },
-  { label: 'Switch', desc: 'Distribusi data dalam jaringan LAN.', icon: <Server size={24}/> },
-  { label: 'Modem/ONU', desc: 'Penerjemah sinyal internet luar.', icon: <Globe size={24}/> },
-  { label: 'Access Point', desc: 'Pemancar sinyal Wi-Fi nirkabel.', icon: <Wifi size={24}/> },
-];
+// --- DATABASE MATERI LENGKAP (Agar isi peta konsep berbeda-beda) ---
+const materiData: Record<string, { desc: string; icon: React.ReactNode }> = {
+  "Hardware Jaringan": { desc: "Perangkat fisik pendukung koneksi.", icon: <Cpu size={20}/> },
+  "NIC (LAN Card)": { desc: "Kartu antarmuka jaringan pada PC.", icon: <Cpu size={20}/> },
+  "Router": { desc: "Menghubungkan jaringan yang berbeda subnet.", icon: <RouterIcon size={20}/> },
+  "Switch": { desc: "Manajemen traffic data di dalam LAN.", icon: <Server size={20}/> },
+  "Modem": { desc: "Modulasi sinyal digital ke analog/internet.", icon: <Globe size={20}/> },
+  "Topologi Bus": { desc: "Menggunakan kabel tunggal pusat (backbone).", icon: <Share2 size={20}/> },
+  "Topologi Star": { desc: "Semua node terhubung ke switch pusat.", icon: <LayoutGrid size={20}/> },
+  "IP Address": { desc: "Alamat identitas perangkat di jaringan.", icon: <Info size={20}/> },
+};
 
 function NetworkLabContent() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
@@ -43,71 +46,62 @@ function NetworkLabContent() {
   const [menu, setMenu] = useState<any>(null);
   const [isMapActive, setIsMapActive] = useState(false);
 
-  // --- 1. FITUR TULIS DI KANVAS (STICKY NOTE) ---
+  // --- 1. FITUR TULIS DI KANVAS ---
   const addStickyNote = () => {
-    const text = prompt("Tulis catatan atau pesan di kanvas:");
+    const text = prompt("Tulis catatan praktikum:");
     if (!text) return;
-    
     const id = `note_${Math.random().toString(36).substr(2, 9)}`;
-    const newNode = {
+    setNodes((nds) => nds.concat({
       id,
-      type: 'default', // Menggunakan default node agar bisa menampilkan text
+      type: 'default',
       position: { x: 300, y: 100 },
       data: { label: (
-        <div className="p-3 bg-yellow-100 border-2 border-yellow-400 rounded-lg shadow-md text-left min-w-[150px]">
-          <div className="flex items-center gap-2 mb-1 border-b border-yellow-200 pb-1">
-            <StickyNote size={12} className="text-yellow-600"/>
-            <span className="text-[9px] font-black text-yellow-700 uppercase tracking-tighter">Canvas Note</span>
-          </div>
-          <p className="text-[11px] font-bold text-slate-700 leading-tight">{text}</p>
+        <div className="p-3 bg-yellow-100 border-2 border-yellow-400 rounded shadow-md text-left min-w-[140px]">
+          <p className="text-[11px] font-bold text-slate-700">{text}</p>
         </div>
       )},
       style: { background: 'transparent', border: 'none' }
-    };
-    setNodes((nds) => nds.concat(newNode));
+    }));
   };
 
-  // --- 2. LOGIKA PETA KONSEP DINAMIS (SEMUA MATERI) ---
-  const generateConceptMap = (title: string, pointList: string[]) => {
+  // --- 2. LOGIKA PETA KONSEP (DENGAN ISI BERBEDA) ---
+  const generateConceptMap = (mainTitle: string, pointList: string[]) => {
     setIsMapActive(true);
     const rootId = `root-${Math.random()}`;
     
+    // Node Pusat
     const rootNode = {
       id: rootId,
       type: 'default',
       position: { x: 100, y: 200 },
       data: { label: (
-        <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-2xl border-4 border-white text-left animate-in zoom-in-50 duration-500">
-          <h3 className="font-black italic uppercase text-sm leading-none">{title}</h3>
-          <p className="text-[9px] mt-1 opacity-80 uppercase font-bold tracking-tighter">Struktur Konsep</p>
+        <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-2xl border-4 border-white text-left animate-in zoom-in-50">
+          <h3 className="font-black italic uppercase text-sm leading-none">{mainTitle}</h3>
+          <p className="text-[9px] mt-1 opacity-80 uppercase font-bold tracking-tighter">Konsep Utama</p>
         </div>
       )},
       style: { background: 'transparent', border: 'none', width: 220 }
     };
 
-    // Jika yang diklik adalah Hardware, pakai data detail. Jika materi lain, pakai data generic.
-    const isHardware = title.toLowerCase().includes('hardware');
-    const childNodes = pointList.map((p, i) => ({
-      id: `child-${i}-${rootId}`,
-      type: 'default',
-      position: { x: 450, y: i * 110 },
-      data: { label: (
-        <div className="flex items-center gap-3 p-3 bg-white border-2 border-blue-50 rounded-xl shadow-lg w-[280px] text-left hover:border-blue-500 transition-all">
-          <div className="p-2 rounded-lg bg-blue-50 text-blue-600 font-black text-xs">
-            {isHardware ? hardwareDetails[i]?.icon || <LayoutGrid size={24}/> : i + 1}
+    // Node Cabang (Isi menyesuaikan materiData)
+    const childNodes = pointList.map((point, i) => {
+      const detail = materiData[point] || { desc: "Materi pembelajaran inti.", icon: <Info size={20}/> };
+      return {
+        id: `child-${i}-${rootId}`,
+        type: 'default',
+        position: { x: 450, y: i * 110 },
+        data: { label: (
+          <div className="flex items-center gap-3 p-3 bg-white border-2 border-blue-50 rounded-xl shadow-lg w-[300px] text-left hover:border-blue-500 transition-all">
+            <div className="p-2 rounded-lg bg-blue-50 text-blue-600 font-black italic">{detail.icon}</div>
+            <div>
+              <h4 className="font-black text-[10px] text-slate-800 uppercase italic leading-none">{point}</h4>
+              <p className="text-[9px] text-slate-500 font-bold mt-1 leading-tight italic">"{detail.desc}"</p>
+            </div>
           </div>
-          <div>
-            <h4 className="font-black text-[10px] text-slate-800 uppercase italic leading-none">
-                {isHardware ? hardwareDetails[i]?.label || p : p}
-            </h4>
-            <p className="text-[9px] text-slate-500 font-bold mt-1 leading-tight italic">
-                "{isHardware ? hardwareDetails[i]?.desc || 'Perangkat jaringan utama' : 'Penjelasan materi terkait.'}"
-            </p>
-          </div>
-        </div>
-      )},
-      style: { background: 'transparent', border: 'none' }
-    }));
+        )},
+        style: { background: 'transparent', border: 'none' }
+      };
+    });
 
     const childEdges = childNodes.map((child) => ({
       id: `e-${rootId}-${child.id}`,
@@ -121,7 +115,7 @@ function NetworkLabContent() {
     setEdges((eds) => [...eds, ...childEdges]);
   };
 
-  // --- 3. LOGIKA ASLI (BUS, MESH, DRAG & DROP) ---
+  // --- 3. FITUR DASAR (DRAG, DROP, KLIK KANAN) ---
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)), [setEdges]);
 
   const onDrop = useCallback((event: React.DragEvent) => {
@@ -150,14 +144,11 @@ function NetworkLabContent() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-slate-50 overflow-hidden" onClick={() => setMenu(null)}>
-      
-      {/* NAVBAR */}
       <nav className="flex items-center justify-between border-b bg-white px-8 py-3 shadow-sm z-20">
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg"><ShieldCheck size={24} /></div>
           <div className="text-left">
-            <h1 className="text-sm font-black text-slate-800 uppercase leading-none italic tracking-tighter">MEJATIKA NETWORK v2</h1>
-            <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest">SMK Lab Simulation</span>
+            <h1 className="text-sm font-black text-slate-800 uppercase italic">MEJATIKA NETWORK LAB</h1>
           </div>
         </div>
         
@@ -167,11 +158,9 @@ function NetworkLabContent() {
             <button onClick={() => setMode('bus')} className={`px-4 py-2 text-xs font-bold rounded-lg ${mode === 'bus' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Bus</button>
             <button onClick={() => setMode('mesh')} className={`px-4 py-2 text-xs font-bold rounded-lg ${mode === 'mesh' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Mesh</button>
           </div>
-
-          <div className="flex gap-2 border-l pl-4 border-slate-200">
-            <button onClick={addStickyNote} className="p-2 bg-yellow-400 text-yellow-900 rounded-lg shadow-sm hover:scale-110 transition-transform" title="Tulis Catatan"><Type size={18} /></button>
-            <button onClick={() => {setNodes([]); setEdges([]); setIsMapActive(false);}} className="p-2 bg-red-100 text-red-600 rounded-lg shadow-sm hover:scale-110 transition-transform" title="Clear Canvas"><Eraser size={18} /></button>
-            <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-slate-800 text-white rounded-lg"><Camera size={14} /> Cetak</button>
+          <div className="flex gap-2">
+            <button onClick={addStickyNote} className="p-2 bg-yellow-400 text-yellow-900 rounded-lg shadow-sm" title="Catatan"><Type size={18} /></button>
+            <button onClick={() => {setNodes([]); setEdges([]); setIsMapActive(false);}} className="p-2 bg-red-100 text-red-600 rounded-lg shadow-sm" title="Hapus Kanvas"><Eraser size={18} /></button>
           </div>
         </div>
       </nav>
@@ -184,17 +173,15 @@ function NetworkLabContent() {
             nodes={nodes} edges={edges} 
             onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} 
             onConnect={onConnect} onDrop={onDrop} 
-            onDragOver={(e) => e.preventDefault()}
             onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, label: n.data.label }); }}
             nodeTypes={nodeTypes} fitView
           >
             <Background gap={30} size={1} color="#cbd5e1" />
             <Controls />
 
-            {/* PANEL MATERI DENGAN KLIK OTOMATIS */}
             {activeLesson && !isMapActive && (
-              <Panel position="top-left" className="ml-4 mt-4 z-50">
-                <div className="bg-white/95 backdrop-blur-xl border-t-4 border-t-blue-600 shadow-2xl rounded-2xl w-[380px] overflow-hidden text-left">
+              <Panel position="top-left" className="ml-4 mt-4 z-50 text-left">
+                <div className="bg-white/95 backdrop-blur-xl border-t-4 border-t-blue-600 shadow-2xl rounded-2xl w-[380px] overflow-hidden">
                   <div className="p-6">
                     <div className="flex justify-between items-start mb-4">
                       <h2 className="text-slate-900 text-lg font-black uppercase italic leading-tight">{activeLesson.title}</h2>
@@ -202,12 +189,9 @@ function NetworkLabContent() {
                     </div>
                     <div className="space-y-3">
                       {activeLesson.points.map((p: string, i: number) => (
-                        <button 
-                          key={i} 
-                          onClick={() => generateConceptMap(p, activeLesson.points)}
-                          className="w-full flex gap-3 items-center p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-600 hover:text-white transition-all group shadow-sm"
-                        >
-                          <span className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black bg-white text-blue-600 group-hover:bg-blue-700 group-hover:text-white transition-colors">{i+1}</span>
+                        <button key={i} onClick={() => generateConceptMap(p, activeLesson.points)}
+                          className="w-full flex gap-3 items-center p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-600 hover:text-white transition-all group shadow-sm">
+                          <span className="w-6 h-6 rounded flex items-center justify-center text-[10px] font-black bg-white text-blue-600 group-hover:bg-blue-700 transition-colors">{i+1}</span>
                           <p className="text-[11px] font-black uppercase tracking-tight">{p}</p>
                           <ChevronRight size={16} className="ml-auto" />
                         </button>
@@ -218,27 +202,22 @@ function NetworkLabContent() {
               </Panel>
             )}
 
-            {/* TOMBOL RESET PETA KONSEP */}
             {isMapActive && (
               <Panel position="top-left" className="ml-4 mt-4">
-                <button 
-                  onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} 
-                  className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-xl flex items-center gap-2 hover:bg-blue-600 transition-colors"
-                >
-                   <X size={14}/> Reset Peta Konsep & Lihat Materi
+                <button onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase shadow-xl flex items-center gap-2">
+                   <X size={14}/> Reset Peta Konsep
                 </button>
               </Panel>
             )}
 
-            {/* CONTEXT MENU */}
             {menu && (
-              <div style={{ top: menu.y, left: menu.x }} className="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl py-1.5 min-w-[170px] overflow-hidden">
+              <div style={{ top: menu.y, left: menu.x }} className="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl py-1.5 min-w-[150px]">
                 <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 font-bold transition-colors"><XCircle size={14}/> Hapus</button>
                 <button onClick={() => { 
-                    const newName = prompt("Ganti nama:", menu.label);
-                    if (newName) setNodes(nds => nds.map(n => n.id === menu.id ? { ...n, data: { ...n.data, label: newName } } : n));
-                    setMenu(null); 
-                }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 font-bold transition-colors"><Edit3 size={14}/> Ganti Nama</button>
+                    const name = prompt("Ganti nama:", menu.label);
+                    if(name) setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, label:name}} : n));
+                    setMenu(null);
+                }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 font-bold"><Edit3 size={14}/> Ganti Nama</button>
               </div>
             )}
           </ReactFlow>
