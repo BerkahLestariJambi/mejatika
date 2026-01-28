@@ -12,6 +12,7 @@ import {
   ConnectionMode,
   Handle,
   Position,
+  MarkerType, // Tambahan untuk panah
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { 
@@ -28,7 +29,6 @@ const getCloudPath = (color: string, stroke: string) => {
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Cpath d='M200 120c15 0 30-15 30-35s-15-35-30-35c0-25-25-45-55-45-20 0-40 10-50 25-10-15-30-25-50-25-30 0-55 20-55 45-15 0-30 15-30 35s15 35 30 35c0 25 25 45 55 45 20 0 40-10 50-25 10 15 30 25 50 25 30 0 55-20 55-45z' fill='${encodedColor}' stroke='${encodedStroke}' stroke-width='6'/%3E%3C/svg%3E")`;
 };
 
-// --- MAP ICON UNTUK REUSABILITY ---
 const iconLib: any = {
   router: <Router size={48} strokeWidth={1.5}/>,
   switch: <Network size={48} strokeWidth={1.5}/>,
@@ -50,6 +50,7 @@ const iconLib: any = {
 const UniversalNode = ({ data, selected }: any) => {
   const isDevice = data.type === 'device';
   const isCloud = data.shapeType === 'cloud';
+  const isChat = data.shapeType === 'chat';
   
   const getNodeStyle = (): React.CSSProperties => {
     if (isDevice) return { background: 'transparent', border: 'none' };
@@ -61,7 +62,8 @@ const UniversalNode = ({ data, selected }: any) => {
     return {
       background: data.bgColor || '#ffffff',
       border: `3px solid ${data.borderColor || '#cbd5e1'}`,
-      borderRadius: data.shapeType === 'circle' ? '50%' : data.shapeType === 'chat' ? '15px 15px 15px 0' : '12px',
+      // borderRadius 4px agar objek chat lebih tajam/kotak
+      borderRadius: data.shapeType === 'circle' ? '50%' : isChat ? '4px 4px 4px 0' : '12px',
       padding: '15px',
     };
   };
@@ -137,7 +139,7 @@ function NetworkLabContent() {
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
       <aside className="w-80 bg-white border-r flex flex-col z-50 shadow-2xl print:hidden">
         <div className="p-6 bg-blue-900 text-white font-black italic uppercase tracking-tighter flex items-center gap-2">
-          <ShieldCheck size={28}/> MEJATIKA LAB V16
+          <ShieldCheck size={28}/> MEJATIKA LAB SANPIO| Karya Kelas XII Peminatan Informatika
         </div>
         
         <div className="flex bg-slate-50 border-b">
@@ -150,7 +152,7 @@ function NetworkLabContent() {
             ['router', 'switch', 'pc', 'wifi', 'server', 'hub', 'bridge', 'gateway', 'firewall', 'ap'].map(d => (
               <div key={d} draggable onDragStart={e => { e.dataTransfer.setData('application/type', 'device'); e.dataTransfer.setData('application/value', d); }} className="flex flex-col items-center justify-center p-4 border border-transparent hover:border-blue-200 hover:bg-blue-50 rounded-2xl cursor-grab transition-all group text-center">
                 <div className="text-blue-600 group-hover:scale-110 transition-transform">
-                  {iconLib[d] || <Network size={40}/>}
+                  {iconLib[d]}
                 </div>
                 <span className="text-[9px] font-bold uppercase mt-2 text-slate-600">{d === 'ap' ? 'Access Point' : d}</span>
               </div>
@@ -175,7 +177,12 @@ function NetworkLabContent() {
           nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} 
           onDrop={onDrop} onDragOver={e => e.preventDefault()}
           nodeTypes={nodeTypes} connectionMode={ConnectionMode.Loose}
-          onConnect={p => setEdges(eds => addEdge({...p, animated: true, style:{strokeWidth: 4, stroke: '#2563eb'}}, eds))}
+          onConnect={p => setEdges(eds => addEdge({
+            ...p, 
+            animated: false, // MATIKAN KEDIPAN GARIS
+            style:{ strokeWidth: 3, stroke: '#334155' },
+            markerEnd: { type: MarkerType.ArrowClosed, color: '#334155' } // TAMBAH PANAH
+          }, eds))}
           onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY }); }}
           fitView
         >
