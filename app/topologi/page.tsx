@@ -12,13 +12,20 @@ import {
   ReactFlowProvider,
   Panel,
 } from '@xyflow/react';
-import { v4 as uuidv4 } from 'uuid';
 import '@xyflow/react/dist/style.css';
 
 // Import komponen pendukung
 import Sidebar from '@/components/Sidebar';
 import DeviceNode from '@/components/DeviceNode';
-import { LayoutGrid, Share2, Network as MeshIcon, Trash2, Info } from 'lucide-react';
+import { 
+  LayoutGrid, 
+  Share2, 
+  Network as MeshIcon, 
+  Trash2, 
+  Info, 
+  Camera, 
+  ShieldCheck 
+} from 'lucide-react';
 
 const nodeTypes = { device: DeviceNode };
 
@@ -27,6 +34,12 @@ function NetworkLabContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [mode, setMode] = useState<'free' | 'bus' | 'mesh'>('free');
+
+  // --- FITUR SIMPAN (Native Print) ---
+  const onExport = () => {
+    // Menggunakan fungsi print browser sebagai alternatif tanpa library
+    window.print();
+  };
 
   // --- LOGIKA KONEKSI MANUAL ---
   const onConnect = useCallback(
@@ -55,7 +68,9 @@ function NetworkLabContent() {
         y: event.clientY - rect.top - 50,
       };
 
-      const newId = uuidv4();
+      // Menggunakan Native ID Generator (Tanpa library UUID)
+      const newId = `node_${Math.random().toString(36).substr(2, 9)}`;
+      
       const newNode = {
         id: newId,
         type: 'device',
@@ -72,7 +87,6 @@ function NetworkLabContent() {
 
       // --- LOGIKA OTOMATISASI TOPOLOGI ---
       if (mode === 'bus' && nodes.length > 0) {
-        // Hubungkan ke node terakhir (Linear/Daisy Chain)
         const lastNode = nodes[nodes.length - 1];
         setEdges((eds) => addEdge({ 
             id: `e-${lastNode.id}-${newId}`, 
@@ -82,7 +96,6 @@ function NetworkLabContent() {
             label: 'Backbone' 
         }, eds));
       } else if (mode === 'mesh') {
-        // Hubungkan ke SETIAP node yang sudah ada (Full Mesh)
         const meshEdges = nodes.map((node) => ({
           id: `e-${newId}-${node.id}`,
           source: newId,
@@ -103,46 +116,46 @@ function NetworkLabContent() {
   };
 
   return (
-    <div className="flex h-screen w-full flex-col bg-slate-50">
+    <div className="flex h-screen w-full flex-col bg-slate-50 print:bg-white">
       {/* Menu Topologi (Navbar) */}
-      <nav className="flex items-center justify-between border-b bg-white px-8 py-3 shadow-sm z-10">
+      <nav className="flex items-center justify-between border-b bg-white px-8 py-3 shadow-sm z-10 print:hidden">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-black text-blue-600 tracking-tighter uppercase">MEJATIKA NETWORK SIMULASI v2</h1>
-          <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">PRO | By: XII INFROMATIKA 2025</span>
+          <div className="bg-blue-600 p-2 rounded-lg text-white">
+            <ShieldCheck size={20} />
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-sm font-black text-slate-800 tracking-tighter uppercase leading-none">
+                MEJATIKA NETWORK SIMULASI v2
+            </h1>
+            <span className="text-[9px] text-blue-600 font-bold uppercase tracking-widest mt-1">
+                PRO | XII INFORMATIKA 2025
+            </span>
+          </div>
         </div>
         
         <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-          <ModeButton 
-            active={mode === 'free'} 
-            onClick={() => switchMode('free')} 
-            icon={<LayoutGrid size={16}/>} 
-            label="Manual/Free" 
-          />
-          <ModeButton 
-            active={mode === 'bus'} 
-            onClick={() => switchMode('bus')} 
-            icon={<Share2 size={16}/>} 
-            label="Bus Mode" 
-          />
-          <ModeButton 
-            active={mode === 'mesh'} 
-            onClick={() => switchMode('mesh')} 
-            icon={<MeshIcon size={16}/>} 
-            label="Mesh Mode" 
-          />
+          <ModeButton active={mode === 'free'} onClick={() => switchMode('free')} icon={<LayoutGrid size={16}/>} label="Manual" />
+          <ModeButton active={mode === 'bus'} onClick={() => switchMode('bus')} icon={<Share2 size={16}/>} label="Bus" />
+          <ModeButton active={mode === 'mesh'} onClick={() => switchMode('mesh')} icon={<MeshIcon size={16}/>} label="Mesh" />
         </div>
         
-        <button 
-          onClick={() => {setNodes([]); setEdges([]);}}
-          className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <Trash2 size={16} /> Reset
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onExport}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold bg-slate-800 text-white hover:bg-black rounded-lg transition-all shadow-md"
+          >
+            <Camera size={14} /> Cetak Lab
+          </button>
+          <button onClick={() => switchMode(mode)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+            <Trash2 size={20} />
+          </button>
+        </div>
       </nav>
 
       <div className="flex flex-grow overflow-hidden">
-        {/* Sidebar Dinamis */}
-        <Sidebar activeMode={mode} />
+        <div className="print:hidden">
+          <Sidebar activeMode={mode} />
+        </div>
         
         <div className="flex-grow relative h-full bg-[#f8fafc]" ref={reactFlowWrapper}>
           <ReactFlow
@@ -157,17 +170,27 @@ function NetworkLabContent() {
             fitView
             deleteKeyCode={['Backspace', 'Delete']}
           >
-            <Background gap={25} size={1} color="#e2e8f0" />
-            <Controls className="bg-white shadow-lg border-none" />
+            <Background gap={30} size={1} color="#cbd5e1" />
+            <Controls className="print:hidden bg-white shadow-lg border-none" />
             
-            <Panel position="top-right" className="bg-white/90 backdrop-blur p-3 border rounded-xl shadow-sm max-w-[200px]">
+            {/* WATERMARK PROJEK SANPIO */}
+            <Panel position="bottom-center" className="pointer-events-none select-none mb-20 opacity-10 text-center">
+                <h2 className="text-7xl md:text-9xl font-black text-slate-900 tracking-[0.3em] uppercase">
+                    SANPIO
+                </h2>
+                <p className="text-lg font-bold text-slate-800 tracking-[0.5em] mt-2 uppercase">
+                    Projek Kelas XII Peminatan Informatika
+                </p>
+            </Panel>
+
+            <Panel position="top-right" className="print:hidden bg-white/90 backdrop-blur p-3 border rounded-xl shadow-sm max-w-[200px]">
               <div className="flex items-start gap-2">
                 <Info size={14} className="text-blue-500 mt-0.5" />
-                <p className="text-[10px] text-slate-600 leading-tight">
+                <p className="text-[10px] text-slate-600 leading-tight italic">
                   <strong>{mode.toUpperCase()} Mode:</strong> {
-                    mode === 'free' ? 'Bebas tarik kabel antar port.' :
-                    mode === 'bus' ? 'Node otomatis terhubung secara seri.' :
-                    'Node otomatis terhubung ke semua node lainnya.'
+                    mode === 'free' ? 'Bebas tarik kabel.' :
+                    mode === 'bus' ? 'Koneksi Seri (Backbone).' :
+                    'Koneksi Full Mesh.'
                   }
                 </p>
               </div>
@@ -179,7 +202,6 @@ function NetworkLabContent() {
   );
 }
 
-// Wrapper dengan ReactFlowProvider (PENTING untuk koordinat Drop)
 export default function NetworkLabEditor() {
   return (
     <ReactFlowProvider>
@@ -193,7 +215,7 @@ function ModeButton({ active, onClick, icon, label }: any) {
     <button
       onClick={onClick}
       className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
-        active ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 opacity-60 hover:opacity-100'
+        active ? 'bg-white shadow-md text-blue-600' : 'text-slate-500 opacity-60'
       }`}
     >
       {icon} {label}
