@@ -1,10 +1,25 @@
 'use client';
 import React, { useState } from 'react';
-import { Box, BookOpen, ChevronRight, Laptop, Network, Wifi, ShieldCheck, Globe, Cpu } from 'lucide-react';
+import { 
+  Box, BookOpen, ChevronRight, Laptop, Network, Wifi, 
+  ShieldCheck, Globe, Cpu, Smartphone, Server, Radio
+} from 'lucide-react';
 
 export default function Sidebar({ activeMode, onSelectLesson }: any) {
   const [activeTab, setActiveTab] = useState<'inventory' | 'learning'>('inventory');
-  // STRUKTUR MATERI BERDASARKAN PDF BAB 4 (Hal. 121-144)
+
+  // 1. DAFTAR PERANGKAT (INVENTORY)
+  const devices = [
+    { type: 'router', label: 'Router', icon: <Network size={22} />, color: 'bg-blue-500' },
+    { type: 'switch', label: 'Switch', icon: <Cpu size={22} />, color: 'bg-indigo-500' },
+    { type: 'pc', label: 'Komputer PC', icon: <Laptop size={22} />, color: 'bg-slate-700' },
+    { type: 'smartphone', label: 'Smartphone', icon: <Smartphone size={22} />, color: 'bg-emerald-500' },
+    { type: 'access_point', label: 'Access Point', icon: <Wifi size={22} />, color: 'bg-orange-500' },
+    { type: 'server', label: 'Cloud Server', icon: <Server size={22} />, color: 'bg-purple-600' },
+    { type: 'modem', label: 'Modem ONU', icon: <Radio size={22} />, color: 'bg-sky-500' },
+  ];
+
+  // 2. STRUKTUR MATERI BERDASARKAN PDF BAB 4
   const curriculumMaterials = [
     {
       id: 'materi_1',
@@ -41,25 +56,62 @@ export default function Sidebar({ activeMode, onSelectLesson }: any) {
     }
   ];
 
+  // Fungsi Drag and Drop
+  const onDragStart = (event: React.DragEvent, nodeType: string, label: string) => {
+    event.dataTransfer.setData('application/reactflow', nodeType);
+    event.dataTransfer.setData('application/label', label);
+    event.dataTransfer.effectAllowed = 'move';
+  };
+
   return (
-    <aside className="w-85 border-r bg-white flex flex-col h-full shadow-sm print:hidden">
-      {/* TABS */}
+    <aside className="w-80 border-r bg-white flex flex-col h-full shadow-sm print:hidden">
+      {/* TABS HEADER */}
       <div className="flex border-b bg-slate-50/50">
-        <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-slate-400'}`}>Inventory</button>
-        <button onClick={() => setActiveTab('learning')} className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'learning' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-slate-400'}`}>Kurikulum Bab 4</button>
+        <button 
+          onClick={() => setActiveTab('inventory')} 
+          className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-slate-400'}`}
+        >
+          Inventory
+        </button>
+        <button 
+          onClick={() => setActiveTab('learning')} 
+          className={`flex-1 py-4 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'learning' ? 'border-b-2 border-blue-600 text-blue-600 bg-white' : 'text-slate-400'}`}
+        >
+          Kurikulum Bab 4
+        </button>
       </div>
 
       <div className="flex-grow overflow-y-auto p-4 custom-scrollbar">
         {activeTab === 'inventory' ? (
-          <div className="space-y-4">
-             {/* Render device icons seperti sebelumnya */}
-             <p className="text-[10px] text-slate-400 font-bold uppercase text-center">Tarik Perangkat ke Lab</p>
+          <div className="space-y-6">
+            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+               <p className="text-[11px] text-blue-700 font-bold leading-tight uppercase">
+                 Mode Aktif: <span className="text-blue-900">{activeMode}</span>
+               </p>
+               <p className="text-[10px] text-blue-500 mt-1 italic">Tarik ikon ke area kerja untuk mulai simulasi</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {devices.map((device) => (
+                <div
+                  key={device.type}
+                  className="group cursor-grab active:cursor-grabbing p-3 rounded-xl border-2 border-slate-100 bg-white hover:border-blue-500 hover:shadow-md transition-all flex flex-col items-center text-center"
+                  onDragStart={(event) => onDragStart(event, device.type, device.label)}
+                  draggable
+                >
+                  <div className={`p-3 rounded-xl text-white shadow-sm mb-2 transition-transform group-hover:scale-110 ${device.color}`}>
+                    {device.icon}
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-700">{device.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            <div className="bg-blue-600 p-4 rounded-xl text-white shadow-md mb-4">
-               <h3 className="text-xs font-black uppercase tracking-tighter opacity-80">Buku Informatika Kelas X</h3>
-               <p className="text-lg font-bold leading-tight">Jaringan Komputer & Internet</p>
+          <div className="space-y-6 animate-in fade-in duration-300">
+            <div className="bg-gradient-to-br from-blue-600 to-indigo-700 p-4 rounded-xl text-white shadow-md">
+               <h3 className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">E-Modul Siswa</h3>
+               <p className="text-lg font-bold leading-tight italic">Informatika Kelas X</p>
             </div>
 
             <div className="space-y-3">
@@ -81,11 +133,15 @@ export default function Sidebar({ activeMode, onSelectLesson }: any) {
         )}
       </div>
 
-      {/* FOOTER IDENTITAS (Sesuai PDF) */}
-      <footer className="p-4 bg-slate-900 text-[10px]">
-         <p className="text-slate-500 font-bold uppercase tracking-widest mb-1">Sumber Materi:</p>
-         <p className="text-white opacity-80 leading-relaxed">
-            Kusmadi, dkk (2022). Buku Informatika SMK Kelas X Semester 1. Kemendikbudristek RI.
+      {/* FOOTER IDENTITAS */}
+      <footer className="p-4 bg-slate-900 border-t border-slate-800">
+         <div className="flex items-center gap-2 mb-2">
+            <ShieldCheck size={14} className="text-blue-400" />
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Mejatika V2</span>
+         </div>
+         <p className="text-white text-[9px] opacity-60 leading-relaxed font-medium">
+            Materi: Bab 4 Jaringan Komputer & Internet <br/>
+            Kusmadi, dkk (2022) © Kemendikbudristek RI
          </p>
       </footer>
     </aside>
