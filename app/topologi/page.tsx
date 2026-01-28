@@ -107,8 +107,8 @@ function NetworkLabContent() {
       {/* Menu Topologi (Navbar) */}
       <nav className="flex items-center justify-between border-b bg-white px-8 py-3 shadow-sm z-10">
         <div className="flex items-center gap-2">
-          <h1 className="text-lg font-black text-blue-600 tracking-tighter uppercase">NetLab v2</h1>
-          <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">PRO</span>
+          <h1 className="text-lg font-black text-blue-600 tracking-tighter uppercase">MEJATIKA NETWORK SIMULASI v2</h1>
+          <span className="bg-blue-100 text-blue-700 text-[10px] px-2 py-0.5 rounded-full font-bold">PRO | By: XII INFROMATIKA 2025</span>
         </div>
         
         <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
