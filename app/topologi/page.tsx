@@ -24,59 +24,55 @@ import {
 
 const nodeTypes = { device: DeviceNode };
 
-// --- DATABASE MATERI SUPER LENGKAP ---
+// --- DATABASE SEMUA MATERI (SANGAT LENGKAP) ---
 const materiLengkap: Record<string, any> = {
   "Definisi & Komponen Jaringan": {
     root: "Konsep Dasar Jaringan",
     branches: [
-      { id: 'def1', label: "1. PENGERTIAN", desc: "Kumpulan komputer/perangkat yang saling terhubung untuk berbagi data." },
-      { id: 'def2', label: "2. HARDWARE", desc: "Komponen fisik: NIC, Router, Switch, Modem, Access Point, Kabel." },
-      { id: 'def3', label: "3. SOFTWARE", desc: "Sistem Operasi Jaringan (Linux, WinServer) & Protokol (TCP/IP)." },
-      { id: 'def4', label: "4. BRAINWARE", desc: "Manusia yang mengelola jaringan (Network Engineer/Admin)." }
+      { id: 'def1', label: "1. PENGERTIAN", desc: "Sistem koneksi antar komputer untuk berbagi data & sumber daya." },
+      { id: 'def2', label: "2. KOMPONEN UTAMA", desc: "Hardware (Fisik), Software (Sistem/Protokol), & Brainware (User)." }
     ]
   },
   "Hardware Jaringan": {
     root: "Detail Hardware",
     branches: [
-      { id: 'h1', label: "NIC (LAN CARD)", desc: "Slot kabel LAN pada komputer dengan alamat fisik (MAC Address)." },
-      { id: 'h2', label: "ROUTER", desc: "Menghubungkan jaringan lokal (LAN) ke jaringan luar (Internet)." },
-      { id: 'h3', label: "SWITCH", desc: "Membagi sinyal data secara cerdas ke komputer yang dituju saja." },
-      { id: 'h4', label: "MODEM", desc: "Mengubah sinyal ISP (Analog) menjadi data digital yang bisa dibaca PC." },
-      { id: 'h5', label: "ACCESS POINT", desc: "Pemancar sinyal Wi-Fi agar perangkat bisa terhubung tanpa kabel." }
+      { id: 'h1', label: "NIC (LAN CARD)", desc: "Pintu masuk kabel LAN ke PC dengan alamat fisik MAC Address." },
+      { id: 'h2', label: "ROUTER", desc: "Menghubungkan jaringan lokal (LAN) ke internet luar." },
+      { id: 'h3', label: "SWITCH", desc: "Membagi sinyal data secara cerdas ke PC tujuan dalam satu ruangan." },
+      { id: 'h4', label: "MODEM", desc: "Penerjemah sinyal ISP menjadi data digital yang bisa dibaca komputer." },
+      { id: 'h5', label: "ACCESS POINT", desc: "Pemancar sinyal nirkabel (Wi-Fi) untuk koneksi tanpa kabel." }
     ]
   },
   "Topologi Jaringan": {
     root: "Struktur Topologi",
     branches: [
-      { id: 't1', label: "BUS", desc: "Menggunakan satu kabel utama (Backbone) untuk semua node." },
-      { id: 't2', label: "STAR", desc: "Semua perangkat terpusat pada satu Switch/Hub pusat." },
-      { id: 't3', label: "MESH", desc: "Setiap node terhubung langsung ke setiap node lainnya (High Redundancy)." },
-      { id: 't4', label: "RING", desc: "Data mengalir dalam satu arah membentuk lingkaran tertutup." }
+      { id: 't1', label: "BUS", desc: "Satu jalur kabel utama untuk semua komputer." },
+      { id: 't2', label: "STAR", desc: "Semua komputer terhubung ke satu Switch pusat." },
+      { id: 't3', label: "MESH", desc: "Setiap perangkat terhubung ke semua perangkat lain (Paling Aman)." }
     ]
   },
   "Model OSI (7 Layer)": {
     root: "7 Layer OSI",
     branches: [
-      { id: 'osi1', label: "L1 - PHYSICAL", desc: "Media transmisi fisik: Kabel, Hub, Bit Listrik." },
-      { id: 'osi2', label: "L2 - DATA LINK", desc: "MAC Addressing, Frame, Error Correction." },
-      { id: 'osi3', label: "L3 - NETWORK", desc: "IP Address dan proses Routing data." },
-      { id: 'osi4', label: "L4 - TRANSPORT", desc: "Pengiriman data (TCP/UDP) & Flow Control." }
+      { id: 'osi1', label: "L1 - PHYSICAL", desc: "Media fisik transmisi: Kabel, Hub, dan Bit listrik." },
+      { id: 'osi2', label: "L2 - DATA LINK", desc: "Pengaturan frame data dan penanganan MAC Address." },
+      { id: 'osi3', label: "L3 - NETWORK", desc: "Sistem pengalamatan IP dan penentuan rute (Routing)." }
     ]
   },
   "Instalasi & Konfigurasi Perangkat": {
-    root: "Proses Konfigurasi",
+    root: "Tahapan Konfigurasi",
     branches: [
-      { id: 'c1', label: "PENGABELAN", desc: "Urutan kabel Straight/Cross untuk menghubungkan perangkat." },
-      { id: 'c2', label: "SET IP ADDRESS", desc: "Pemberian ID unik pada PC (Contoh: 192.168.1.1)." },
-      { id: 'c3', label: "GATEWAY SETUP", desc: "Menentukan jalur keluar data agar PC bisa akses internet." }
+      { id: 'c1', label: "PENGABELAN", desc: "Menyusun urutan kabel (Straight/Cross) sesuai standar EIA/TIA." },
+      { id: 'c2', label: "IP ADDRESSING", desc: "Memberikan alamat IP unik (Statik/DHCP) ke setiap PC." },
+      { id: 'c3', label: "KONEKTIVITAS", desc: "Uji koneksi antar node menggunakan perintah PING." }
     ]
   },
   "Keamanan & Internet": {
-    root: "Security & Global",
+    root: "Keamanan & Web",
     branches: [
-      { id: 's1', label: "FIREWALL", desc: "Sistem keamanan untuk menyaring akses ilegal dari luar." },
-      { id: 's2', label: "ENKRIPSI", desc: "Mengacak data (HTTPS/SSL) agar tidak bisa disadap." },
-      { id: 's3', label: "DNS", desc: "Mengubah alamat IP menjadi nama domain (Contoh: google.com)." }
+      { id: 's1', label: "FIREWALL", desc: "Penyaring akses tidak dikenal dari jaringan luar." },
+      { id: 's2', label: "ENKRIPSI DATA", desc: "Mengacak data (HTTPS) agar tidak disadap oleh hacker." },
+      { id: 's3', label: "GATEWAY", desc: "Pintu keluar utama jaringan lokal menuju internet global." }
     ]
   }
 };
@@ -89,7 +85,7 @@ function NetworkLabContent() {
   const [isMapActive, setIsMapActive] = useState(false);
   const [mode, setMode] = useState<'free' | 'bus' | 'mesh'>('free');
 
-  // --- FUNGSI DRAG & DROP (DIPERBAIKI) ---
+  // --- LOGIKA DRAG & DROP (DIPERBAIKI TOTAL) ---
   const onDragOver = useCallback((e: any) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
@@ -97,8 +93,7 @@ function NetworkLabContent() {
 
   const onDrop = useCallback((event: any) => {
     event.preventDefault();
-    // Drag & Drop hanya jalan jika di mode Manual
-    if (mode !== 'free') return;
+    if (mode !== 'free') return; // Hanya bisa drop di mode Manual
 
     const type = event.dataTransfer.getData('application/reactflow');
     const label = event.dataTransfer.getData('application/label');
@@ -111,25 +106,23 @@ function NetworkLabContent() {
       y: event.clientY - rect.top - 50,
     };
 
-    const newNode = {
+    setNodes((nds) => nds.concat({
       id: `node_${Date.now()}`,
       type: 'device',
       position,
       data: { label: label || type.toUpperCase(), type, ip: '192.168.1.x' },
-    };
-
-    setNodes((nds) => nds.concat(newNode));
+    }));
   }, [mode, setNodes]);
 
-  // --- TOPOLOGI OTOMATIS (BUS & MESH) ---
+  // --- LOGIKA GENERATE TOPOLOGI ---
   const generateTopology = (type: 'bus' | 'mesh') => {
     setIsMapActive(false);
     const newNodes = []; const newEdges = []; const count = 5;
     for (let i = 0; i < count; i++) {
       newNodes.push({
         id: `t-${i}`, type: 'device',
-        position: { x: type === 'bus' ? i * 220 + 50 : 400 + 200 * Math.cos(2*Math.PI*i/count), 
-                    y: type === 'bus' ? 250 : 250 + 200 * Math.sin(2*Math.PI*i/count) },
+        position: { x: type === 'bus' ? i * 220 + 100 : 450 + 200 * Math.cos(2*Math.PI*i/count), 
+                    y: type === 'bus' ? 300 : 300 + 200 * Math.sin(2*Math.PI*i/count) },
         data: { label: `PC-${i+1}`, type: 'pc', ip: `192.168.1.${i+10}` }
       });
     }
@@ -143,7 +136,7 @@ function NetworkLabContent() {
     setNodes(newNodes); setEdges(newEdges); setMode(type);
   };
 
-  // --- PETA KONSEP BERDASARKAN SIDEBAR ---
+  // --- LOGIKA PETA KONSEP MATERI ---
   const handleMateriClick = (title: string) => {
     setIsMapActive(true); setMode('free');
     const data = materiLengkap[title] || materiLengkap["Definisi & Komponen Jaringan"];
@@ -176,20 +169,21 @@ function NetworkLabContent() {
 
   return (
     <div className="flex h-screen w-full flex-col bg-slate-50 overflow-hidden" onClick={() => setMenu(null)}>
-      {/* NAVBAR */}
       <nav className="flex items-center justify-between border-b bg-white px-8 py-3 shadow-md z-40">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 font-black italic text-blue-900">
           <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg"><ShieldCheck size={24} /></div>
-          <h1 className="text-sm font-black uppercase italic tracking-tighter text-blue-900">MEJATIKA NETWORK V2</h1>
+          <h1 className="text-sm uppercase tracking-tighter">MEJATIKA LAB V2</h1>
         </div>
+
         <div className="flex items-center gap-4">
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 shadow-inner">
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border shadow-inner">
             <button onClick={() => {setMode('free'); setNodes([]); setEdges([]); setIsMapActive(false);}} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'free' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Manual</button>
             <button onClick={() => generateTopology('bus')} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'bus' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Bus</button>
             <button onClick={() => generateTopology('mesh')} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'mesh' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Mesh</button>
           </div>
+
           <div className="flex gap-2">
-            <button onClick={() => { const t = prompt("Isi Catatan:"); if(t) setNodes(n => n.concat({id:`n-${Date.now()}`, type:'default', position:{x:300,y:300}, data:{label:<div className="p-3 bg-yellow-300 border-l-4 border-yellow-600 font-black text-[10px] shadow-md uppercase">{t}</div>}, style:{background:'transparent', border:'none'}})) }} className="p-2.5 bg-yellow-400 rounded-xl text-yellow-900 shadow-md"><Type size={20}/></button>
+            <button onClick={() => { const t = prompt("Catatan:"); if(t) setNodes(n => n.concat({id:`n-${Date.now()}`, type:'default', position:{x:300,y:300}, data:{label:<div className="p-3 bg-yellow-300 border-l-4 border-yellow-600 font-black text-[10px] shadow-md uppercase">{t}</div>}, style:{background:'transparent', border:'none'}})) }} className="p-2.5 bg-yellow-400 rounded-xl text-yellow-900 shadow-md"><Type size={20}/></button>
             <button onClick={() => {if(confirm("Hapus semua?")){setNodes([]); setEdges([]); setIsMapActive(false); setMode('free');}}} className="p-2.5 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all"><Eraser size={20}/></button>
             <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black shadow-xl uppercase italic tracking-widest hover:bg-blue-700 transition-all"><Camera size={18}/> CETAK LAPORAN</button>
           </div>
@@ -211,7 +205,7 @@ function NetworkLabContent() {
             <Controls />
             {isMapActive && (
               <Panel position="top-left" className="ml-4 mt-4">
-                <button onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} className="bg-red-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 shadow-2xl border-2 border-white/20 hover:bg-red-700 transition-all"><X size={18}/> TUTUP PETA KONSEP</button>
+                <button onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} className="bg-red-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 shadow-2xl hover:bg-red-700 transition-all border-2 border-white/20"><X size={18}/> TUTUP PETA KONSEP</button>
               </Panel>
             )}
             {menu && (
