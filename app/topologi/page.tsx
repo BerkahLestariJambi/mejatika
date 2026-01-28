@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useCallback, useRef, useState } from 'react';
@@ -27,7 +28,8 @@ import {
   XCircle, 
   Edit3,
   BookOpen,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react';
 
 const nodeTypes = { device: DeviceNode };
@@ -39,7 +41,12 @@ function NetworkLabContent() {
   const [mode, setMode] = useState<'free' | 'bus' | 'mesh'>('free');
   
   // State untuk Materi & Context Menu
-  const [activeLesson, setActiveLesson] = useState<{title: string, content: string, points: string[]} | null>(null);
+  const [activeLesson, setActiveLesson] = useState<{
+    title: string, 
+    content: string, 
+    points: string[],
+    category?: string 
+  } | null>(null);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: 'node' | 'edge'; label: string } | null>(null);
 
   // --- LOGIKA KLIK KANAN ---
@@ -147,21 +154,15 @@ function NetworkLabContent() {
 
       <div className="flex flex-grow overflow-hidden relative">
         
-        {/* 2. SIDEBAR */}
         <Sidebar activeMode={mode} onSelectLesson={(lesson: any) => setActiveLesson(lesson)} />
         
-        {/* 3. MAIN CANVAS AREA */}
         <div className="flex-grow relative bg-[#f8fafc]" ref={reactFlowWrapper}>
           
-          {/* WATERMARK FIX: Tepat di tengah area kerja */}
+          {/* WATERMARK */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 opacity-[0.05] text-center">
             <div className="flex flex-col items-center">
-              <h2 className="text-[12vw] font-black text-slate-900 tracking-[0.2em] uppercase leading-none">
-                SANPIO
-              </h2>
-              <p className="text-xl md:text-2xl font-bold text-slate-800 tracking-[0.5em] mt-4 uppercase">
-                Projek Kelas XII Informatika
-              </p>
+              <h2 className="text-[12vw] font-black text-slate-900 tracking-[0.2em] uppercase leading-none">SANPIO</h2>
+              <p className="text-xl md:text-2xl font-bold text-slate-800 tracking-[0.5em] mt-4 uppercase">Projek Kelas XII Informatika</p>
             </div>
           </div>
 
@@ -180,34 +181,85 @@ function NetworkLabContent() {
             <Background gap={30} size={1} color="#cbd5e1" />
             <Controls className="print:hidden" />
 
-            {/* 4. MODAL MATERI (FLOATING PANEL) */}
+            {/* 4. MODAL MATERI (FRAME LENGKAP DENGAN ANIMASI) */}
             {activeLesson && (
-              <Panel position="top-left" className="ml-4 mt-4 animate-in slide-in-from-left-5 duration-300 z-50">
-                <div className="bg-white/95 backdrop-blur-md border-2 border-blue-500 shadow-2xl rounded-2xl p-6 max-w-sm relative">
-                  <button onClick={() => setActiveLesson(null)} className="absolute top-3 right-3 p-1 hover:bg-slate-100 rounded-full text-slate-400">
-                    <X size={18} />
-                  </button>
-                  <div className="flex items-center gap-2 mb-4 text-blue-600">
-                    <BookOpen size={20} />
-                    <h3 className="font-black uppercase tracking-tight text-[10px]">Materi Kurikulum Merdeka</h3>
-                  </div>
-                  <h2 className="text-xl font-black text-slate-800 mb-2 leading-tight uppercase tracking-tighter">{activeLesson.title}</h2>
-                  <p className="text-[11px] text-slate-600 leading-relaxed mb-4 italic border-l-2 border-blue-200 pl-3">
-                    {activeLesson.content}
-                  </p>
-                  <div className="space-y-2">
-                    {activeLesson.points.map((p, i) => (
-                      <div key={i} className="flex gap-2 items-start text-[10px] font-bold text-slate-700 bg-blue-50/50 p-2 rounded-lg">
-                        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 shrink-0" />
-                        {p}
+              <Panel position="top-left" className="ml-4 mt-4 z-50">
+                <div className="bg-white/95 backdrop-blur-xl border-t-4 border-t-blue-600 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-2xl w-[380px] overflow-hidden animate-in slide-in-from-left-10 fade-in duration-500 ease-out">
+                  
+                  {/* Header Frame dengan Progress Bar Animasi */}
+                  <div className="relative h-24 bg-slate-900 flex items-center px-6 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-blue-600/20">
+                      <div className="h-full bg-blue-500 animate-[progress_3s_linear_infinite] w-full origin-left" style={{ animationName: 'progress-loading' }} />
+                    </div>
+                    
+                    <div className="z-10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="bg-blue-600 text-[9px] font-black px-2 py-0.5 rounded text-white uppercase tracking-widest">
+                          {activeLesson.category || 'Materi Bab 4'}
+                        </span>
                       </div>
-                    ))}
+                      <h2 className="text-white text-lg font-black leading-tight tracking-tight uppercase italic">
+                        {activeLesson.title}
+                      </h2>
+                    </div>
+
+                    <button 
+                      onClick={() => setActiveLesson(null)} 
+                      className="absolute top-4 right-4 p-1.5 bg-white/10 hover:bg-red-500 text-white rounded-full transition-all group"
+                    >
+                      <X size={16} className="group-hover:rotate-90 transition-transform" />
+                    </button>
+                  </div>
+
+                  {/* Body Konten */}
+                  <div className="p-6 space-y-5">
+                    <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 animate-in zoom-in-95 delay-150 duration-500">
+                      <p className="text-sm font-bold text-slate-700 leading-relaxed italic">
+                        "{activeLesson.content}"
+                      </p>
+                    </div>
+
+                    <div className="space-y-3">
+                      {activeLesson.points.map((p, i) => (
+                        <div 
+                          key={i} 
+                          className="flex gap-3 items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm hover:border-blue-300 hover:translate-x-2 transition-all duration-300 animate-in slide-in-from-left-5"
+                          style={{ animationDelay: `${(i + 1) * 150}ms` }}
+                        >
+                          <div className="flex-shrink-0 w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-blue-600 font-black text-xs">
+                            {i + 1}
+                          </div>
+                          <p className="text-[11px] font-bold text-slate-600 leading-tight tracking-wide">
+                            {p}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button className="w-full py-3 bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2">
+                      Simulasikan Sekarang <ChevronRight size={14} />
+                    </button>
+                  </div>
+
+                  {/* Footer Frame */}
+                  <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 flex justify-between items-center text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                    <span>Informatika Fase E</span>
+                    <span>Kurikulum Merdeka</span>
                   </div>
                 </div>
+
+                {/* CSS Inline untuk Progress Bar */}
+                <style jsx>{`
+                  @keyframes progress-loading {
+                    0% { transform: scaleX(0); }
+                    50% { transform: scaleX(1); }
+                    100% { transform: scaleX(0); transform-origin: right; }
+                  }
+                `}</style>
               </Panel>
             )}
 
-            {/* 5. CONTEXT MENU (KLIK KANAN) */}
+            {/* 5. CONTEXT MENU */}
             {menu && (
               <div
                 style={{ top: menu.y, left: menu.x }}
@@ -229,7 +281,6 @@ function NetworkLabContent() {
   );
 }
 
-// Wrapper Provider wajib agar ReactFlow bekerja
 export default function NetworkLabEditor() {
   return (
     <ReactFlowProvider>
