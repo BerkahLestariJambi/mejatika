@@ -167,7 +167,7 @@ function NetworkLabContent() {
         
         <Sidebar activeMode={mode} onSelectLesson={(lesson: any) => {
           setActiveLesson(lesson);
-          setSelectedSubPoint(null); // Reset sub-detail saat ganti materi
+          setSelectedSubPoint(null); 
         }} />
         
         <div className="flex-grow relative bg-[#f8fafc]" ref={reactFlowWrapper}>
@@ -195,131 +195,112 @@ function NetworkLabContent() {
             <Background gap={30} size={1} color="#cbd5e1" />
             <Controls className="print:hidden" />
 
-            {/* 4. MODAL PETA KONSEP DINAMIS (LEVEL 1, 2, & 3) */}
+            {/* 4. MODAL PETA KONSEP DINAMIS (FIXED BERANTAKAN) */}
             {activeLesson && (
-              <Panel position="top-left" className="ml-4 mt-4 z-50 flex items-start gap-0 pointer-events-auto">
-                
-                {/* LEVEL 1: AKAR MATERI */}
-                <div className="bg-slate-900 border-2 border-blue-500 shadow-2xl rounded-2xl w-[240px] overflow-hidden animate-in fade-in zoom-in duration-300">
-                  <div className="p-3 border-b border-white/10 flex justify-between items-center bg-blue-600/10">
-                    <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Modul Belajar</span>
-                    <button onClick={() => {setActiveLesson(null); setSelectedSubPoint(null);}} className="text-white/50 hover:text-white transition-colors">
-                        <X size={14}/>
-                    </button>
-                  </div>
-                  <div className="p-5">
-                    <h2 className="text-white text-md font-black leading-tight uppercase italic mb-2">{activeLesson.title}</h2>
-                    <p className="text-[9px] text-slate-400 font-bold leading-relaxed">{activeLesson.content}</p>
-                  </div>
-                </div>
-
-                {/* GARIS PENGHUBUNG 1 (Akar ke Cabang) */}
-                <div className="w-12 h-1 relative self-center">
-                  <div className="h-[2px] bg-blue-500 shadow-[0_0_10px_blue] animate-expand-line origin-left w-full" />
-                </div>
-
-                {/* LEVEL 2: CABANG MATERI (DAFTAR KOMPONEN) */}
-                <div className="bg-white border-2 border-slate-200 shadow-2xl rounded-3xl w-[320px] overflow-hidden animate-in slide-in-from-left-5 fade-in duration-500">
-                  <div className="bg-slate-50 p-4 border-b flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap size={16} className="text-blue-600 animate-pulse" />
-                      <h3 className="text-[10px] font-black text-slate-800 uppercase italic">Pilih Komponen</h3>
+              <Panel position="top-left" className="m-0 p-4 z-50 pointer-events-none">
+                {/* CONTAINER UTAMA - Memaksa aliran horizontal tanpa pecah */}
+                <div className="flex items-start gap-0 pointer-events-auto">
+                  
+                  {/* LEVEL 1: AKAR MATERI */}
+                  <div className="bg-slate-900 border-2 border-blue-500 shadow-2xl rounded-2xl w-[240px] shrink-0 overflow-hidden animate-in fade-in zoom-in duration-300">
+                    <div className="p-3 border-b border-white/10 flex justify-between items-center bg-blue-600/10">
+                      <span className="text-[8px] font-black text-blue-400 uppercase tracking-widest">Modul Belajar</span>
+                      <button onClick={() => {setActiveLesson(null); setSelectedSubPoint(null);}} className="text-white/50 hover:text-white transition-colors">
+                          <X size={14}/>
+                      </button>
+                    </div>
+                    <div className="p-5">
+                      <h2 className="text-white text-md font-black leading-tight uppercase italic mb-2">{activeLesson.title}</h2>
+                      <p className="text-[9px] text-slate-400 font-bold leading-relaxed">{activeLesson.content}</p>
                     </div>
                   </div>
 
-                  <div className="p-4 space-y-2">
-                    {activeLesson.points.map((p, i) => {
-                      const title = p.includes(':') ? p.split(':')[0] : `Materi ${i+1}`;
-                      const isSelected = selectedSubPoint?.title === title;
+                  {/* GARIS 1 */}
+                  <div className="w-10 h-[2px] bg-blue-500 shadow-[0_0_10px_blue] self-center shrink-0 animate-expand-line" />
+
+                  {/* LEVEL 2: DAFTAR KOMPONEN */}
+                  <div className="bg-white border-2 border-slate-200 shadow-2xl rounded-3xl w-[300px] shrink-0 overflow-hidden animate-in slide-in-from-left-5 fade-in duration-500">
+                    <div className="bg-slate-50 p-3 border-b flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Zap size={14} className="text-blue-600" />
+                        <h3 className="text-[9px] font-black text-slate-800 uppercase italic">Pilih Komponen</h3>
+                      </div>
+                    </div>
+                    <div className="p-3 space-y-2 max-h-[400px] overflow-y-auto">
+                      {activeLesson.points.map((p, i) => {
+                        const title = p.includes(':') ? p.split(':')[0] : `Materi ${i+1}`;
+                        const isSelected = selectedSubPoint?.title === title;
+                        return (
+                          <button 
+                            key={i} 
+                            onClick={() => setSelectedSubPoint({
+                              title: title,
+                              desc: p.includes(':') ? p.split(':')[1] : p,
+                              type: i % 2 === 0 ? 'hardware' : 'network'
+                            })}
+                            className={`w-full group flex items-center gap-3 p-3 rounded-2xl border transition-all duration-300 ${isSelected ? 'bg-blue-600 border-blue-600 shadow-lg translate-x-2' : 'bg-white border-slate-100 hover:border-blue-300'}`}
+                          >
+                            <div className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center font-black text-[10px] ${isSelected ? 'bg-white text-blue-600' : 'bg-slate-100 text-slate-400'}`}>
+                              {i + 1}
+                            </div>
+                            <span className={`text-[10px] font-black uppercase flex-grow text-left ${isSelected ? 'text-white' : 'text-slate-700'}`}>
+                              {title}
+                            </span>
+                            <ChevronRight size={14} className={isSelected ? 'text-white' : 'text-slate-300'} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* LEVEL 3: DETAIL (Hanya muncul jika dipilih) */}
+                  {selectedSubPoint && (
+                    <div className="flex items-start shrink-0">
+                      {/* GARIS 2 */}
+                      <div className="w-10 h-[2px] bg-blue-500 shadow-[0_0_10px_blue] self-center animate-expand-line" />
                       
-                      return (
-                        <button 
-                          key={i} 
-                          onClick={() => setSelectedSubPoint({
-                            title: title,
-                            desc: p.includes(':') ? p.split(':')[1] : p,
-                            type: i % 2 === 0 ? 'hardware' : 'network'
-                          })}
-                          className={`w-full group flex items-center gap-3 p-3 rounded-2xl border transition-all duration-300 ${isSelected ? 'bg-blue-600 border-blue-600 shadow-lg -translate-y-1' : 'bg-white border-slate-100 hover:border-blue-300 hover:bg-slate-50'}`}
-                        >
-                          <div className={`flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs ${isSelected ? 'bg-white text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                            {i + 1}
+                      <div className="bg-white border-2 border-blue-500 shadow-2xl rounded-[2.5rem] w-[340px] overflow-hidden animate-in slide-in-from-left-10 fade-in duration-500">
+                        <div className="h-32 bg-slate-50 relative flex items-center justify-center border-b">
+                           <div className="z-10 bg-white p-5 rounded-[2rem] shadow-xl border border-blue-100">
+                              {selectedSubPoint.type === 'hardware' ? <Cpu size={40} className="text-blue-600" /> : <Network size={40} className="text-blue-600" />}
+                           </div>
+                        </div>
+                        <div className="p-6">
+                          <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter mb-3 italic">
+                            {selectedSubPoint.title}
+                          </h2>
+                          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 italic">
+                             <p className="text-[10px] font-bold text-slate-600 leading-relaxed">
+                               "{selectedSubPoint.desc}"
+                             </p>
                           </div>
-                          <p className={`text-[10px] font-black uppercase flex-grow text-left ${isSelected ? 'text-white' : 'text-slate-700'}`}>
-                            {title}
-                          </p>
-                          <ChevronRight size={14} className={`${isSelected ? 'text-white' : 'text-slate-300 group-hover:text-blue-500'} transition-colors`} />
-                        </button>
-                      );
-                    })}
-                  </div>
+                          <button 
+                            onClick={() => {
+                              const newId = `node_${Math.random().toString(36).substr(2, 5)}`;
+                              setNodes(nds => [...nds, {
+                                id: newId,
+                                type: 'device',
+                                position: { x: 300, y: 150 },
+                                data: { label: selectedSubPoint.title, type: 'router', ip: '192.168.1.1' }
+                              }]);
+                            }}
+                            className="mt-5 w-full py-3 bg-slate-900 hover:bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest rounded-xl transition-all"
+                          >
+                            Tambahkan ke Lab
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* LEVEL 3: DETAIL ANATOMI & FUNGSI (Hanya muncul saat diklik) */}
-                {selectedSubPoint && (
-                  <>
-                    {/* GARIS PENGHUBUNG 2 (Cabang ke Detail) */}
-                    <div className="w-12 h-1 relative self-center">
-                      <div className="h-[2px] bg-blue-500 shadow-[0_0_10px_blue] animate-expand-line origin-left w-full" />
-                    </div>
-
-                    <div className="bg-white border-2 border-blue-500 shadow-[0_30px_60px_rgba(59,130,246,0.2)] rounded-[2.5rem] w-[380px] overflow-hidden animate-in slide-in-from-left-10 fade-in duration-500">
-                      {/* Visual Header (Gambar) */}
-                      <div className="h-40 bg-slate-100 relative overflow-hidden flex items-center justify-center border-b">
-                         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-transparent" />
-                         <div className="z-10 bg-white p-5 rounded-[2rem] shadow-2xl border border-blue-100 transform -rotate-3 hover:rotate-0 transition-transform duration-500">
-                            {selectedSubPoint.type === 'hardware' ? <Cpu size={48} className="text-blue-600" /> : <Network size={48} className="text-blue-600" />}
-                         </div>
-                         {/* Dekorasi Grid */}
-                         <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#3b82f6 1px, transparent 1px)', backgroundSize: '15px 15px' }} />
-                      </div>
-
-                      <div className="p-6">
-                        <div className="flex items-center gap-2 mb-3">
-                           <span className="bg-blue-100 text-blue-700 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter italic">
-                              Ensiklopedia IT
-                           </span>
-                        </div>
-                        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-4 leading-none italic">
-                          {selectedSubPoint.title}
-                        </h2>
-                        
-                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 relative">
-                           <Info size={16} className="absolute -top-2 -right-2 text-blue-500 bg-white rounded-full" />
-                           <h4 className="text-[9px] font-black text-slate-400 uppercase mb-2">Fungsi Utama:</h4>
-                           <p className="text-[11px] font-bold text-slate-600 leading-relaxed italic">
-                             "{selectedSubPoint.desc}"
-                           </p>
-                        </div>
-
-                        <button 
-                          onClick={() => {
-                            // Opsional: Logika untuk menambahkan node langsung ke canvas
-                            const newId = `node_${Math.random().toString(36).substr(2, 5)}`;
-                            setNodes(nds => [...nds, {
-                              id: newId,
-                              type: 'device',
-                              position: { x: 400, y: 200 },
-                              data: { label: selectedSubPoint.title, type: 'router', ip: '192.168.1.1' }
-                            }]);
-                          }}
-                          className="mt-6 w-full py-3 bg-slate-900 hover:bg-blue-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-2 group"
-                        >
-                          Gunakan di Lab <Zap size={14} className="group-hover:fill-current" />
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* STYLE KHUSUS ANIMASI */}
                 <style jsx>{`
                   @keyframes expand-line {
-                    from { width: 0; opacity: 0; }
-                    to { width: 48px; opacity: 1; }
+                    from { width: 0; }
+                    to { width: 40px; }
                   }
                   .animate-expand-line {
-                    animation: expand-line 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+                    animation: expand-line 0.4s ease-out forwards;
                   }
                 `}</style>
               </Panel>
