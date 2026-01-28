@@ -19,34 +19,64 @@ import DeviceNode from '@/components/DeviceNode';
 import { 
   ShieldCheck, XCircle, X, Cpu, Router as RouterIcon, 
   Server, Globe, Eraser, Type, Camera, Info, 
-  Wifi, Cable, Hash, Lock, Activity, Globe2
+  Wifi, Cable, Hash, Lock, Activity, Globe2, Layers
 } from 'lucide-react';
 
 const nodeTypes = { device: DeviceNode };
 
-// --- DATABASE SEMUA MATERI (LENGKAP) ---
+// --- DATABASE MATERI SUPER LENGKAP ---
 const materiLengkap: Record<string, any> = {
   "Definisi & Komponen Jaringan": {
-    root: "Dasar Jaringan",
+    root: "Konsep Dasar Jaringan",
     branches: [
-      { id: 'def1', label: "PENGERTIAN", desc: "Sistem koneksi antar komputer untuk berbagi data & resource." },
-      { id: 'def2', label: "KOMPONEN UTAMA", desc: "Terdiri dari Hardware (Fisik), Software (OS), & Brainware (User)." }
+      { id: 'def1', label: "1. PENGERTIAN", desc: "Kumpulan komputer/perangkat yang saling terhubung untuk berbagi data." },
+      { id: 'def2', label: "2. HARDWARE", desc: "Komponen fisik: NIC, Router, Switch, Modem, Access Point, Kabel." },
+      { id: 'def3', label: "3. SOFTWARE", desc: "Sistem Operasi Jaringan (Linux, WinServer) & Protokol (TCP/IP)." },
+      { id: 'def4', label: "4. BRAINWARE", desc: "Manusia yang mengelola jaringan (Network Engineer/Admin)." }
+    ]
+  },
+  "Hardware Jaringan": {
+    root: "Detail Hardware",
+    branches: [
+      { id: 'h1', label: "NIC (LAN CARD)", desc: "Slot kabel LAN pada komputer dengan alamat fisik (MAC Address)." },
+      { id: 'h2', label: "ROUTER", desc: "Menghubungkan jaringan lokal (LAN) ke jaringan luar (Internet)." },
+      { id: 'h3', label: "SWITCH", desc: "Membagi sinyal data secara cerdas ke komputer yang dituju saja." },
+      { id: 'h4', label: "MODEM", desc: "Mengubah sinyal ISP (Analog) menjadi data digital yang bisa dibaca PC." },
+      { id: 'h5', label: "ACCESS POINT", desc: "Pemancar sinyal Wi-Fi agar perangkat bisa terhubung tanpa kabel." }
+    ]
+  },
+  "Topologi Jaringan": {
+    root: "Struktur Topologi",
+    branches: [
+      { id: 't1', label: "BUS", desc: "Menggunakan satu kabel utama (Backbone) untuk semua node." },
+      { id: 't2', label: "STAR", desc: "Semua perangkat terpusat pada satu Switch/Hub pusat." },
+      { id: 't3', label: "MESH", desc: "Setiap node terhubung langsung ke setiap node lainnya (High Redundancy)." },
+      { id: 't4', label: "RING", desc: "Data mengalir dalam satu arah membentuk lingkaran tertutup." }
+    ]
+  },
+  "Model OSI (7 Layer)": {
+    root: "7 Layer OSI",
+    branches: [
+      { id: 'osi1', label: "L1 - PHYSICAL", desc: "Media transmisi fisik: Kabel, Hub, Bit Listrik." },
+      { id: 'osi2', label: "L2 - DATA LINK", desc: "MAC Addressing, Frame, Error Correction." },
+      { id: 'osi3', label: "L3 - NETWORK", desc: "IP Address dan proses Routing data." },
+      { id: 'osi4', label: "L4 - TRANSPORT", desc: "Pengiriman data (TCP/UDP) & Flow Control." }
     ]
   },
   "Instalasi & Konfigurasi Perangkat": {
-    root: "Hardware & Setup",
+    root: "Proses Konfigurasi",
     branches: [
-      { id: 'h1', label: "NIC & KABEL", desc: "Pemasangan kartu jaringan dan pengabelan (UTP/Fiber)." },
-      { id: 'h2', label: "ROUTING & SWITCHING", desc: "Konfigurasi rute data menggunakan Router dan Switch." },
-      { id: 'h3', label: "IP ADDRESSING", desc: "Penyusunan alamat IP (Statik/DHCP) agar node bisa kenal." }
+      { id: 'c1', label: "PENGABELAN", desc: "Urutan kabel Straight/Cross untuk menghubungkan perangkat." },
+      { id: 'c2', label: "SET IP ADDRESS", desc: "Pemberian ID unik pada PC (Contoh: 192.168.1.1)." },
+      { id: 'c3', label: "GATEWAY SETUP", desc: "Menentukan jalur keluar data agar PC bisa akses internet." }
     ]
   },
   "Keamanan & Internet": {
-    root: "Security & Web",
+    root: "Security & Global",
     branches: [
-      { id: 's1', label: "FIREWALL", desc: "Penyaring traffic berbahaya yang masuk/keluar jaringan." },
-      { id: 's2', label: "ENKRIPSI DATA", desc: "Mengamankan data dengan metode SSL/TLS atau VPN." },
-      { id: 's3', label: "INTERNET GATEWAY", desc: "Pintu gerbang utama menuju jaringan global (Internet)." }
+      { id: 's1', label: "FIREWALL", desc: "Sistem keamanan untuk menyaring akses ilegal dari luar." },
+      { id: 's2', label: "ENKRIPSI", desc: "Mengacak data (HTTPS/SSL) agar tidak bisa disadap." },
+      { id: 's3', label: "DNS", desc: "Mengubah alamat IP menjadi nama domain (Contoh: google.com)." }
     ]
   }
 };
@@ -59,20 +89,39 @@ function NetworkLabContent() {
   const [isMapActive, setIsMapActive] = useState(false);
   const [mode, setMode] = useState<'free' | 'bus' | 'mesh'>('free');
 
-  // --- DRAG & DROP INVENTORY (MODE MANUAL) ---
-  const onDragOver = useCallback((e: any) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }, []);
+  // --- FUNGSI DRAG & DROP (DIPERBAIKI) ---
+  const onDragOver = useCallback((e: any) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
   const onDrop = useCallback((event: any) => {
     event.preventDefault();
+    // Drag & Drop hanya jalan jika di mode Manual
     if (mode !== 'free') return;
+
     const type = event.dataTransfer.getData('application/reactflow');
     const label = event.dataTransfer.getData('application/label');
+
     if (!type || !reactFlowWrapper.current) return;
+
     const rect = reactFlowWrapper.current.getBoundingClientRect();
-    const position = { x: event.clientX - rect.left - 50, y: event.clientY - rect.top - 50 };
-    setNodes((nds) => nds.concat({ id: `node_${Date.now()}`, type: 'device', position, data: { label: label || type.toUpperCase(), type, ip: '192.168.1.x' } }));
+    const position = {
+      x: event.clientX - rect.left - 50,
+      y: event.clientY - rect.top - 50,
+    };
+
+    const newNode = {
+      id: `node_${Date.now()}`,
+      type: 'device',
+      position,
+      data: { label: label || type.toUpperCase(), type, ip: '192.168.1.x' },
+    };
+
+    setNodes((nds) => nds.concat(newNode));
   }, [mode, setNodes]);
 
-  // --- GENERATE TOPOLOGI BUS & MESH ---
+  // --- TOPOLOGI OTOMATIS (BUS & MESH) ---
   const generateTopology = (type: 'bus' | 'mesh') => {
     setIsMapActive(false);
     const newNodes = []; const newEdges = []; const count = 5;
@@ -94,45 +143,53 @@ function NetworkLabContent() {
     setNodes(newNodes); setEdges(newEdges); setMode(type);
   };
 
-  // --- PETA KONSEP MATERI ---
+  // --- PETA KONSEP BERDASARKAN SIDEBAR ---
   const handleMateriClick = (title: string) => {
     setIsMapActive(true); setMode('free');
     const data = materiLengkap[title] || materiLengkap["Definisi & Komponen Jaringan"];
+    
     const rootId = 'root';
     const rootNode = {
       id: rootId, type: 'default', position: { x: 50, y: 250 },
-      data: { label: <div className="p-4 bg-blue-900 text-white rounded-xl font-black italic border-2 border-blue-400 uppercase shadow-2xl">{data.root}</div> },
-      style: { background: 'transparent', border: 'none', width: 220 }
+      data: { label: <div className="p-5 bg-blue-900 text-white rounded-2xl font-black italic border-4 border-blue-400 uppercase shadow-2xl">{data.root}</div> },
+      style: { background: 'transparent', border: 'none', width: 230 }
     };
+    
     const branchNodes = data.branches.map((item: any, i: number) => ({
       id: item.id, type: 'default', position: { x: 450, y: i * 150 },
       data: { label: (
-        <div className="p-4 bg-white border-2 border-blue-100 rounded-xl shadow-lg w-[340px] text-left hover:border-blue-600 transition-all">
-          <h4 className="font-black text-[11px] text-blue-800 uppercase italic flex items-center gap-2"><Info size={14}/> {item.label}</h4>
-          <p className="text-[10px] text-slate-500 font-bold leading-tight mt-1">"{item.desc}"</p>
+        <div className="p-4 bg-white border-2 border-blue-100 rounded-xl shadow-lg w-[350px] text-left hover:border-blue-600 transition-all">
+          <h4 className="font-black text-[12px] text-blue-800 uppercase italic flex items-center gap-2 mb-1"><Info size={14}/> {item.label}</h4>
+          <p className="text-[10px] text-slate-500 font-bold leading-tight">"{item.desc}"</p>
         </div>
       )},
       style: { background: 'transparent', border: 'none' }
     }));
+
     setNodes([rootNode, ...branchNodes]);
-    setEdges(data.branches.map((item: any) => ({ id: `e-${item.id}`, source: rootId, target: item.id, animated: true, style: { stroke: '#2563eb', strokeWidth: 3 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#2563eb' } })));
+    setEdges(data.branches.map((item: any) => ({ 
+      id: `e-${item.id}`, source: rootId, target: item.id, animated: true, 
+      style: { stroke: '#2563eb', strokeWidth: 3 }, 
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#2563eb' } 
+    })));
   };
 
   return (
     <div className="flex h-screen w-full flex-col bg-slate-50 overflow-hidden" onClick={() => setMenu(null)}>
+      {/* NAVBAR */}
       <nav className="flex items-center justify-between border-b bg-white px-8 py-3 shadow-md z-40">
         <div className="flex items-center gap-3">
           <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg"><ShieldCheck size={24} /></div>
           <h1 className="text-sm font-black uppercase italic tracking-tighter text-blue-900">MEJATIKA NETWORK V2</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200">
-            <button onClick={() => {setMode('free'); setNodes([]); setEdges([]); setIsMapActive(false);}} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'free' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:bg-slate-200'}`}>Manual</button>
-            <button onClick={() => generateTopology('bus')} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'bus' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:bg-slate-200'}`}>Bus</button>
-            <button onClick={() => generateTopology('mesh')} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'mesh' ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:bg-slate-200'}`}>Mesh</button>
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1 border border-slate-200 shadow-inner">
+            <button onClick={() => {setMode('free'); setNodes([]); setEdges([]); setIsMapActive(false);}} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'free' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Manual</button>
+            <button onClick={() => generateTopology('bus')} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'bus' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Bus</button>
+            <button onClick={() => generateTopology('mesh')} className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${mode === 'mesh' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Mesh</button>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { const t = prompt("Isi Catatan:"); if(t) setNodes(n => n.concat({id:`n-${Date.now()}`, type:'default', position:{x:300,y:300}, data:{label:<div className="p-3 bg-yellow-300 border-l-4 border-yellow-600 font-black text-[10px] shadow-md uppercase">{t}</div>}, style:{background:'transparent', border:'none'}})) }} className="p-2.5 bg-yellow-400 rounded-xl text-yellow-900 shadow-md hover:scale-105 active:scale-95 transition-all"><Type size={20}/></button>
+            <button onClick={() => { const t = prompt("Isi Catatan:"); if(t) setNodes(n => n.concat({id:`n-${Date.now()}`, type:'default', position:{x:300,y:300}, data:{label:<div className="p-3 bg-yellow-300 border-l-4 border-yellow-600 font-black text-[10px] shadow-md uppercase">{t}</div>}, style:{background:'transparent', border:'none'}})) }} className="p-2.5 bg-yellow-400 rounded-xl text-yellow-900 shadow-md"><Type size={20}/></button>
             <button onClick={() => {if(confirm("Hapus semua?")){setNodes([]); setEdges([]); setIsMapActive(false); setMode('free');}}} className="p-2.5 bg-red-100 text-red-600 rounded-xl hover:bg-red-200 transition-all"><Eraser size={20}/></button>
             <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black shadow-xl uppercase italic tracking-widest hover:bg-blue-700 transition-all"><Camera size={18}/> CETAK LAPORAN</button>
           </div>
@@ -154,7 +211,7 @@ function NetworkLabContent() {
             <Controls />
             {isMapActive && (
               <Panel position="top-left" className="ml-4 mt-4">
-                <button onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} className="bg-red-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 shadow-2xl border-2 border-white/20"><X size={18}/> TUTUP PETA KONSEP</button>
+                <button onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} className="bg-red-600 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 shadow-2xl border-2 border-white/20 hover:bg-red-700 transition-all"><X size={18}/> TUTUP PETA KONSEP</button>
               </Panel>
             )}
             {menu && (
