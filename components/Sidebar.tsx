@@ -1,108 +1,115 @@
 'use client';
+import React, { useState } from 'react';
 import { 
-  Router, 
-  Server, 
-  Monitor, 
-  HardDrive, 
-  Share2, 
-  Radio, 
-  Hash, 
-  Cpu, 
-  Cable, 
-  ShieldCheck 
+  Router, Server, Monitor, Share2, Cable, ShieldCheck, 
+  BookOpen, Box, Info, CheckCircle2 
 } from 'lucide-react';
 
-interface SidebarProps {
-  activeMode: 'free' | 'bus' | 'mesh';
-}
+interface SidebarProps { activeMode: 'free' | 'bus' | 'mesh'; }
 
 export default function Sidebar({ activeMode }: SidebarProps) {
+  const [activeTab, setActiveTab] = useState<'inventory' | 'learning'>('inventory');
+
   const onDragStart = (event: React.DragEvent, nodeType: string, label: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.setData('application/label', label);
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  // Data komponen yang disesuaikan dengan kebutuhan teknis tiap topologi
+  // Data Materi Edukasi
+  const learningMaterial = {
+    free: {
+      title: "Konsep Dasar Jaringan",
+      content: "Jaringan komputer adalah sekumpulan komputer mandiri yang terhubung satu sama lain menggunakan protokol komunikasi.",
+      points: ["Router: Menghubungkan antar jaringan (Layer 3)", "Switch: Menghubungkan perangkat dalam satu LAN (Layer 2)", "PC: End-device sebagai client atau server."]
+    },
+    bus: {
+      title: "Topologi Bus",
+      content: "Menggunakan satu kabel pusat (backbone) sebagai media transmisi data.",
+      points: ["Hemat kabel & mudah diinstal.", "Jika kabel utama putus, seluruh jaringan mati.", "Memerlukan Terminator di ujung kabel untuk mencegah refleksi sinyal."]
+    },
+    mesh: {
+      title: "Topologi Mesh",
+      content: "Setiap perangkat terhubung langsung ke setiap perangkat lainnya (Full Mesh).",
+      points: ["Tingkat keamanan & redundansi sangat tinggi.", "Jika satu link putus, data punya jalur lain.", "Sangat mahal karena membutuhkan banyak kabel dan port."]
+    }
+  };
+
   const components = {
     free: [
-      { id: 'router', label: 'Core Router', desc: 'Gateway utama jaringan', icon: <Router size={20} />, color: 'text-blue-500', bg: 'bg-blue-50' },
-      { id: 'switch', label: 'L2 Switch', desc: 'Penghubung antar perangkat', icon: <Server size={20} />, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-      { id: 'pc', label: 'Workstation', desc: 'End-user computer', icon: <Monitor size={20} />, color: 'text-slate-500', bg: 'bg-slate-50' },
-      { id: 'firewall', label: 'Firewall', desc: 'Keamanan jaringan', icon: <ShieldCheck size={20} />, color: 'text-red-500', bg: 'bg-red-50' },
+      { id: 'router', label: 'Router', icon: <Router size={20} />, color: 'text-blue-500' },
+      { id: 'switch', label: 'Switch', icon: <Server size={20} />, color: 'text-emerald-500' },
+      { id: 'pc', label: 'Workstation', icon: <Monitor size={20} />, color: 'text-slate-500' },
     ],
     bus: [
-      { id: 'bus-backbone', label: 'Backbone Node', desc: 'Jalur utama transmisi data', icon: <Cable size={20} />, color: 'text-orange-500', bg: 'bg-orange-50' },
-      { id: 'pc', label: 'Tap PC', icon: <Monitor size={20} />, desc: 'Perangkat yang terhubung ke bus', color: 'text-slate-500', bg: 'bg-slate-50' },
-      { id: 'terminator', label: 'Terminator', desc: 'Penyerap sinyal di ujung kabel', icon: <Radio size={20} />, color: 'text-red-600', bg: 'bg-red-50' },
-      { id: 'repeater', label: 'Repeater', desc: 'Penguat sinyal bus', icon: <Hash size={20} />, color: 'text-blue-500', bg: 'bg-blue-50' },
+      { id: 'bus-backbone', label: 'Backbone', icon: <Cable size={20} />, color: 'text-orange-500' },
+      { id: 'pc', label: 'PC Node', icon: <Monitor size={20} />, color: 'text-slate-500' },
+      { id: 'terminator', label: 'Terminator', icon: <Box size={20} />, color: 'text-red-600' },
     ],
     mesh: [
-      { id: 'mesh-node', label: 'Full-Mesh Router', desc: 'Router dengan banyak interface', icon: <Share2 size={20} />, color: 'text-purple-500', bg: 'bg-purple-50' },
-      { id: 'server', label: 'Central Storage', desc: 'Server pusat data mesh', icon: <HardDrive size={20} />, color: 'text-cyan-500', bg: 'bg-cyan-50' },
-      { id: 'pc', label: 'Mesh Client', desc: 'Node client dalam mesh', icon: <Monitor size={20} />, color: 'text-slate-500', bg: 'bg-slate-50' },
-      { id: 'gateway', label: 'Mesh Gateway', desc: 'Pintu keluar ke internet', icon: <Cpu size={20} />, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+      { id: 'mesh-node', label: 'Mesh Node', icon: <Share2 size={20} />, color: 'text-purple-500' },
+      { id: 'server', label: 'Server', icon: <Server size={20} />, color: 'text-cyan-500' },
     ]
   };
 
-  const currentItems = components[activeMode];
-
   return (
-    <aside className="w-80 border-r bg-white flex flex-col h-full shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-      {/* Header Sidebar */}
-      <div className="p-6 border-b bg-slate-50/50">
-        <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">
-          Inventory Mode
-        </h2>
-        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
-          {activeMode === 'free' ? 'Standard Lab' : `Topology ${activeMode.toUpperCase()}`}
-        </h3>
+    <aside className="w-80 border-r bg-white flex flex-col h-full shadow-sm print:hidden">
+      {/* Tab Switcher */}
+      <div className="flex border-b">
+        <button 
+          onClick={() => setActiveTab('inventory')}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'inventory' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <Box size={14} /> Inventory
+        </button>
+        <button 
+          onClick={() => setActiveTab('learning')}
+          className={`flex-1 py-4 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'learning' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+        >
+          <BookOpen size={14} /> Learning
+        </button>
       </div>
-      
-      {/* List Item */}
-      <div className="flex-grow overflow-y-auto p-4 space-y-3 custom-scrollbar">
-        {currentItems.map((item) => (
-          <div
-            key={item.id}
-            onDragStart={(e) => onDragStart(e, item.id, item.label)}
-            draggable
-            className="group flex cursor-grab items-start gap-4 rounded-2xl border border-slate-100 p-4 bg-white hover:border-blue-400 hover:shadow-lg hover:shadow-blue-500/10 transition-all active:cursor-grabbing active:scale-95"
-          >
-            <div className={`p-3 rounded-xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform shadow-sm`}>
-              {item.icon}
+
+      <div className="flex-grow overflow-y-auto p-4">
+        {activeTab === 'inventory' ? (
+          <div className="space-y-3">
+            <h4 className="text-[10px] font-bold text-slate-400 uppercase mb-4 italic">Drag devices to canvas:</h4>
+            {components[activeMode].map((item) => (
+              <div 
+                key={item.id} 
+                onDragStart={(e) => onDragStart(e, item.id, item.label)} 
+                draggable 
+                className="flex items-center gap-4 rounded-xl border border-slate-100 p-4 bg-white hover:border-blue-400 hover:shadow-md transition-all cursor-grab active:scale-95"
+              >
+                <div className={`p-2 rounded-lg bg-slate-50 ${item.color}`}>{item.icon}</div>
+                <div className="text-sm font-bold text-slate-700">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+              <div className="flex items-center gap-2 text-blue-700 mb-2">
+                <Info size={18} />
+                <h4 className="font-black text-sm uppercase">{learningMaterial[activeMode].title}</h4>
+              </div>
+              <p className="text-xs text-blue-900/70 leading-relaxed italic">
+                {learningMaterial[activeMode].content}
+              </p>
             </div>
-            
-            <div className="flex flex-col">
-              <span className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">
-                {item.label}
-              </span>
-              <span className="text-[10px] text-slate-400 leading-relaxed mt-0.5">
-                {item.desc}
-              </span>
+
+            <div className="space-y-3">
+              <h5 className="text-[10px] font-black text-slate-400 uppercase">Poin Penting:</h5>
+              {learningMaterial[activeMode].points.map((point, i) => (
+                <div key={i} className="flex gap-3 items-start bg-white border border-slate-50 p-3 rounded-lg shadow-sm">
+                  <CheckCircle2 size={14} className="text-green-500 mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-slate-600 leading-normal">{point}</p>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        )}
       </div>
-
-      {/* Footer Hint */}
-      <div className="p-6 bg-slate-50 border-t">
-        <div className="rounded-2xl bg-white border border-slate-200 p-4 shadow-sm">
-          <p className="text-[11px] font-medium text-slate-600 leading-relaxed italic text-center">
-            &ldquo;Tarik komponen ke area canvas untuk mulai merancang {activeMode} network.&rdquo;
-          </p>
-        </div>
-      </div>
-
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #e2e8f0;
-          border-radius: 10px;
-        }
-      `}</style>
     </aside>
   );
 }
