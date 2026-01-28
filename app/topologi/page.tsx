@@ -17,24 +17,32 @@ import '@xyflow/react/dist/style.css';
 import Sidebar from '@/components/Sidebar';
 import DeviceNode from '@/components/DeviceNode';
 import { 
-  LayoutGrid, Share2, Network as MeshIcon, Camera, 
-  ShieldCheck, XCircle, Edit3, X, ChevronRight,
+  LayoutGrid, Share2, Network as MeshIcon, 
+  ShieldCheck, XCircle, X, ChevronRight,
   Cpu, Router as RouterIcon, Server, Globe, Wifi,
   Eraser, Type, Info
 } from 'lucide-react';
 
 const nodeTypes = { device: DeviceNode };
 
-// Database penjelasan untuk poin-poin spesifik (opsional, jika tidak ada akan pakai teks otomatis)
-const deskripsiMateri: Record<string, string> = {
-  "Hardware Jaringan": "Komponen fisik pendukung jaringan.",
-  "NIC (LAN Card)": "Kartu untuk menghubungkan kabel LAN.",
-  "Router": "Penghubung antar jaringan/subnet berbeda.",
-  "Switch": "Pusat pembagi data dalam satu LAN.",
-  "Modem": "Penerjemah sinyal ISP ke digital.",
-  "Topologi Bus": "Jaringan dengan satu jalur kabel utama.",
-  "Topologi Star": "Jaringan terpusat pada satu Switch/Hub.",
-  "IP Address": "Alamat identitas perangkat di jaringan.",
+// --- DATA MAPPING: INI KUNCI AGAR ISI PETA KONSEP BEDA-BEDA ---
+const subMateriData: Record<string, { label: string, desc: string, icon: any }[]> = {
+  "Hardware Jaringan": [
+    { label: "NIC (LAN Card)", desc: "Antarmuka fisik pada komputer.", icon: <Cpu size={20}/> },
+    { label: "Router", desc: "Penghubung antar jaringan berbeda.", icon: <RouterIcon size={20}/> },
+    { label: "Switch", desc: "Pembagi data di jaringan lokal (LAN).", icon: <Server size={20}/> },
+    { label: "Access Point", desc: "Pemancar sinyal nirkabel (Wi-Fi).", icon: <Wifi size={20}/> }
+  ],
+  "Topologi Jaringan": [
+    { label: "Topologi Bus", desc: "Menggunakan satu kabel backbone utama.", icon: <Share2 size={20}/> },
+    { label: "Topologi Star", desc: "Terpusat pada satu hub atau switch.", icon: <LayoutGrid size={20}/> },
+    { label: "Topologi Mesh", desc: "Setiap node terhubung satu sama lain.", icon: <MeshIcon size={20}/> }
+  ],
+  "Alamat IP (IP Address)": [
+    { label: "IPv4", desc: "Alamat 32-bit yang paling umum digunakan.", icon: <Info size={20}/> },
+    { label: "Subnet Mask", desc: "Penentu porsi network dan host.", icon: <LayoutGrid size={20}/> },
+    { label: "Gateway", desc: "Pintu keluar menuju jaringan internet.", icon: <Globe size={20}/> }
+  ]
 };
 
 function NetworkLabContent() {
@@ -46,7 +54,7 @@ function NetworkLabContent() {
   const [menu, setMenu] = useState<any>(null);
   const [isMapActive, setIsMapActive] = useState(false);
 
-  // --- 1. FITUR DRAG & DROP (KEMBALI NORMAL) ---
+  // --- 1. DRAG & DROP INVENTORY (TETAP ADA & AMAN) ---
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
@@ -56,20 +64,13 @@ function NetworkLabContent() {
     event.preventDefault();
     const type = event.dataTransfer.getData('application/reactflow');
     const label = event.dataTransfer.getData('application/label');
-    
     if (!type || !reactFlowWrapper.current) return;
 
     const rect = reactFlowWrapper.current.getBoundingClientRect();
-    const position = {
-      x: event.clientX - rect.left - 50,
-      y: event.clientY - rect.top - 50,
-    };
-
+    const position = { x: event.clientX - rect.left - 50, y: event.clientY - rect.top - 50 };
     const newId = `node_${Math.random().toString(36).substr(2, 9)}`;
     const newNode = {
-      id: newId,
-      type: 'device',
-      position,
+      id: newId, type: 'device', position,
       data: { label: label || type.toUpperCase(), type, ip: `192.168.1.${nodes.length + 10}` }
     };
 
@@ -86,60 +87,43 @@ function NetworkLabContent() {
     });
   }, [nodes, mode, setNodes, setEdges]);
 
-  // --- 2. FITUR TULIS DI KANVAS ---
-  const addStickyNote = () => {
-    const text = prompt("Tulis catatan:");
-    if (!text) return;
-    setNodes((nds) => nds.concat({
-      id: `note_${Date.now()}`,
-      type: 'default',
-      position: { x: 250, y: 150 },
-      data: { label: <div className="p-2 bg-yellow-100 border-2 border-yellow-400 font-bold text-[11px]">{text}</div> },
-      style: { background: 'transparent', border: 'none' }
-    }));
-  };
-
-  // --- 3. PETA KONSEP DINAMIS (ISI BERBEDA TIAP KLIK) ---
-  const handleConceptClick = (pointName: string) => {
+  // --- 2. LOGIKA PETA KONSEP SUB-MATERI (DINAMIS) ---
+  const handlePointClick = (pointName: string) => {
     setIsMapActive(true);
     const rootId = 'root-node';
     
-    // Ambil poin-poin materi dari activeLesson yang sedang dibuka
-    const pointsToDisplay = activeLesson?.points || [pointName];
+    // Ambil data cabang berdasarkan apa yang diklik
+    const childrenData = subMateriData[pointName] || [
+      { label: pointName, desc: "Materi pembelajaran lanjutan.", icon: <Info size={20}/> }
+    ];
 
     const rootNode = {
-      id: rootId,
-      type: 'default',
-      position: { x: 100, y: 250 },
+      id: rootId, type: 'default', position: { x: 50, y: 250 },
       data: { label: (
-        <div className="p-4 bg-blue-600 text-white rounded-xl shadow-xl border-2 border-white font-black italic uppercase text-xs">
+        <div className="p-4 bg-blue-600 text-white rounded-xl shadow-xl font-black italic uppercase text-xs">
           {pointName}
         </div>
       )},
       style: { background: 'transparent', border: 'none', width: 200 }
     };
 
-    const childNodes = pointsToDisplay.map((p: string, i: number) => ({
-      id: `child-${i}`,
-      type: 'default',
-      position: { x: 450, y: i * 110 },
+    const childNodes = childrenData.map((item, i) => ({
+      id: `child-${i}`, type: 'default', position: { x: 400, y: i * 110 },
       data: { label: (
-        <div className="flex flex-col p-3 bg-white border-2 border-blue-100 rounded-xl shadow-md w-[280px] text-left">
-          <h4 className="font-black text-[10px] text-slate-800 uppercase italic">{p}</h4>
-          <p className="text-[9px] text-slate-500 font-bold mt-1 italic">
-            "{deskripsiMateri[p] || `Materi utama tentang ${p}`}"
-          </p>
+        <div className="flex items-center gap-3 p-3 bg-white border-2 border-blue-50 rounded-xl shadow-lg w-[300px] text-left">
+          <div className="p-2 rounded-lg bg-blue-50 text-blue-600">{item.icon}</div>
+          <div>
+            <h4 className="font-black text-[10px] text-slate-800 uppercase italic">{item.label}</h4>
+            <p className="text-[9px] text-slate-500 font-bold mt-1 leading-tight italic">"{item.desc}"</p>
+          </div>
         </div>
       )},
       style: { background: 'transparent', border: 'none' }
     }));
 
     const childEdges = childNodes.map((child) => ({
-      id: `e-${rootId}-${child.id}`,
-      source: rootId,
-      target: child.id,
-      animated: true,
-      style: { stroke: '#3b82f6', strokeWidth: 2 },
+      id: `e-${rootId}-${child.id}`, source: rootId, target: child.id,
+      animated: true, style: { stroke: '#3b82f6', strokeWidth: 2 },
     }));
 
     setNodes([rootNode, ...childNodes]);
@@ -160,29 +144,28 @@ function NetworkLabContent() {
             <button onClick={() => setMode('bus')} className={`px-4 py-2 text-xs font-bold rounded-lg ${mode === 'bus' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Bus</button>
             <button onClick={() => setMode('mesh')} className={`px-4 py-2 text-xs font-bold rounded-lg ${mode === 'mesh' ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>Mesh</button>
           </div>
-          <button onClick={addStickyNote} className="p-2 bg-yellow-400 text-yellow-900 rounded-lg"><Type size={18} /></button>
+          <button onClick={() => {
+            const txt = prompt("Catatan:");
+            if(txt) setNodes(n => n.concat({id:`n-${Date.now()}`, type:'default', position:{x:200,y:200}, data:{label:<div className="p-2 bg-yellow-100 border-2 border-yellow-400 text-[10px] font-bold">{txt}</div>}, style:{background:'transparent', border:'none'}}))
+          }} className="p-2 bg-yellow-400 text-yellow-900 rounded-lg"><Type size={18} /></button>
           <button onClick={() => {setNodes([]); setEdges([]); setIsMapActive(false);}} className="p-2 bg-red-100 text-red-600 rounded-lg"><Eraser size={18} /></button>
         </div>
       </nav>
 
       <div className="flex flex-grow relative overflow-hidden">
-        {/* SIDEBAR DENGAN FUNGSI DRAG */}
         <Sidebar activeMode={mode} onSelectLesson={(lesson: any) => { setActiveLesson(lesson); setIsMapActive(false); }} />
         
         <div className="flex-grow relative bg-[#f8fafc]" ref={reactFlowWrapper}>
           <ReactFlow 
-            nodes={nodes} edges={edges} 
-            onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} 
-            onConnect={(params) => setEdges((eds) => addEdge({ ...params, animated: true }, eds))} 
-            onDrop={onDrop} 
-            onDragOver={onDragOver}
+            nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} 
+            onConnect={(p) => setEdges((eds) => addEdge({...p, animated:true}, eds))} 
+            onDrop={onDrop} onDragOver={onDragOver}
             onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY }); }}
             nodeTypes={nodeTypes} fitView
           >
             <Background gap={30} size={1} color="#cbd5e1" />
             <Controls />
 
-            {/* PANEL MATERI - KLIK UNTUK PETA KONSEP */}
             {activeLesson && !isMapActive && (
               <Panel position="top-left" className="ml-4 mt-4 z-50 text-left">
                 <div className="bg-white/95 border-t-4 border-t-blue-600 shadow-2xl rounded-2xl w-[350px] p-6">
@@ -192,7 +175,7 @@ function NetworkLabContent() {
                   </div>
                   <div className="space-y-3">
                     {activeLesson.points.map((p: string, i: number) => (
-                      <button key={i} onClick={() => handleConceptClick(p)}
+                      <button key={i} onClick={() => handlePointClick(p)}
                         className="w-full flex gap-3 items-center p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-600 hover:text-white transition-all group shadow-sm">
                         <span className="w-6 h-6 rounded bg-white text-blue-600 flex items-center justify-center text-[10px] font-black">{i+1}</span>
                         <p className="text-[11px] font-black uppercase">{p}</p>
@@ -206,15 +189,15 @@ function NetworkLabContent() {
 
             {isMapActive && (
               <Panel position="top-left" className="ml-4 mt-4">
-                <button onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2">
-                   <X size={14}/> Tutup Peta Konsep
+                <button onClick={() => {setIsMapActive(false); setNodes([]); setEdges([]);}} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-2 shadow-xl hover:bg-blue-600 transition-all">
+                   <X size={14}/> Kembali ke Praktikum
                 </button>
               </Panel>
             )}
 
             {menu && (
-              <div style={{ top: menu.y, left: menu.x }} className="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl p-2 min-w-[150px]">
-                <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 font-bold"><XCircle size={14}/> Hapus</button>
+              <div style={{ top: menu.y, left: menu.x }} className="fixed z-[100] bg-white border border-slate-200 shadow-2xl rounded-xl p-2">
+                <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full text-xs text-red-600 font-bold px-4 py-2 hover:bg-red-50 rounded-lg flex items-center gap-2"><XCircle size={14}/> Hapus</button>
               </div>
             )}
           </ReactFlow>
