@@ -1,167 +1,86 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
-import {
-  ReactFlow,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  Background,
-  Controls,
-  Connection,
-  Edge,
-  Node,
-  ReactFlowProvider,
-  Panel,
-} from '@xyflow/react';
-import { v4 as uuidv4 } from 'uuid';
-import '@xyflow/react/dist/style.css';
-
-// Komponen Internal
-import DeviceNode from '@/components/DeviceNode';
+import React, { useState } from 'react';
+import { ReactFlow, useNodesState, useEdgesState, ReactFlowProvider } from '@xyflow/react';
 import Sidebar from '@/components/Sidebar';
-import { Network, Trash2, Zap, Share2 } from 'lucide-react';
+import DeviceNode from '@/components/DeviceNode';
+import { LayoutGrid, Share2, Network as MeshIcon } from 'lucide-react';
 
-const nodeTypes = {
-  device: DeviceNode,
-};
+const nodeTypes = { device: DeviceNode };
 
-function NetworkEditor() {
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+export default function NetworkLabEditor() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [topologyMode, setTopologyMode] = useState<'free' | 'bus' | 'mesh'>('free');
+  const [mode, setMode] = useState<'free' | 'bus' | 'mesh'>('free');
 
-  // 1. Logika Koneksi Manual
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
-    [setEdges]
-  );
-
-  // 2. Logika Drag & Drop
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-  }, []);
-
-  const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
-
-      const type = event.dataTransfer.getData('application/reactflow');
-      if (!type || !reactFlowWrapper.current) return;
-
-      const rect = reactFlowWrapper.current.getBoundingClientRect();
-      const position = {
-        x: event.clientX - rect.left - 50,
-        y: event.clientY - rect.top - 50,
-      };
-
-      const newId = uuidv4();
-      const newNode: Node = {
-        id: newId,
-        type: 'device',
-        position,
-        data: { 
-          label: `${type.toUpperCase()} ${nodes.length + 1}`, 
-          type: type, 
-          ip: `192.168.1.${nodes.length + 10}` 
-        },
-      };
-
-      setNodes((nds) => nds.concat(newNode));
-
-      // 3. Logika Auto-Topology
-      if (topologyMode === 'mesh') {
-        const meshEdges = nodes.map((node) => ({
-          id: `e-${newId}-${node.id}`,
-          source: newId,
-          target: node.id,
-          animated: true,
-        }));
-        setEdges((eds) => eds.concat(meshEdges));
-      } else if (topologyMode === 'bus' && nodes.length > 0) {
-        const lastNode = nodes[nodes.length - 1];
-        setEdges((eds) => addEdge({ id: `e-${lastNode.id}-${newId}`, source: lastNode.id, target: newId, animated: true }, eds));
-      }
-    },
-    [nodes, topologyMode, setNodes, setEdges]
-  );
+  // Fungsi ganti mode sekaligus reset canvas agar bersih
+  const switchMode = (newMode: 'free' | 'bus' | 'mesh') => {
+    setMode(newMode);
+    setNodes([]);
+    setEdges([]);
+  };
 
   return (
-    <main className="flex h-screen w-full flex-col bg-slate-50">
-      {/* Header Toolbar */}
-      <div className="flex items-center justify-between border-b bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="rounded-lg bg-blue-600 p-2 text-white">
-            <Network size={20} />
-          </div>
-          <h1 className="text-xl font-bold text-slate-800">NetLab Editor</h1>
+    <div className="flex h-screen w-full flex-col bg-slate-50">
+      {/* Menu Topologi (Navbar) */}
+      <nav className="flex items-center justify-between border-b bg-white px-8 py-3 shadow-sm">
+        <h1 className="text-lg font-black text-blue-600 tracking-tighter uppercase">NetLab v2</h1>
+        
+        <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+          <ModeButton 
+            active={mode === 'free'} 
+            onClick={() => switchMode('free')} 
+            icon={<LayoutGrid size={16}/>} 
+            label="Freeform" 
+          />
+          <ModeButton 
+            active={mode === 'bus'} 
+            onClick={() => switchMode('bus')} 
+            icon={<Share2 size={16}/>} 
+            label="Bus Mode" 
+          />
+          <ModeButton 
+            active={mode === 'mesh'} 
+            onClick={() => switchMode('mesh')} 
+            icon={<MeshIcon size={16}/>} 
+            label="Mesh Mode" 
+          />
         </div>
-
-        <div className="flex items-center gap-2 rounded-xl bg-slate-100 p-1">
-          <button 
-            onClick={() => setTopologyMode('free')}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${topologyMode === 'free' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <Zap size={16} /> Freeform
-          </button>
-          <button 
-            onClick={() => { setTopologyMode('bus'); setNodes([]); setEdges([]); }}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${topologyMode === 'bus' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <Share2 size={16} /> Bus Mode
-          </button>
-          <button 
-            onClick={() => { setTopologyMode('mesh'); setNodes([]); setEdges([]); }}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${topologyMode === 'mesh' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            <Network size={16} /> Mesh Mode
-          </button>
-        </div>
-
-        <button 
-          onClick={() => {setNodes([]); setEdges([]);}}
-          className="flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          <Trash2 size={16} /> Clear Lab
-        </button>
-      </div>
+        
+        <div className="w-20"></div> {/* Spacer */}
+      </nav>
 
       <div className="flex flex-grow overflow-hidden">
-        <Sidebar />
+        {/* Sidebar sekarang dinamis berdasarkan 'mode' */}
+        <Sidebar activeMode={mode} />
         
-        <div className="relative flex-grow h-full" ref={reactFlowWrapper}>
+        <div className="flex-grow relative h-full">
           <ReactFlow
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
             nodeTypes={nodeTypes}
             fitView
-            deleteKeyCode={['Backspace', 'Delete']}
           >
-            <Background gap={20} color="#e2e8f0" />
-            <Controls />
-            <Panel position="top-right" className="rounded-lg border bg-white/80 p-3 shadow-md backdrop-blur-md">
-              <p className="text-xs font-semibold text-slate-500 uppercase italic">
-                Active Mode: {topologyMode}
-              </p>
-            </Panel>
+            {/* Background dan Controls */}
           </ReactFlow>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
 
-export default function App() {
+// Helper component untuk tombol menu
+function ModeButton({ active, onClick, icon, label }: any) {
   return (
-    <ReactFlowProvider>
-      <NetworkEditor />
-    </ReactFlowProvider>
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg transition-all ${
+        active ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 opacity-60 hover:opacity-100'
+      }`}
+    >
+      {icon} {label}
+    </button>
   );
 }
