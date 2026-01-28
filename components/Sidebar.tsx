@@ -4,7 +4,6 @@ import { Box, BookOpen, ChevronRight, Laptop, Network, Wifi, ShieldCheck, Globe,
 
 export default function Sidebar({ activeMode, onSelectLesson }: any) {
   const [activeTab, setActiveTab] = useState<'inventory' | 'learning'>('inventory');
-
   // STRUKTUR MATERI BERDASARKAN PDF BAB 4 (Hal. 121-144)
   const curriculumMaterials = [
     {
