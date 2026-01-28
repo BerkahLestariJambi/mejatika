@@ -12,7 +12,6 @@ import {
   ConnectionMode,
   Handle,
   Position,
-  MarkerType
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
@@ -29,10 +28,9 @@ const getCloudPath = (color: string, stroke: string) => {
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Cpath d='M200 120c15 0 30-15 30-35s-15-35-30-35c0-25-25-45-55-45-20 0-40 10-50 25-10-15-30-25-50-25-30 0-55 20-55 45-15 0-30 15-30 35s15 35 30 35c0 25 25 45 55 45 20 0 40-10 50-25 10 15 30 25 50 25 30 0 55-20 55-45z' fill='${encodedColor}' stroke='${encodedStroke}' stroke-width='6'/%3E%3C/svg%3E")`;
 };
 
-// --- CUSTOM NODE ---
+// --- CUSTOM NODE DENGAN EDIT TEXT & LOGIKA CLOUD ---
 const UniversalNode = ({ data, selected }: any) => {
   const isCloud = data.type === 'cloud';
-  const isDevice = data.type === 'device';
   
   const getBaseStyle = (): React.CSSProperties => {
     if (isCloud) {
@@ -44,7 +42,7 @@ const UniversalNode = ({ data, selected }: any) => {
       };
     }
     return {
-      background: isDevice ? 'white' : (data.bgColor || '#ffffff'),
+      background: data.bgColor || '#ffffff',
       border: `3px solid ${data.borderColor || '#cbd5e1'}`,
       borderRadius: data.shape === 'circle' ? '50%' : '16px',
       padding: '15px',
@@ -53,17 +51,23 @@ const UniversalNode = ({ data, selected }: any) => {
   };
 
   return (
-    <div className={`relative w-full h-full flex items-center justify-center transition-all ${selected ? 'scale-110 z-50' : ''}`}>
+    <div className={`relative w-full h-full flex items-center justify-center transition-all ${selected ? 'ring-4 ring-blue-400 rounded-2xl scale-105' : ''}`}>
       <Handle type="source" position={Position.Top} className="!bg-blue-600 w-2.5 h-2.5 border-2 border-white" />
       <Handle type="source" position={Position.Bottom} className="!bg-blue-600 w-2.5 h-2.5 border-2 border-white" />
       <Handle type="source" position={Position.Left} className="!bg-blue-600 w-2.5 h-2.5 border-2 border-white" />
       <Handle type="source" position={Position.Right} className="!bg-blue-600 w-2.5 h-2.5 border-2 border-white" />
 
-      <div style={getBaseStyle()} className="w-full h-full flex flex-col items-center justify-center text-center">
-        <div className="text-slate-700">{data.icon}</div>
-        <div className="mt-1 text-[10px] font-black uppercase text-slate-800 leading-tight">
-          {data.label}
+      <div style={getBaseStyle()} className="w-full h-full flex flex-col items-center justify-center text-center overflow-hidden">
+        <div className="text-slate-700 pointer-events-none mb-1">
+          {data.icon}
         </div>
+        <textarea
+          value={data.label}
+          onChange={(e) => data.onChange(e.target.value)}
+          placeholder="Isi Materi..."
+          className="bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 resize-none w-full leading-tight text-slate-800 placeholder:text-slate-400"
+          rows={2}
+        />
       </div>
     </div>
   );
@@ -79,21 +83,26 @@ function NetworkLabContent() {
   const [activeTab, setActiveTab] = useState<'inventory' | 'shapes'>('inventory');
   const [activeView, setActiveView] = useState<'simulasi' | 'bus' | 'mesh'>('simulasi');
 
-  // --- LOGIKA TOPOLOGI DENGAN KABEL BERKEDIP ---
+  // Helper Update Label materi
+  const onNodeLabelChange = (nodeId: string, newLabel: string) => {
+    setNodes((nds) => nds.map((node) => node.id === nodeId ? { ...node, data: { ...node.data, label: newLabel } } : node));
+  };
+
+  // --- LOGIKA GENERATE TOPOLOGI (ANIMATED CABLE) ---
   const handleTopologyChange = (view: 'simulasi' | 'bus' | 'mesh') => {
     setActiveView(view);
     setNodes([]); setEdges([]);
     if (view === 'simulasi') return;
 
-    const count = 5; const time = Date.now();
+    const count = 5;
     const newNodes = []; const newEdges = [];
-
     for (let i = 0; i < count; i++) {
+      const id = `auto-${i}-${Date.now()}`;
       newNodes.push({
-        id: `auto-${i}-${time}`, type: 'universal',
-        position: { x: view === 'bus' ? i * 220 + 100 : 400 + 200 * Math.cos(2*Math.PI*i/count), y: 250 + (view === 'mesh' ? 200 * Math.sin(2*Math.PI*i/count) : 0) },
-        data: { type: 'device', value: 'pc', icon: <Monitor size={28}/>, label: `PC-${i+1}`, borderColor: '#3b82f6' },
-        style: { width: 100, height: 100 }
+        id, type: 'universal',
+        position: { x: view === 'bus' ? i * 220 + 100 : 400 + 200 * Math.cos(2*Math.PI*i/count), y: 300 + (view === 'mesh' ? 200 * Math.sin(2*Math.PI*i/count) : 0) },
+        data: { type: 'device', value: 'pc', icon: <Monitor size={28}/>, label: `MATERI ${i+1}`, borderColor: '#3b82f6', onChange: (val: string) => onNodeLabelChange(id, val) },
+        style: { width: 120, height: 110 }
       });
     }
 
@@ -118,6 +127,7 @@ function NetworkLabContent() {
     if (!reactFlowWrapper.current) return;
     const rect = reactFlowWrapper.current.getBoundingClientRect();
     const position = { x: event.clientX - rect.left - 60, y: event.clientY - rect.top - 60 };
+    const id = `node_${Date.now()}`;
 
     const iconMap: any = {
       router: <Router size={32} className="text-blue-600"/>,
@@ -129,20 +139,32 @@ function NetworkLabContent() {
     };
 
     setNodes((nds) => nds.concat({
-      id: `node_${Date.now()}`, type: 'universal', position,
-      data: { type, value, icon: iconMap[value] || <PlusSquare size={32}/>, label: value, bgColor: '#ffffff', borderColor: '#2563eb' },
-      style: { width: type === 'cloud' ? 180 : 110, height: type === 'cloud' ? 140 : 110 }
+      id, type: 'universal', position,
+      data: { 
+        type, value, 
+        icon: iconMap[value] || <PlusSquare size={32}/>, 
+        label: 'KETIK MATERI...', 
+        bgColor: '#ffffff', 
+        borderColor: type === 'cloud' ? '#22c55e' : '#2563eb',
+        onChange: (val: string) => onNodeLabelChange(id, val) 
+      },
+      style: { width: type === 'cloud' ? 200 : 120, height: type === 'cloud' ? 160 : 120 }
     }));
   }, [setNodes]);
 
   return (
     <div className="flex h-screen w-full flex-col bg-slate-50 overflow-hidden" onClick={() => setMenu(null)}>
+      {/* HEADER NAVBAR */}
       <nav className="flex items-center justify-between border-b bg-white px-8 py-3 z-50">
-        <div className="flex items-center gap-3 font-black text-blue-900 uppercase italic"><ShieldCheck size={28}/> Mejatika Lab V11</div>
-        <button onClick={() => window.print()} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase flex items-center gap-2 shadow-lg hover:bg-blue-700 transition-all"><Camera size={18}/> Cetak PDF</button>
+        <div className="flex items-center gap-3 font-black text-blue-900 uppercase italic"><ShieldCheck size={28}/> Mejatika Lab V13</div>
+        <div className="flex gap-2">
+          <button onClick={() => setNodes([])} className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"><Eraser size={20}/></button>
+          <button onClick={() => window.print()} className="px-5 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase flex items-center gap-2 shadow-lg hover:bg-blue-700 transition-all"><Camera size={18}/> Cetak PDF</button>
+        </div>
       </nav>
 
       <div className="flex flex-grow relative">
+        {/* SIDEBAR */}
         <aside className="w-80 bg-white border-r flex flex-col z-30 shadow-2xl">
           <div className="flex p-2 bg-slate-100 border-b gap-1">
             <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-3 text-[10px] font-black uppercase rounded-lg transition-all ${activeTab === 'inventory' ? 'bg-white shadow text-blue-600' : 'text-slate-400'}`}>Inventory</button>
@@ -151,28 +173,29 @@ function NetworkLabContent() {
           <div className="p-4 grid grid-cols-2 gap-3 overflow-y-auto">
             {activeTab === 'inventory' ? (
               ['router', 'switch', 'pc', 'wifi', 'server'].map(d => (
-                <div key={d} draggable onDragStart={e => { e.dataTransfer.setData('application/type', 'device'); e.dataTransfer.setData('application/value', d); }} className="p-4 border-2 border-slate-50 rounded-2xl flex flex-col items-center hover:bg-blue-50 cursor-grab transition-all group">
-                  <div className="group-hover:scale-110 transition-transform"><Monitor size={24} className="text-slate-400"/></div>
-                  <span className="text-[9px] mt-2 font-black uppercase">{d}</span>
+                <div key={d} draggable onDragStart={e => { e.dataTransfer.setData('application/type', 'device'); e.dataTransfer.setData('application/value', d); }} className="p-4 border-2 border-slate-50 rounded-2xl flex flex-col items-center hover:bg-blue-50 cursor-grab group transition-all">
+                  <Monitor size={24} className="text-slate-400 mb-2 group-hover:scale-110"/>
+                  <span className="text-[9px] font-black uppercase">{d}</span>
                 </div>
               ))
             ) : (
               ['cloud', 'circle', 'square'].map(s => (
-                <div key={s} draggable onDragStart={e => { e.dataTransfer.setData('application/type', s === 'cloud' ? 'cloud' : 'shape'); e.dataTransfer.setData('application/value', s); }} className="p-4 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center hover:border-blue-500 cursor-grab text-blue-500">
-                  <PlusSquare size={24}/>
-                  <span className="text-[9px] mt-2 font-black uppercase text-slate-500">{s}</span>
+                <div key={s} draggable onDragStart={e => { e.dataTransfer.setData('application/type', s === 'cloud' ? 'cloud' : 'shape'); e.dataTransfer.setData('application/value', s); }} className="p-4 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center hover:border-blue-500 cursor-grab text-blue-500 group">
+                  <PlusSquare size={24} className="mb-2 group-hover:rotate-90 transition-transform"/>
+                  <span className="text-[9px] font-black uppercase text-slate-500">{s}</span>
                 </div>
               ))
             )}
           </div>
         </aside>
 
+        {/* CANVAS AREA */}
         <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
-          {/* TAB SIMULASI - SEKARANG MUNCUL LAGI */}
-          <div className="bg-white/90 backdrop-blur border-b px-6 py-2 flex gap-3 z-40 justify-center shadow-sm">
-            <button onClick={() => handleTopologyChange('simulasi')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${activeView === 'simulasi' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>Simulasi</button>
-            <button onClick={() => handleTopologyChange('bus')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${activeView === 'bus' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>Tab Bus</button>
-            <button onClick={() => handleTopologyChange('mesh')} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${activeView === 'mesh' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>Tab Mesh</button>
+          {/* TOPOLOGY TABS */}
+          <div className="bg-white/90 border-b px-6 py-2 flex gap-3 z-40 justify-center shadow-sm backdrop-blur-sm">
+            {['simulasi', 'bus', 'mesh'].map(v => (
+              <button key={v} onClick={() => handleTopologyChange(v as any)} className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase transition-all ${activeView === v ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>
+            ))}
           </div>
 
           <ReactFlow 
@@ -185,14 +208,17 @@ function NetworkLabContent() {
           >
             <Background gap={25} size={1} color="#cbd5e1" />
             <Controls />
+            
+            {/* CONTEXT MENU (KLIK KANAN) */}
             {menu && (
-              <div style={{ top: menu.y, left: menu.x }} className="fixed z-[9999] bg-white border shadow-2xl rounded-2xl p-4 min-w-[180px]">
-                <div className="flex gap-2 mb-4">
-                  {['#22c55e', '#ef4444', '#3b82f6', '#eab308'].map(c => (
-                    <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, borderColor:c}} : n))} className="w-8 h-8 rounded-full" style={{ background: c }} />
+              <div style={{ top: menu.y, left: menu.x }} className="fixed z-[9999] bg-white border shadow-2xl rounded-2xl p-4 min-w-[200px] animate-in zoom-in-95 duration-200">
+                <p className="text-[9px] font-bold text-slate-400 mb-3 uppercase tracking-widest">Warna Border</p>
+                <div className="grid grid-cols-5 gap-2 mb-4">
+                  {['#22c55e', '#ef4444', '#3b82f6', '#eab308', '#d946ef'].map(c => (
+                    <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, borderColor:c}} : n))} className="w-8 h-8 rounded-full border-2 border-white shadow-sm hover:scale-110 transition-transform" style={{ background: c }} />
                   ))}
                 </div>
-                <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2 text-[10px] text-red-600 font-black uppercase bg-red-50 rounded-xl">Hapus</button>
+                <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2 text-[10px] text-red-600 font-black uppercase bg-red-50 rounded-xl hover:bg-red-100 transition-colors flex items-center justify-center gap-2"><Eraser size={14}/> Hapus Objek</button>
               </div>
             )}
           </ReactFlow>
