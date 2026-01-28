@@ -17,7 +17,7 @@ import '@xyflow/react/dist/style.css';
 import { 
   ShieldCheck, Eraser, Camera, 
   Monitor, Network, Router, Server, Wifi, 
-  Circle, Cloud, Square, MessageSquare, PlusSquare, Copy
+  Circle, Cloud, Square, MessageSquare, PlusSquare, Copy, Edit3
 } from 'lucide-react';
 
 // --- SVG CLOUD GENERATOR ---
@@ -59,8 +59,9 @@ const UniversalNode = ({ data, selected }: any) => {
         <textarea
           value={data.label}
           onChange={(e) => data.onChange(e.target.value)}
-          className={`bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1 overflow-hidden ${isDevice ? 'text-blue-900 bg-white/60 rounded px-1' : 'text-slate-800'}`}
-          rows={1}
+          placeholder="Isi materi..."
+          className={`bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1 overflow-hidden transition-all ${isDevice ? 'text-blue-900 bg-white/60 rounded px-1' : 'text-slate-800'}`}
+          rows={isDevice ? 1 : 3}
         />
       </div>
     </div>
@@ -91,23 +92,32 @@ function NetworkLabContent() {
     setMenu(null);
   };
 
+  // --- RENAME LOGIC ---
+  const renameNode = (nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    const newLabel = prompt("Masukkan Nama/Materi Baru:", node?.data.label);
+    if (newLabel !== null) {
+      onNodeLabelChange(nodeId, newLabel);
+    }
+    setMenu(null);
+  };
+
   // --- DUPLICATE LOGIC ---
   const duplicateNode = (nodeId: string) => {
     const nodeToCopy = nodes.find(n => n.id === nodeId);
     if (!nodeToCopy) return;
 
+    const newId = `node_dup_${Date.now()}`;
     const newNode = {
       ...nodeToCopy,
-      id: `node_dup_${Date.now()}`,
-      position: { x: nodeToCopy.position.x + 40, y: nodeToCopy.position.y + 40 },
+      id: newId,
+      position: { x: nodeToCopy.position.x + 50, y: nodeToCopy.position.y + 50 },
       selected: false,
       data: {
         ...nodeToCopy.data,
-        onChange: (v: string) => onNodeLabelChange(`node_dup_${Date.now()}`, v)
+        onChange: (v: string) => onNodeLabelChange(newId, v)
       }
     };
-    // Re-bind the onChange with the new ID properly
-    newNode.data.onChange = (v: string) => onNodeLabelChange(newNode.id, v);
 
     setNodes((nds) => nds.concat(newNode));
     setMenu(null);
@@ -162,7 +172,7 @@ function NetworkLabContent() {
         bgColor: '#ffffff', borderColor: type === 'device' ? '#2563eb' : '#64748b',
         onChange: (v: string) => onNodeLabelChange(id, v) 
       },
-      style: { width: type === 'device' ? 85 : 125, height: type === 'device' ? 85 : 125 }
+      style: { width: type === 'device' ? 85 : 150, height: type === 'device' ? 85 : 150 }
     }));
   }, []);
 
@@ -235,8 +245,9 @@ function NetworkLabContent() {
                 ))}
               </div>
 
-              <div className="flex flex-col gap-2 mb-4 pt-2 border-t">
-                <button onClick={() => duplicateNode(menu.id)} className="w-full py-2.5 bg-blue-50 text-blue-700 text-[10px] font-black uppercase rounded-lg hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"><Copy size={14}/> Duplicate Objek</button>
+              <div className="flex flex-col gap-1 mb-4 pt-2 border-t">
+                <button onClick={() => renameNode(menu.id)} className="w-full py-2 bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase rounded-lg hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2"><Edit3 size={14}/> Rename Objek</button>
+                <button onClick={() => duplicateNode(menu.id)} className="w-full py-2 bg-blue-50 text-blue-700 text-[10px] font-black uppercase rounded-lg hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"><Copy size={14}/> Duplicate Objek</button>
               </div>
 
               {activeTab === 'inventory' && (
