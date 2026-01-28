@@ -1,9 +1,20 @@
 "use client";
 import React, { useEffect, useRef } from 'react';
-import * as Blockly from 'blockly';
+import * as Blockly from 'blockly/core';
+import * as libraryBlocks from 'blockly/blocks';
 import { javascriptGenerator } from 'blockly/javascript';
+import { FieldColour } from 'blockly'; // Impor langsung FieldColour
+import En from 'blockly/msg/en';
+
+// Inisialisasi pesan bahasa agar tidak error saat render
+if (!Blockly.setLocale) {
+  // Jika menggunakan versi tertentu, pastikan locale terpasang
+} else {
+  Blockly.setLocale(En);
+}
 
 const registerMejatikaBlocks = () => {
+  // Hindari registrasi ulang yang bisa menyebabkan error di Next.js Hot Reload
   if (Blockly.Blocks['event_button_click']) return;
 
   // --- 1. EVENT BLOCKS ---
@@ -36,14 +47,15 @@ const registerMejatikaBlocks = () => {
           .appendField("Ubah Warna BG ID:")
           .appendField(new Blockly.FieldTextInput("button_1"), "ID")
           .appendField("menjadi")
-          .appendField(new Blockly.FieldColour("#4f46e5"), "COL");
+          // PERBAIKAN: Menggunakan FieldColour yang diimpor langsung
+          .appendField(new FieldColour("#4f46e5"), "COL");
       this.setPreviousStatement(true, null);
       this.setNextStatement(true, null);
       this.setColour(230);
     }
   };
 
-  // --- 3. DATA INPUT BLOCKS (Kunci Kalkulator Dinamis) ---
+  // --- 3. DATA INPUT BLOCKS ---
   Blockly.Blocks['get_ui_value'] = {
     init: function() {
       this.appendDummyInput()
@@ -56,27 +68,26 @@ const registerMejatikaBlocks = () => {
   };
 
   // --- GENERATORS ---
-  javascriptGenerator.forBlock['event_button_click'] = function(block: any) {
+  javascriptGenerator.forBlock['event_button_click'] = function(block) {
     const id = block.getFieldValue('ID');
     const branch = javascriptGenerator.statementToCode(block, 'DO');
     return `registerEvent('${id}', function() {\n${branch}});\n`;
   };
 
-  javascriptGenerator.forBlock['set_ui_text'] = function(block: any) {
+  javascriptGenerator.forBlock['set_ui_text'] = function(block) {
     const id = block.getFieldValue('ID');
     const val = javascriptGenerator.valueToCode(block, 'VALUE', javascriptGenerator.ORDER_ATOMIC) || "''";
     return `updateUI('${id}', { text: String(${val}) });\n`;
   };
 
-  javascriptGenerator.forBlock['set_ui_color'] = function(block: any) {
+  javascriptGenerator.forBlock['set_ui_color'] = function(block) {
     const id = block.getFieldValue('ID');
     const col = block.getFieldValue('COL');
     return `updateUI('${id}', { bgColor: '${col}' });\n`;
   };
 
-  javascriptGenerator.forBlock['get_ui_value'] = function(block: any) {
+  javascriptGenerator.forBlock['get_ui_value'] = function(block) {
     const id = block.getFieldValue('ID');
-    // Fungsi getUIValue() harus ada di context eval page.tsx
     return [`Number(getUIValue('${id}'))`, javascriptGenerator.ORDER_ATOMIC];
   };
 };
@@ -115,18 +126,14 @@ export default function BlocklyEditor({ onCodeChange, onJsonChange, initialData 
 
       workspace.current = Blockly.inject(blocklyDiv.current, {
         toolbox: toolbox,
-        renderer: 'zelos',
-        grid: { spacing: 25, length: 3, colour: '#f1f5f9', snap: true },
-        zoom: { controls: true, wheel: true, startScale: 0.8 },
+        renderer: 'zelos', // Pastikan tampilan modern
+        grid: { spacing: 25, length: 3, colour: '#cbd5e1', snap: true },
+        zoom: { controls: true, wheel: true, startScale: 0.85 },
         move: { scrollbars: true, drag: true, wheel: true },
         trashcan: true
       });
 
-      const handleResize = () => {
-        if (workspace.current) Blockly.svgResize(workspace.current);
-      };
-      window.addEventListener('resize', handleResize);
-      
+      // Sinkronisasi perubahan
       workspace.current.addChangeListener((e) => {
         if (!workspace.current || e.isUiEvent) return;
         const code = javascriptGenerator.workspaceToCode(workspace.current);
@@ -135,28 +142,31 @@ export default function BlocklyEditor({ onCodeChange, onJsonChange, initialData 
         onJsonChange(JSON.stringify(json));
       });
 
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, []);
+      // Handler Resize Otomatis
+      const observer = new ResizeObserver(() => {
+        if (workspace.current) {
+          Blockly.svgResize(workspace.current);
+        }
+      });
+      observer.observe(blocklyDiv.current);
 
+      return () => observer.disconnect();
+    }
+  }, [onCodeChange, onJsonChange]);
+
+  // Load Initial Data
   useEffect(() => {
     if (workspace.current && initialData) {
       try {
         const json = JSON.parse(initialData);
-        workspace.current.clear();
         Blockly.serialization.workspaces.load(json, workspace.current);
-        setTimeout(() => workspace.current?.scrollCenter(), 100);
-      } catch (e) { console.error("Error loading workspace:", e); }
+      } catch (e) { console.error("Load Workspace Error:", e); }
     }
   }, [initialData]);
 
   return (
-    <div className="w-full h-full relative" style={{ minHeight: '500px' }}>
-      <div 
-        ref={blocklyDiv} 
-        className="absolute inset-0 w-full h-full" 
-        style={{ touchAction: 'none' }} 
-      />
+    <div className="w-full h-full border rounded-xl overflow-hidden bg-white shadow-inner min-h-[500px]">
+      <div ref={blocklyDiv} className="w-full h-full" />
     </div>
   );
 }
