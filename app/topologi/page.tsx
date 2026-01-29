@@ -261,5 +261,4 @@ function NetworkLabContent() {
     </div>
   );
 }
-
 export default function NetworkLabEditor() { return <ReactFlowProvider><NetworkLabContent /></ReactFlowProvider>; }
