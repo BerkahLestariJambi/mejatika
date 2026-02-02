@@ -7,46 +7,58 @@ import { Button } from "@/components/ui/button";
 
 export default function CppEditor() {
   const [mounted, setMounted] = useState(false);
-  const [code, setCode] = useState<string>(`#include <iostream>\nusing namespace std;\n\nint main() {\n    int angka;\n    cout << "Masukan angka = ";\n    cin >> angka;\n\n    bool hasil = angka > 10;\n    cout << hasil << endl;\n\n    return 0;\n}`);
+  const [code, setCode] = useState<string>(`#include <iostream>\nusing namespace std;\n\nint main() {\n    int angka;\n    cout << "Masukan angka = ";\n    cin >> angka;\n\n    bool hasil = angka > 10;\n    cout << "Hasil (angka > 10): " << hasil << endl;\n\n    return 0;\n}`);
   
   const [userInput, setUserInput] = useState<string>("");
-  const [terminalLines, setTerminalLines] = useState<string[]>([]);
+  const [terminalLines, setTerminalLines] = useState<{type: 'text' | 'input', content: string}[]>([]);
   const [isWaitingInput, setIsWaitingInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
   const inputRef = useRef<HTMLInputElement>(null);
+  const terminalEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { 
     setMounted(true); 
-    setTerminalLines(["Mejatika Compiler v1.0. Klik Run untuk memulai."]);
+    setTerminalLines([{ type: 'text', content: "Mejatika IDE v1.0. Silakan klik Run." }]);
   }, []);
 
-  // Memastikan kursor fokus ke terminal saat menunggu input
+  // Auto-scroll ke bawah setiap ada baris baru
   useEffect(() => {
-    if (isWaitingInput) {
-      inputRef.current?.focus();
-    }
+    terminalEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [terminalLines]);
+
+  useEffect(() => {
+    if (isWaitingInput) inputRef.current?.focus();
   }, [isWaitingInput]);
 
   const handleRun = () => {
     setIsLoading(true);
-    setTerminalLines(["Compiling..."]);
+    setTerminalLines([{ type: 'text', content: "Compiling..." }]);
     
-    // Simulasi jeda waktu compile agar terasa nyata
     setTimeout(() => {
-      setTerminalLines(["Masukan angka = "]);
+      // Menampilkan prompt awal
+      setTerminalLines([{ type: 'text', content: "Masukan angka = " }]);
       setIsWaitingInput(true);
       setIsLoading(false);
     }, 600);
   };
 
-  // FUNGSI AUTO-RUN SAAT TEKAN ENTER
   const handleAutoRun = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       if (!userInput) return;
 
-      setIsLoading(true);
+      const currentInput = userInput;
+      setUserInput(""); // Kosongkan input field
       setIsWaitingInput(false);
+      setIsLoading(true);
+
+      // Tambahkan input user ke tampilan terminal agar tidak hilang
+      setTerminalLines(prev => {
+        const newLines = [...prev];
+        // Tambahkan input di sebelah teks prompt terakhir
+        newLines[newLines.length - 1].content += currentInput;
+        return newLines;
+      });
 
       try {
         const response = await fetch("https://emkc.org/api/v2/piston/execute", {
@@ -56,23 +68,23 @@ export default function CppEditor() {
             language: "cpp",
             version: "10.2.0",
             files: [{ content: code }],
-            stdin: userInput, 
+            stdin: currentInput, 
           }),
         });
 
         const data = await response.json();
-        
-        // Menggabungkan pertanyaan dan jawaban di terminal
-        // Output dari C++ biasanya menyertakan "Masukan angka = " di awalnya jika menggunakan cout
-        const output = data.run.output || data.run.stderr;
-        
-        // Tampilkan hasil akhir secara utuh
-        setTerminalLines(output.split('\n'));
+        const fullOutput = data.run.output || data.run.stderr;
+
+        // Ambil hanya baris baru dari output (karena cout pertama sudah kita tampilkan)
+        const outputLines = fullOutput.split('\n');
+        // Baris pertama biasanya berisi prompt lagi, jadi kita ambil baris setelahnya
+        const resultOnly = outputLines.slice(1).join('\n');
+
+        setTerminalLines(prev => [...prev, { type: 'text', content: resultOnly }]);
       } catch (error) {
-        setTerminalLines(["Error: Masalah koneksi ke compiler."]);
+        setTerminalLines(prev => [...prev, { type: 'text', content: "\n[Error koneksi]" }]);
       } finally {
         setIsLoading(false);
-        setUserInput("");
       }
     }
   };
@@ -98,57 +110,37 @@ export default function CppEditor() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 h-[550px]">
-        {/* PANEL EDITOR */}
         <div className="border-r border-zinc-800">
-          <Editor
-            height="100%"
-            defaultLanguage="cpp"
-            theme="vs-dark"
-            value={code}
-            onChange={(v) => setCode(v || "")}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 14,
-              fontFamily: "'JetBrains Mono', monospace",
-              automaticLayout: true,
-              scrollBeyondLastLine: false,
-            }}
-          />
+          <Editor height="100%" defaultLanguage="cpp" theme="vs-dark" value={code} onChange={(v) => setCode(v || "")} options={{ minimap: { enabled: false }, fontSize: 14 }} />
         </div>
 
-        {/* PANEL TERMINAL (AUTO-RUN) */}
-        <div className="bg-black p-6 font-mono text-sm overflow-y-auto flex flex-col group">
-          <div className="flex items-center gap-2 text-zinc-700 text-[10px] mb-4 uppercase tracking-widest font-bold">
+        {/* TERMINAL AREA */}
+        <div className="bg-black p-6 font-mono text-sm overflow-y-auto flex flex-col relative">
+          <div className="flex items-center gap-2 text-zinc-700 text-[10px] mb-4 uppercase font-bold border-b border-zinc-900 pb-2">
             <TerminalIcon size={12} /> Interactive Console
           </div>
           
-          <div className="flex-1 text-emerald-500 leading-relaxed">
+          <div className="flex-1 text-emerald-500 space-y-1">
             {terminalLines.map((line, i) => (
-              <div key={i} className="flex flex-wrap items-center">
-                {/* Baris terakhir yang menunggu input */}
-                {isWaitingInput && i === terminalLines.length - 1 ? (
-                  <div className="flex items-center w-full">
-                    <span className="whitespace-pre text-emerald-500">{line}</span>
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      className="bg-transparent border-none outline-none text-white flex-1 ml-1 caret-emerald-500 font-mono"
-                      value={userInput}
-                      onChange={(e) => setUserInput(e.target.value)}
-                      onKeyDown={handleAutoRun}
-                      autoFocus
-                    />
-                  </div>
-                ) : (
-                  <pre className="whitespace-pre-wrap">{line}</pre>
+              <div key={i} className="flex items-start">
+                <pre className="whitespace-pre-wrap">{line.content}</pre>
+                
+                {/* Baris Input Aktif */}
+                {isWaitingInput && i === terminalLines.length - 1 && (
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    className="bg-transparent border-none outline-none text-white flex-1 font-mono ml-0 caret-emerald-500"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
+                    onKeyDown={handleAutoRun}
+                    autoFocus
+                  />
                 )}
               </div>
             ))}
-            {isLoading && <span className="animate-pulse text-zinc-700">_</span>}
-          </div>
-
-          <div className="mt-4 pt-4 border-t border-zinc-900 text-[10px] text-zinc-600 italic">
-            {isWaitingInput ? "Ketik angka lalu tekan ENTER" : "Tekan tombol Run untuk memulai sesi program"}
+            {isLoading && <div className="text-zinc-600 animate-pulse">Processing...</div>}
+            <div ref={terminalEndRef} />
           </div>
         </div>
       </div>
