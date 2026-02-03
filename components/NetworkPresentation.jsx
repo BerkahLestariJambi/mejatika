@@ -5,7 +5,7 @@ import {
   HelpCircle, ChevronRight, ChevronDown, Menu, X, PlayCircle,
   Cpu, Activity, Lock
 } from 'lucide-react';
-
+import { NETWORK_CONTENT } from '@/constants/networkData';
 const NetworkPresentation = () => {
   const [activeTab, setActiveTab] = useState('intro');
   const [isSidebarOpen, setSidebarOpen] = useState(true);
