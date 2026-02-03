@@ -18,8 +18,11 @@ import '@xyflow/react/dist/style.css';
 import { 
   ShieldCheck, Eraser, Camera, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, PlusSquare, Copy, Edit3,
-  Zap, HardDrive, DoorOpen, Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw
+  Zap, HardDrive, DoorOpen, Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw,
+  ChevronRight, Info, BookOpen
 } from 'lucide-react';
+
+// --- KONFIGURASI ICON & MATERI ---
 
 const iconLib: any = {
   router: <Router size={40} />, switch: <Network size={40} />, pc: <Monitor size={40} />,
@@ -29,16 +32,44 @@ const iconLib: any = {
   square: <Square size={40} />, chat: <MessageSquare size={40} />
 };
 
+const curriculumMaterials = [
+  {
+    id: 'materi_1',
+    category: 'Mengenal Jaringan',
+    title: 'Definisi & Komponen Jaringan',
+    points: ['Server & Client System', 'Hardware: Router, Switch, Modem', 'Karakteristik LAN vs WAN']
+  },
+  {
+    id: 'materi_2',
+    category: 'Topologi',
+    title: 'Arsitektur Fisik Jaringan',
+    points: ['Topologi Bus & Backbone', 'Topologi Star & Hub/Switch', 'Topologi Mesh & Keamanan']
+  },
+  {
+    id: 'materi_3',
+    category: 'Konfigurasi',
+    title: 'IP Address & DHCP',
+    points: ['IPv4 Addressing', 'DHCP Automatic Configuration', 'Gateway & Subnet Mask']
+  },
+  {
+    id: 'materi_4',
+    category: 'Keamanan',
+    title: 'Enkripsi & Proteksi',
+    points: ['Protokol HTTPS & SSL', 'WPA2/3 Wireless Security', 'Firewall & Filtering']
+  }
+];
+
 const getCloudPath = (color: string, stroke: string) => {
   const encodedColor = encodeURIComponent(color);
   const encodedStroke = encodeURIComponent(stroke);
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Cpath d='M200 120c15 0 30-15 30-35s-15-35-30-35c0-25-25-45-55-45-20 0-40 10-50 25-10-15-30-25-50-25-30 0-55 20-55 45-15 0-30 15-30 35s15 35 30 35c0 25 25 45 55 45 20 0 40-10 50-25 10 15 30 25 50 25 30 0 55-20 55-45z' fill='${encodedColor}' stroke='${encodedStroke}' stroke-width='6'/%3E%3C/svg%3E")`;
 };
 
+// --- KOMPONEN NODE ---
+
 const UniversalNode = ({ data, selected }: any) => {
   const isDevice = data.type === 'device';
   const isCloud = data.shapeType === 'cloud';
-  // HANYA KEDIP JIKA DEVICE WIRELESS (BUKAN SHAPE)
   const shouldAnimate = isDevice && (data.shapeType === 'router' || data.shapeType === 'wifi' || data.shapeType === 'ap');
   
   const getNodeStyle = (): React.CSSProperties => {
@@ -84,19 +115,22 @@ const UniversalNode = ({ data, selected }: any) => {
 
 const nodeTypes = { universal: UniversalNode };
 
+// --- MAIN LAB CONTENT ---
+
 function NetworkLabContent() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'shapes'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'learning' | 'shapes'>('inventory');
+  const [selectedLesson, setSelectedLesson] = useState<any>(null);
 
   const onNodeLabelChange = (id: string, label: string) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
   };
 
-  const clearCanvas = () => { if(confirm("Hapus semua objek di canvas?")) { setNodes([]); setEdges([]); } };
+  const clearCanvas = () => { if(confirm("Hapus semua objek di canvas?")) { setNodes([]); setEdges([]); setSelectedLesson(null); } };
 
   const saveProject = () => {
     const nodesToSave = nodes.map(n => ({ ...n, data: { ...n.data, icon: null, onChange: null } }));
@@ -151,7 +185,6 @@ function NetworkLabContent() {
     setNodes(newNodes); setEdges(newEdges);
   };
 
-  // LOGIKA CONNECTION: Hanya kedip jika salah satu adalah DEVICE
   const onConnect = useCallback((params: any) => {
     const sourceNode = nodes.find(n => n.id === params.source);
     const targetNode = nodes.find(n => n.id === params.target);
@@ -159,7 +192,7 @@ function NetworkLabContent() {
 
     setEdges((eds) => addEdge({
       ...params,
-      animated: isNetworkConnection, // KEDIP HANYA JIKA JARINGAN
+      animated: isNetworkConnection,
       style: { strokeWidth: 3, stroke: isNetworkConnection ? '#2563eb' : '#64748b' },
       markerEnd: { type: MarkerType.ArrowClosed, color: isNetworkConnection ? '#2563eb' : '#64748b' }
     }, eds));
@@ -182,52 +215,99 @@ function NetworkLabContent() {
 
   return (
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
+      {/* SIDEBAR LENGKAP */}
       <aside className="w-80 bg-white border-r flex flex-col z-50 shadow-2xl print:hidden">
         <div className="p-6 bg-blue-900 text-white font-black italic uppercase leading-none">
           <ShieldCheck size={28} className="mb-2 text-emerald-400"/> MEJATIKA LAB SANPIO
           <div className="text-[9px] mt-1 opacity-70">Projek Kelas Peminatan Informatika</div>
         </div>
 
+        {/* TAB NAVIGASI */}
         <div className="flex bg-slate-50 border-b">
-          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-4 text-[11px] font-black uppercase transition-all ${activeTab === 'inventory' ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400'}`}>Inventory</button>
-          <button onClick={() => { setActiveTab('shapes'); setNodes([]); setEdges([]); }} className={`flex-1 py-4 text-[11px] font-black uppercase transition-all ${activeTab === 'shapes' ? 'bg-white text-emerald-600 border-b-4 border-emerald-600' : 'text-slate-400'}`}>Shapes</button>
+          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === 'inventory' ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400'}`}>Inventory</button>
+          <button onClick={() => setActiveTab('learning')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === 'learning' ? 'bg-white text-indigo-600 border-b-4 border-indigo-600' : 'text-slate-400'}`}>Kurikulum</button>
+          <button onClick={() => setActiveTab('shapes')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === 'shapes' ? 'bg-white text-emerald-600 border-b-4 border-emerald-600' : 'text-slate-400'}`}>Shapes</button>
         </div>
 
-        <div className="p-4 grid grid-cols-2 gap-3 overflow-y-auto">
-          {(activeTab === 'inventory' ? Object.keys(iconLib).slice(0, 10) : ['cloud', 'circle', 'square', 'chat']).map(item => (
-            <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-3 border rounded-xl flex flex-col items-center bg-white hover:bg-slate-50 cursor-grab transition-all shadow-sm">
-              {iconLib[item]} <span className="text-[9px] mt-1 font-bold uppercase text-slate-500">{item}</span>
+        <div className="flex-grow overflow-y-auto custom-scrollbar">
+          {activeTab === 'learning' ? (
+            <div className="p-4 space-y-3 animate-in fade-in slide-in-from-left-4 duration-300">
+              <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-4 rounded-xl text-white shadow-md mb-4">
+                <p className="text-[10px] font-black uppercase opacity-70">E-Modul Siswa</p>
+                <p className="text-lg font-black italic leading-tight tracking-tight">Informatika Bab 4</p>
+              </div>
+              {curriculumMaterials.map((mat) => (
+                <button 
+                  key={mat.id} 
+                  onClick={() => setSelectedLesson(mat)}
+                  className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between group ${selectedLesson?.id === mat.id ? 'bg-blue-50 border-blue-500 shadow-lg shadow-blue-100' : 'bg-white border-slate-100 hover:border-blue-300'}`}
+                >
+                  <div>
+                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">{mat.category}</span>
+                    <p className="font-bold text-slate-800 text-xs">{mat.title}</p>
+                  </div>
+                  <ChevronRight size={14} className={selectedLesson?.id === mat.id ? 'text-blue-500' : 'text-slate-300'} />
+                </button>
+              ))}
             </div>
-          ))}
+          ) : (
+            <div className="p-4 grid grid-cols-2 gap-3">
+              {(activeTab === 'inventory' ? Object.keys(iconLib).slice(0, 10) : ['cloud', 'circle', 'square', 'chat']).map(item => (
+                <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-3 border rounded-xl flex flex-col items-center bg-white hover:bg-slate-50 cursor-grab transition-all shadow-sm">
+                  {iconLib[item]} <span className="text-[9px] mt-1 font-bold uppercase text-slate-500">{item}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="mt-auto p-4 space-y-2 border-t bg-slate-50">
+        {/* ACTIONS */}
+        <div className="p-4 space-y-2 border-t bg-slate-50">
           <div className="grid grid-cols-2 gap-2">
             <button onClick={saveProject} className="flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg"><Save size={14}/> SAVE</button>
             <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg"><FolderOpen size={14}/> LOAD</button>
             <input type="file" ref={fileInputRef} onChange={loadProject} accept=".mjtika" className="hidden" />
           </div>
           <button onClick={clearCanvas} className="w-full py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-lg border border-red-200"><Trash2 size={16}/> HAPUS CANVAS</button>
-          <button onClick={() => window.print()} className="w-full py-3 bg-slate-900 text-white rounded-lg text-[10px] font-black flex items-center justify-center gap-2"><Camera size={16}/> EXPORT PDF</button>
         </div>
         <footer className="p-3 text-center text-[8px] font-bold text-slate-400 uppercase border-t">
           Copyright @2026 | Kelas Peminatan Informatika Sanpio
         </footer>
       </aside>
 
+      {/* CANVAS AREA */}
       <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
         <div className="absolute top-20 left-1/2 -translate-x-1/2 text-center pointer-events-none opacity-[0.07] z-0 select-none">
           <h1 className="text-[12rem] font-black text-slate-900 leading-none">SANPIO</h1>
           <p className="text-4xl font-bold text-slate-700 uppercase tracking-widest">Projek Kelas Peminatan Informatika</p>
         </div>
 
-        {activeTab === 'inventory' && (
-          <div className="absolute top-4 left-4 z-10 flex gap-2 bg-white/90 backdrop-blur p-2 rounded-2xl shadow-xl border border-blue-100">
-            <button onClick={() => { setNodes([]); setEdges([]); }} className="px-5 py-2 text-[10px] font-black bg-slate-100 rounded-xl">KOSONGKAN</button>
-            <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-blue-50 text-blue-600 rounded-xl flex items-center gap-2"><RefreshCcw size={12}/> BUS</button>
-            <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center gap-2"><RefreshCcw size={12}/> MESH</button>
+        {/* OVERLAY MATERI (JIKA MATERI DIPILIH) */}
+        {selectedLesson && (
+          <div className="absolute top-4 right-4 z-50 w-72 bg-white/90 backdrop-blur-xl border border-blue-100 rounded-3xl p-6 shadow-2xl animate-in slide-in-from-right-4 duration-500 overflow-hidden">
+             <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
+             <button onClick={() => setSelectedLesson(null)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
+             <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{selectedLesson.category}</span>
+             <h4 className="text-lg font-black text-slate-800 tracking-tighter mt-2 leading-tight">{selectedLesson.title}</h4>
+             <div className="mt-4 space-y-3">
+                {selectedLesson.points.map((p: string, i: number) => (
+                  <div key={i} className="flex gap-2 items-start group">
+                    <div className="mt-1 bg-emerald-100 p-0.5 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Zap size={10}/></div>
+                    <p className="text-[11px] font-bold text-slate-600 leading-tight">{p}</p>
+                  </div>
+                ))}
+             </div>
+             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-[9px] font-black text-slate-400">
+                <Info size={12}/> GUNAKAN INVENTORY UNTUK PRAKTEK
+             </div>
           </div>
         )}
+
+        {/* TOOLBAR TOPOLOGI */}
+        <div className="absolute top-4 left-4 z-10 flex gap-2 bg-white/90 backdrop-blur p-2 rounded-2xl shadow-xl border border-blue-100">
+          <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-blue-50 text-blue-600 rounded-xl flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> GENERATE BUS</button>
+          <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all"><RefreshCcw size={12}/> GENERATE MESH</button>
+        </div>
 
         <ReactFlow 
           nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
@@ -262,6 +342,8 @@ function NetworkLabContent() {
       </div>
 
       <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
         .react-flow__edge.animated path { stroke-dasharray: 5; animation: dash 1s linear infinite; }
         @keyframes dash { from { stroke-dashoffset: 10; } to { stroke-dashoffset: 0; } }
       `}</style>
