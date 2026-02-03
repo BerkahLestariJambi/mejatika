@@ -19,10 +19,10 @@ import {
   ShieldCheck, Eraser, Camera, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, PlusSquare, Copy, Edit3,
   Zap, HardDrive, DoorOpen, Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw,
-  ChevronRight, Info, BookOpen
+  ChevronRight, Info, BookOpen, Globe, Terminal, Shield, HelpCircle
 } from 'lucide-react';
 
-// --- KONFIGURASI ICON & MATERI ---
+// --- KONFIGURASI ICON & MATERI (SINKRON DENGAN NARASI MODERN) ---
 
 const iconLib: any = {
   router: <Router size={40} />, switch: <Network size={40} />, pc: <Monitor size={40} />,
@@ -35,27 +35,51 @@ const iconLib: any = {
 const curriculumMaterials = [
   {
     id: 'materi_1',
-    category: 'Mengenal Jaringan',
-    title: 'Definisi & Komponen Jaringan',
-    points: ['Server & Client System', 'Hardware: Router, Switch, Modem', 'Karakteristik LAN vs WAN']
+    category: 'The Hook',
+    title: 'Krisis 60 Menit Tanpa Internet',
+    icon: <Globe size={20} />,
+    description: 'Bayangkan dunia berhenti berputar karena konektivitas mati total.',
+    points: [
+      'Finansial: Transaksi senilai $2.1 Miliar terhenti seketika.',
+      'Logistik: Pesawat & Rantai pasok dunia macet tanpa data navigasi.',
+      'Analogi: Data (Barang), IP (Alamat), Protokol (Kendaraan), Fisik (Jalan).'
+    ]
   },
   {
     id: 'materi_2',
-    category: 'Topologi',
-    title: 'Arsitektur Fisik Jaringan',
-    points: ['Topologi Bus & Backbone', 'Topologi Star & Hub/Switch', 'Topologi Mesh & Keamanan']
+    category: 'Arsitektur',
+    title: 'Anatomi & Kasta Jaringan',
+    icon: <Cpu size={20} />,
+    description: 'Bagaimana perangkat keras bekerja dalam harmoni membagi data.',
+    points: [
+      'Cakupan: PAN (Bluetooth), LAN (Gedung), MAN (Kota), WAN (Internet).',
+      'Topologi Star: Paling stabil, pusat ada pada Switch/Hub.',
+      'Hardware: Switch (Layer 2 - MAC) & Router (Layer 3 - IP Path).'
+    ]
   },
   {
     id: 'materi_3',
-    category: 'Konfigurasi',
-    title: 'IP Address & DHCP',
-    points: ['IPv4 Addressing', 'DHCP Automatic Configuration', 'Gateway & Subnet Mask']
+    category: 'Protokol',
+    title: 'Live Terminal & OSI Layer',
+    icon: <Terminal size={20} />,
+    description: 'Komputer bicara melalui model lapisan bahasa yang terstandarisasi.',
+    points: [
+      'OSI Layer: Dari urusan listrik kabel hingga aplikasi di layar.',
+      'Identitas: Gunakan "ipconfig" untuk melihat Alamat Rumah Digital.',
+      'Transport: Memastikan data sampai utuh tanpa cacat menggunakan TCP.'
+    ]
   },
   {
     id: 'materi_4',
     category: 'Keamanan',
-    title: 'Enkripsi & Proteksi',
-    points: ['Protokol HTTPS & SSL', 'WPA2/3 Wireless Security', 'Firewall & Filtering']
+    title: 'Penjaga Gerbang Digital',
+    icon: <Shield size={20} />,
+    description: 'Melindungi data agar tidak seperti rumah tanpa pintu.',
+    points: [
+      'HTTP vs HTTPS: HTTPS ibarat mengirim surat di dalam brankas baja.',
+      'Encryption: Mengubah data menjadi kode rahasia yang tak terbaca.',
+      'Rain Fade: Alasan internet melambat saat hujan (Sinyal terganggu air).'
+    ]
   }
 ];
 
@@ -88,9 +112,9 @@ const UniversalNode = ({ data, selected }: any) => {
 
   return (
     <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''}`}>
-      <Handle type="source" position={Position.Top} className="!bg-blue-600 !w-2.5 !h-2.5" />
+      <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2.5 !h-2.5" />
       <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2.5 !h-2.5" />
-      <Handle type="source" position={Position.Left} className="!bg-blue-600 !w-2.5 !h-2.5" />
+      <Handle type="target" position={Position.Left} className="!bg-blue-600 !w-2.5 !h-2.5" />
       <Handle type="source" position={Position.Right} className="!bg-blue-600 !w-2.5 !h-2.5" />
       
       <div style={getNodeStyle()} className="w-full h-full flex flex-col items-center justify-center text-center">
@@ -217,8 +241,8 @@ function NetworkLabContent() {
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
       {/* SIDEBAR LENGKAP */}
       <aside className="w-80 bg-white border-r flex flex-col z-50 shadow-2xl print:hidden">
-        <div className="p-6 bg-blue-900 text-white font-black italic uppercase leading-none">
-          <ShieldCheck size={28} className="mb-2 text-emerald-400"/> MEJATIKA LAB SANPIO
+        <div className="p-6 bg-slate-900 text-white font-black italic uppercase leading-none">
+          <ShieldCheck size={28} className="mb-2 text-blue-500"/> MEJATIKA LAB SANPIO
           <div className="text-[9px] mt-1 opacity-70">Projek Kelas Peminatan Informatika</div>
         </div>
 
@@ -232,9 +256,9 @@ function NetworkLabContent() {
         <div className="flex-grow overflow-y-auto custom-scrollbar">
           {activeTab === 'learning' ? (
             <div className="p-4 space-y-3 animate-in fade-in slide-in-from-left-4 duration-300">
-              <div className="bg-gradient-to-br from-indigo-600 to-blue-700 p-4 rounded-xl text-white shadow-md mb-4">
-                <p className="text-[10px] font-black uppercase opacity-70">E-Modul Siswa</p>
-                <p className="text-lg font-black italic leading-tight tracking-tight">Informatika Bab 4</p>
+              <div className="bg-gradient-to-br from-slate-800 to-indigo-900 p-4 rounded-xl text-white shadow-md mb-4">
+                <p className="text-[10px] font-black uppercase opacity-70">Kurikulum Bab 4</p>
+                <p className="text-lg font-black italic leading-tight tracking-tight">Digital Nerve System</p>
               </div>
               {curriculumMaterials.map((mat) => (
                 <button 
@@ -242,9 +266,14 @@ function NetworkLabContent() {
                   onClick={() => setSelectedLesson(mat)}
                   className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between group ${selectedLesson?.id === mat.id ? 'bg-blue-50 border-blue-500 shadow-lg shadow-blue-100' : 'bg-white border-slate-100 hover:border-blue-300'}`}
                 >
-                  <div>
-                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">{mat.category}</span>
-                    <p className="font-bold text-slate-800 text-xs">{mat.title}</p>
+                  <div className="flex items-center gap-3">
+                    <div className={`${selectedLesson?.id === mat.id ? 'text-blue-600' : 'text-slate-400'}`}>
+                      {mat.icon}
+                    </div>
+                    <div>
+                      <span className="text-[8px] font-black text-blue-500 uppercase tracking-widest">{mat.category}</span>
+                      <p className="font-bold text-slate-800 text-xs">{mat.title}</p>
+                    </div>
                   </div>
                   <ChevronRight size={14} className={selectedLesson?.id === mat.id ? 'text-blue-500' : 'text-slate-300'} />
                 </button>
@@ -282,23 +311,37 @@ function NetworkLabContent() {
           <p className="text-4xl font-bold text-slate-700 uppercase tracking-widest">Projek Kelas Peminatan Informatika</p>
         </div>
 
-        {/* OVERLAY MATERI (JIKA MATERI DIPILIH) */}
+        {/* OVERLAY MATERI (DYNAMIC POPUP) */}
         {selectedLesson && (
-          <div className="absolute top-4 right-4 z-50 w-72 bg-white/90 backdrop-blur-xl border border-blue-100 rounded-3xl p-6 shadow-2xl animate-in slide-in-from-right-4 duration-500 overflow-hidden">
+          <div className="absolute top-4 right-4 z-50 w-80 bg-white/95 backdrop-blur-xl border-2 border-blue-500/20 rounded-3xl p-6 shadow-2xl animate-in slide-in-from-top-4 duration-500 overflow-hidden">
              <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl"></div>
-             <button onClick={() => setSelectedLesson(null)} className="absolute top-3 right-3 text-slate-300 hover:text-red-500"><Trash2 size={16}/></button>
-             <span className="bg-blue-600 text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">{selectedLesson.category}</span>
-             <h4 className="text-lg font-black text-slate-800 tracking-tighter mt-2 leading-tight">{selectedLesson.title}</h4>
-             <div className="mt-4 space-y-3">
+             <button onClick={() => setSelectedLesson(null)} className="absolute top-4 right-4 text-slate-300 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
+             
+             <div className="flex items-center gap-2 mb-2">
+               <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200">
+                 {selectedLesson.icon}
+               </div>
+               <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">{selectedLesson.category}</span>
+             </div>
+
+             <h4 className="text-xl font-black text-slate-800 tracking-tighter leading-tight">{selectedLesson.title}</h4>
+             <p className="text-[11px] text-slate-500 mt-2 font-medium leading-relaxed italic border-l-2 border-blue-500 pl-3">
+               "{selectedLesson.description}"
+             </p>
+
+             <div className="mt-5 space-y-3">
                 {selectedLesson.points.map((p: string, i: number) => (
-                  <div key={i} className="flex gap-2 items-start group">
-                    <div className="mt-1 bg-emerald-100 p-0.5 rounded text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-colors"><Zap size={10}/></div>
-                    <p className="text-[11px] font-bold text-slate-600 leading-tight">{p}</p>
+                  <div key={i} className="flex gap-3 items-start group">
+                    <div className="mt-1 bg-emerald-100 p-1 rounded-lg text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300 shadow-sm"><Zap size={10}/></div>
+                    <p className="text-[11px] font-extrabold text-slate-600 leading-tight group-hover:text-slate-900 transition-colors">{p}</p>
                   </div>
                 ))}
              </div>
-             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-[9px] font-black text-slate-400">
-                <Info size={12}/> GUNAKAN INVENTORY UNTUK PRAKTEK
+
+             <div className="mt-6 pt-4 border-t border-slate-100">
+               <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 bg-blue-50 p-3 rounded-xl animate-pulse">
+                  <Info size={14}/> SIMULASIKAN DENGAN INVENTORY
+               </div>
              </div>
           </div>
         )}
