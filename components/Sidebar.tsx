@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { 
   Box, BookOpen, ChevronRight, Laptop, Network, Wifi, 
   ShieldCheck, Globe, Cpu, Smartphone, Server, Radio,
-  Activity, Zap, Info
+  Activity, Zap, Info, Terminal, Shield, HelpCircle
 } from 'lucide-react';
 
 export default function Sidebar({ activeMode, onSelectLesson }: any) {
@@ -20,54 +20,54 @@ export default function Sidebar({ activeMode, onSelectLesson }: any) {
     { type: 'modem', label: 'Modem ONU', icon: <Radio size={22} />, color: 'bg-sky-500' },
   ];
 
-  // 2. STRUKTUR MATERI LENGKAP BAB 4
+  // 2. STRUKTUR MATERI LENGKAP (BERDASARKAN PRESENTASI JANTUNG KEHIDUPAN DIGITAL)
   const curriculumMaterials = [
     {
       id: 'materi_1',
-      category: 'Mengenal Jaringan',
-      title: 'Definisi & Komponen Jaringan',
-      content: 'Jaringan komputer adalah sistem untuk berbagi sumber daya (data/printer) antar perangkat menggunakan protokol komunikasi.',
+      category: 'The Hook',
+      title: 'Krisis 60 Menit Tanpa Internet',
+      icon: <Globe size={18} />,
+      content: 'Analisis dampak global jika konektivitas hilang: Perbankan berhenti, koordinasi pesawat kacau, dan isolasi informasi massal.',
       points: [
-        'Komponen: Server (Penyedia) & Client (Pengguna).',
-        'Hardware: NIC (LAN Card), Hub/Switch, Router, & Modem.',
-        'Karakteristik LAN: Jangkauan terbatas (Gedung/Rumah), kecepatan tinggi.',
-        'Karakteristik WAN: Jangkauan luas (Negara/Benua), butuh Router/Modem.'
+        'Finansial: Transaksi senilai $2.1 Miliar terhenti seketika.',
+        'Logistik: Rantai pasok dunia macet tanpa navigasi digital.',
+        'Analogi: Data (Barang), IP (Alamat), Protokol (Kendaraan), Fisik (Jalan).'
       ]
     },
     {
       id: 'materi_2',
-      category: 'Topologi',
-      title: 'Arsitektur Fisik Jaringan',
-      content: 'Cara menghubungkan komputer secara geometris untuk efisiensi distribusi data.',
+      category: 'Arsitektur',
+      title: 'Anatomi & Kasta Jaringan',
+      icon: <Cpu size={18} />,
+      content: 'Klasifikasi jaringan berdasarkan cakupan geografis (PAN, LAN, MAN, WAN) dan cara perangkat terhubung.',
       points: [
-        'Topologi Bus: Satu kabel utama (backbone), hemat kabel tapi rawan putus.',
-        'Topologi Star: Menggunakan Hub/Switch sebagai pusat, paling stabil.',
-        'Topologi Mesh: Setiap perangkat terhubung satu sama lain, sangat aman.',
-        'Media: Kabel (Twisted Pair, Coaxial, Fiber Optic) & Wireless (Radio).'
+        'Hardware: Switch (Layer 2 - MAC Address) & Router (Layer 3 - IP Path).',
+        'Topologi Star: Paling stabil, jika satu kabel putus yang lain tetap aman.',
+        'Topologi Mesh: Semua terhubung ke semua, digunakan pada infrastruktur kritis.'
       ]
     },
     {
       id: 'materi_3',
-      category: 'Konfigurasi',
-      title: 'Pengalamatan IP & DHCP',
-      content: 'Identitas unik setiap perangkat di dalam jaringan agar data terkirim ke tujuan yang benar.',
+      category: 'Protokol',
+      title: 'Live Terminal & OSI Layer',
+      icon: <Terminal size={18} />,
+      content: 'Memahami bahasa komputer melalui model lapisan, dari urusan kabel hingga aplikasi yang kita lihat.',
       points: [
-        'IPv4: Terdiri dari 4 oktet angka (Contoh: 192.168.1.1).',
-        'DHCP: Layanan pemberian IP secara otomatis dari Router ke Client.',
-        'Subnet Mask: Membedakan identitas jaringan (Network ID) dan perangkat (Host ID).',
-        'Gateway: Pintu keluar menuju jaringan lain (Internet).'
+        'Network Layer: Mengatur rute dan alamat logis (IP Address).',
+        'Cek IP: Gunakan perintah "ipconfig" untuk melihat identitas digital perangkat.',
+        'Transport: Memastikan data sampai utuh (TCP) atau cepat (UDP).'
       ]
     },
     {
       id: 'materi_4',
       category: 'Keamanan',
-      title: 'Enkripsi & Proteksi Data',
-      content: 'Penerapan protokol keamanan untuk menjaga kerahasiaan data (Confidentiality).',
+      title: 'Penjaga Gerbang Digital',
+      icon: <Shield size={18} />,
+      content: 'Melindungi data agar tidak seperti rumah tanpa pintu menggunakan enkripsi dan filter akses.',
       points: [
-        'Protokol HTTPS: Menggunakan enkripsi SSL/TLS untuk transaksi data aman.',
-        'Keamanan Wi-Fi: Penggunaan WPA2/WPA3 untuk memproteksi Access Point.',
-        'Firewall: Dinding pembatas untuk menyaring paket data yang mencurigakan.',
-        'K3L: Standar kesehatan kerja saat instalasi perangkat jaringan.'
+        'HTTP vs HTTPS: HTTPS ibarat mengirim surat di dalam brankas baja terkunci.',
+        'Firewall & VPN: Filter paket mencurigakan dan terowongan rahasia di jaringan publik.',
+        'Rain Fade: Mengapa internet lambat saat hujan? (Gangguan partikel air pada sinyal radio).'
       ]
     }
   ];
@@ -122,7 +122,6 @@ export default function Sidebar({ activeMode, onSelectLesson }: any) {
                     {device.icon}
                   </div>
                   <span className="text-[11px] font-extrabold text-slate-700 tracking-tight">{device.label}</span>
-                  {/* Dekorasi halus */}
                   <div className="absolute -bottom-1 -right-1 opacity-5 group-hover:opacity-10 transition-opacity">
                     {device.icon}
                   </div>
@@ -137,7 +136,7 @@ export default function Sidebar({ activeMode, onSelectLesson }: any) {
                  <h3 className="text-[9px] font-black uppercase tracking-[0.3em] text-blue-300 mb-1">Mejatika Digital Academy</h3>
                  <p className="text-xl font-black leading-tight tracking-tighter italic">Informatika X</p>
                </div>
-               <div className="absolute top-0 right-0 p-4 opacity-20"><Zap size={40}/></div>
+               <div className="absolute top-0 right-0 p-4 opacity-20"><BookOpen size={40}/></div>
             </div>
 
             <div className="space-y-2">
@@ -148,8 +147,10 @@ export default function Sidebar({ activeMode, onSelectLesson }: any) {
                   className="w-full flex flex-col p-4 rounded-2xl border border-slate-200 bg-white hover:border-blue-500 hover:shadow-xl hover:shadow-blue-100 transition-all text-left group relative overflow-hidden"
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                    <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{mat.category}</span>
+                    <div className="text-blue-500 group-hover:scale-110 transition-transform">
+                      {mat.icon}
+                    </div>
+                    <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{mat.category}</span>
                   </div>
                   <div className="flex items-center justify-between w-full">
                     <span className="font-black text-slate-800 text-sm tracking-tight group-hover:text-blue-600 transition-colors">{mat.title}</span>
@@ -164,10 +165,10 @@ export default function Sidebar({ activeMode, onSelectLesson }: any) {
             <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
                <div className="flex items-center gap-2 mb-1 text-amber-700">
                  <Info size={14} />
-                 <span className="text-[10px] font-black uppercase">Tips Belajar</span>
+                 <span className="text-[10px] font-black uppercase tracking-tighter">Case Study FAQ</span>
                </div>
                <p className="text-[10px] text-amber-800/70 font-medium leading-relaxed italic">
-                 "Pahami konsep Client-Server terlebih dahulu sebelum mencoba konfigurasi IP Address."
+                 "Apa beda IP Public & Private? Private ibarat nomor kamar hotel, Public ibarat alamat gedung hotelnya."
                </p>
             </div>
           </div>
