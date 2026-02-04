@@ -18,9 +18,10 @@ import '@xyflow/react/dist/style.css';
 import { 
   ShieldCheck, Camera, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, Zap, HardDrive, DoorOpen, 
-  Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw, PlayCircle, Activity
-} from 'lucide-react';
+  Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw, PlayCircle, Activity, Users
+} from 'lucide-center';
 
+// Konfigurasi Ikon
 const iconLib: any = {
   router: <Router size={40} />, switch: <Network size={40} />, pc: <Monitor size={40} />,
   wifi: <Wifi size={40} />, server: <Server size={40} />, hub: <Zap size={40} />,
@@ -59,21 +60,18 @@ const UniversalNode = ({ data, selected }: any) => {
       <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2 !h-2" />
       <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2 !h-2" />
       
-      <div style={getNodeStyle()} className="w-full h-full flex flex-col items-center justify-center text-center group">
+      <div style={getNodeStyle()} className="w-full h-full flex flex-col items-center justify-center text-center">
         <div className="mb-1 relative">
-          {shouldAnimate && (
-             <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20 scale-150"></div>
-          )}
-          <div className={`${shouldAnimate ? 'animate-pulse text-blue-600 drop-shadow-[0_0_8px_rgba(37,99,235,0.5)]' : 'text-slate-700'}`}>
+          {shouldAnimate && <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20 scale-150" />}
+          <div className={shouldAnimate ? 'animate-pulse text-blue-600 drop-shadow-[0_0_8px_rgba(37,99,235,0.5)]' : 'text-slate-700'}>
             {iconLib[data.shapeType] || <Monitor size={40}/>}
           </div>
         </div>
         <textarea
           value={data.label}
           onChange={(e) => data.onChange(e.target.value)}
-          className="bg-transparent border-none text-[10px] font-bold uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1 overflow-hidden pointer-events-auto shadow-none"
+          className="bg-transparent border-none text-[10px] font-bold uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1"
           rows={1}
-          placeholder="NAMA..."
         />
       </div>
     </div>
@@ -89,6 +87,7 @@ function NetworkLabContent() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'inventory' | 'shapes'>('inventory');
+  const [kelompok, setKelompok] = useState('NAMA ANGGOTA KELOMPOK: ');
 
   const onNodeLabelChange = (id: string, label: string) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
@@ -98,7 +97,7 @@ function NetworkLabContent() {
 
   const saveProject = () => {
     const nodesToSave = nodes.map(n => ({ ...n, data: { ...n.data, icon: null, onChange: null } }));
-    const data = JSON.stringify({ nodes: nodesToSave, edges });
+    const data = JSON.stringify({ nodes: nodesToSave, edges, kelompok });
     const blob = new Blob([data], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -120,6 +119,7 @@ function NetworkLabContent() {
         }));
         setNodes(restoredNodes);
         setEdges(parsed.edges);
+        if(parsed.kelompok) setKelompok(parsed.kelompok);
       } catch (err) { alert("Format file tidak dikenali!"); }
     };
     reader.readAsText(file);
@@ -127,13 +127,14 @@ function NetworkLabContent() {
   };
 
   const generateTopology = (type: 'bus' | 'mesh' | 'empty') => {
-    if (type === 'empty') { setNodes([]); setEdges([]); return; }
+    setNodes([]); setEdges([]);
+    if (type === 'empty') return;
     const count = 5;
     const newNodes = Array.from({ length: count }).map((_, i) => {
       const id = `node-${i}-${Date.now()}`;
       return {
         id, type: 'universal',
-        position: { x: type === 'bus' ? i * 180 + 100 : 400 + 200 * Math.cos(2*Math.PI*i/count), y: 300 + (type === 'mesh' ? 200 * Math.sin(2*Math.PI*i/count) : 0) },
+        position: { x: type === 'bus' ? i * 200 + 100 : 400 + 200 * Math.cos(2*Math.PI*i/count), y: 300 + (type === 'mesh' ? 200 * Math.sin(2*Math.PI*i/count) : 0) },
         data: { type: 'device', shapeType: 'pc', label: `PC-${i+1}`, onChange: (v: string) => onNodeLabelChange(id, v) },
         style: { width: 85, height: 85 }
       }
@@ -153,7 +154,6 @@ function NetworkLabContent() {
     const sourceNode = nodes.find(n => n.id === params.source);
     const targetNode = nodes.find(n => n.id === params.target);
     const isNetwork = sourceNode?.data.type === 'device' || targetNode?.data.type === 'device';
-
     setEdges((eds) => addEdge({
       ...params,
       animated: isNetwork,
@@ -178,47 +178,47 @@ function NetworkLabContent() {
   }, [nodes]);
 
   return (
-    <div className="flex h-screen w-full bg-slate-100 overflow-hidden font-sans" onClick={() => setMenu(null)}>
+    <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
       <aside className="w-80 bg-white border-r flex flex-col z-50 shadow-2xl print:hidden">
         <div className="p-6 bg-blue-900 text-white font-black italic uppercase leading-none flex items-center gap-3">
           <ShieldCheck size={32} className="text-emerald-400"/>
-          <div>
-            MEJATIKA LAB
-            <div className="text-[10px] opacity-70 font-normal">San Pio Informatics Edition</div>
-          </div>
+          <div>MEJATIKA LAB <div className="text-[10px] opacity-70 font-normal tracking-widest text-emerald-300">SANPIO EDITION</div></div>
         </div>
 
         <div className="flex bg-slate-50 border-b p-1">
-          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-3 text-[11px] font-black rounded-lg transition-all ${activeTab === 'inventory' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>INVENTORY</button>
-          <button onClick={() => setActiveTab('shapes')} className={`flex-1 py-3 text-[11px] font-black rounded-lg transition-all ${activeTab === 'shapes' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>SHAPES</button>
+          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-3 text-[11px] font-black rounded-lg transition-all ${activeTab === 'inventory' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400'}`}>INVENTORY</button>
+          <button onClick={() => { setActiveTab('shapes'); setNodes([]); setEdges([]); }} className={`flex-1 py-3 text-[11px] font-black rounded-lg transition-all ${activeTab === 'shapes' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400'}`}>SHAPES</button>
         </div>
 
         <div className="p-4 grid grid-cols-2 gap-3 overflow-y-auto">
           {(activeTab === 'inventory' ? Object.keys(iconLib).slice(0, 10) : ['cloud', 'circle', 'square', 'chat']).map(item => (
             <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-4 border rounded-2xl flex flex-col items-center bg-white hover:bg-blue-50 cursor-grab shadow-sm transition-all hover:scale-105 active:scale-95 group">
               <div className="text-slate-600 group-hover:text-blue-600">{iconLib[item]}</div>
-              <span className="text-[9px] mt-2 font-bold uppercase text-slate-400 group-hover:text-blue-500">{item}</span>
+              <span className="text-[9px] mt-2 font-bold uppercase text-slate-400">{item}</span>
             </div>
           ))}
         </div>
 
         <div className="mt-auto p-4 space-y-2 border-t bg-slate-50">
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={saveProject} className="flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-[10px] font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all"><Save size={14}/> SAVE</button>
-            <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white text-[10px] font-bold rounded-xl hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition-all"><FolderOpen size={14}/> LOAD</button>
+            <button onClick={saveProject} className="flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-[10px] font-bold rounded-xl hover:bg-blue-700 shadow-lg transition-all uppercase"><Save size={14}/> Save</button>
+            <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 py-3 bg-emerald-600 text-white text-[10px] font-bold rounded-xl hover:bg-emerald-700 shadow-lg transition-all uppercase"><FolderOpen size={14}/> Load</button>
             <input type="file" ref={fileInputRef} onChange={loadProject} accept=".mjtika" className="hidden" />
           </div>
-          <button onClick={clearCanvas} className="w-full py-3 bg-white text-red-500 text-[10px] font-black rounded-xl border-2 border-red-100 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center gap-2"><Trash2 size={16}/> RESET CANVAS</button>
+          <button onClick={clearCanvas} className="w-full py-3 bg-white text-red-500 text-[10px] font-black rounded-xl border-2 border-red-100 hover:bg-red-500 hover:text-white transition-all uppercase flex items-center justify-center gap-2"><Trash2 size={16}/> Reset Canvas</button>
+          <button onClick={() => window.print()} className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black flex items-center justify-center gap-2 uppercase"><Camera size={16}/> Export PDF</button>
         </div>
       </aside>
 
       <main className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
-        <div className="absolute top-24 left-1/2 -translate-x-1/2 text-center pointer-events-none opacity-[0.04] z-0 select-none">
-          <h1 className="text-[15rem] font-black text-slate-900 leading-none">SANPIO</h1>
+        {/* WATERMARK SANPIO */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none opacity-[0.06] z-0 select-none">
+          <h1 className="text-[14rem] font-black text-slate-900 leading-none">SANPIO</h1>
+          <p className="text-4xl font-bold text-slate-700 uppercase tracking-[1.5rem]">MEJATIKA LAB</p>
         </div>
 
         {activeTab === 'inventory' && (
-          <div className="absolute top-6 left-6 z-10 flex items-center gap-2 bg-white/80 backdrop-blur-md p-2 rounded-2xl shadow-2xl border border-white/50">
+          <div className="absolute top-6 left-6 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-md p-2 rounded-2xl shadow-xl border border-white/50">
             <button onClick={() => generateTopology('empty')} className="px-5 py-2.5 text-[10px] font-black bg-slate-900 text-white rounded-xl flex items-center gap-2 hover:scale-105 transition-all">
                <PlayCircle size={16} className="text-emerald-400 animate-pulse"/> SIMULASI BARU
             </button>
@@ -227,6 +227,17 @@ function NetworkLabContent() {
             <button onClick={() => generateTopology('mesh')} className="px-5 py-2.5 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100 shadow-sm"><Activity size={14}/> AUTO MESH</button>
           </div>
         )}
+
+        {/* NAMA KELOMPOK DI BAWAH CANVAS */}
+        <div className="absolute bottom-6 right-6 z-10 bg-white/80 backdrop-blur p-4 rounded-2xl border border-slate-200 shadow-xl min-w-[300px] flex items-center gap-3">
+          <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><Users size={20}/></div>
+          <input 
+            type="text" 
+            value={kelompok} 
+            onChange={(e) => setKelompok(e.target.value)}
+            className="bg-transparent border-none text-[11px] font-black text-slate-700 w-full focus:ring-0 uppercase placeholder:text-slate-300"
+          />
+        </div>
 
         <ReactFlow 
           nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
@@ -237,27 +248,25 @@ function NetworkLabContent() {
           fitView
         >
           <Background gap={35} size={1} color="#e2e8f0" />
-          <Controls className="!bg-white !shadow-xl !border-none !rounded-xl overflow-hidden" />
-          
+          <Controls />
           {menu && (
-            <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white/95 backdrop-blur border border-slate-200 shadow-2xl rounded-2xl p-4 min-w-[240px] animate-in fade-in zoom-in duration-150">
-              <p className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-tighter flex items-center gap-2"><div className="w-2 h-2 bg-blue-500 rounded-full" /> Konfigurasi Objek</p>
+            <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 min-w-[240px]">
+              <p className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-tighter">Konfigurasi Warna</p>
               <div className="grid grid-cols-5 gap-2 mb-5">
                 {['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#1e293b'].map(c => (
-                  <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, [menu.type === 'shape' ? 'bgColor' : 'borderColor']: c}} : n))} className="w-8 h-8 rounded-full border-2 border-white shadow-md hover:scale-125 transition-transform" style={{ background: c }} />
+                  <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, [menu.type === 'shape' ? 'bgColor' : 'borderColor']: c}} : n))} className="w-8 h-8 rounded-full border-2 border-white shadow-md" style={{ background: c }} />
                 ))}
               </div>
-              <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-600 hover:text-white transition-all uppercase flex items-center justify-center gap-2"><Trash2 size={14}/> Hapus dari Canvas</button>
+              <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-600 hover:text-white transition-all uppercase flex items-center justify-center gap-2"><Trash2 size={14}/> Hapus Objek</button>
             </div>
           )}
         </ReactFlow>
       </main>
 
       <style jsx global>{`
-        .react-flow__edge-path { stroke-dasharray: 0; transition: stroke-dasharray 0.3s; }
         .react-flow__edge.animated path { stroke-dasharray: 8; animation: dash 0.8s linear infinite; }
         @keyframes dash { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
-        .react-flow__handle { border: 2px solid white !important; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        @media print { .print\:hidden { display: none !important; } }
       `}</style>
     </div>
   );
