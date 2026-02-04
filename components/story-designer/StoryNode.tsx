@@ -1,123 +1,66 @@
 // src/components/story-designer/StoryNode.tsx
 'use client';
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-type MouthState = 'closed' | 'half' | 'open';
+const StoryNode = forwardRef(({ data, selected }: any, ref) => {
+  const [mouthScale, setMouthScale] = useState({ w: 4, h: 1 });
+  const [isTalking, setIsTalking] = useState(false);
 
-export default function StoryNode({ data, selected }: any) {
-  const [mouthState, setMouthState] = useState<MouthState>('closed');
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Efek Animasi Mulut: Sinkron dengan status 'active' dari Player
-  useEffect(() => {
-    if (data.active) {
-      intervalRef.current = setInterval(() => {
-        setMouthState(prev =>
-          prev === 'closed' ? 'half' : prev === 'half' ? 'open' : 'closed'
-        );
-      }, 180);
-    } else {
-      setMouthState('closed');
-      if (intervalRef.current) clearInterval(intervalRef.current);
+  // Expose fungsi bicara ke parent (Player/Page)
+  useImperativeHandle(ref, () => ({
+    speak(duration: number) {
+      setIsTalking(true);
+      const startTime = Date.now();
+      
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+          // Simulasi fonem: mulut berubah bentuk secara acak tapi cepat
+          const shapes = [
+            { w: 5, h: 4 }, // fonem A/O
+            { w: 3, h: 2 }, // fonem I/E
+            { w: 4, h: 5 }, // fonem U
+            { w: 4, h: 1 }  // fonem M/P/B (tutup)
+          ];
+          const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+          setMouthScale(randomShape);
+          requestAnimationFrame(() => setTimeout(animate, 80)); // Kecepatan fonem
+        } else {
+          setIsTalking(false);
+          setMouthScale({ w: 4, h: 1 });
+        }
+      };
+      animate();
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [data.active]);
-
-  // Fungsi untuk mengatur fokus lokasi mulut secara dinamis
-  const handleSetMouthFocus = (e: React.MouseEvent) => {
-    if (data.active) return; // Nonaktifkan saat sedang presentasi
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    if (data.onUpdateMouth) data.onUpdateMouth(x, y);
-  };
+  }));
 
   return (
     <div className="relative flex flex-col items-center group">
-      <Handle type="target" position={Position.Top} className="opacity-0" />
-
-      {/* FRAME KARAKTER */}
-      <div
-        onClick={handleSetMouthFocus}
-        className={`relative transition-all duration-700 ease-in-out cursor-crosshair
-          ${data.active ? 'scale-150 z-50 drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)]' : 'opacity-40 grayscale blur-[0.5px] scale-100'}
-          ${selected && !data.active ? 'ring-2 ring-orange-500 ring-offset-4 rounded-xl bg-orange-50/50' : ''}
-        `}
-      >
-        <div className={`relative ${data.active ? 'animate-bounce-subtle' : ''}`}>
-          {data.imageUrl ? (
-            <img
-              src={data.imageUrl}
-              alt={data.label}
-              className="w-44 h-44 object-contain pointer-events-none select-none"
-            />
-          ) : (
-            <div className="w-40 h-40 bg-slate-200 rounded-full flex items-center justify-center">
-              <span className="text-[10px] font-black text-slate-400">NO IMAGE</span>
-            </div>
-          )}
-
-          {/* MULUT DINAMIS */}
-          {data.active && (
-            <div
-              className={`absolute bg-[#331a00] rounded-full transition-all duration-100 ease-in-out shadow-inner pointer-events-none`}
-              style={{
-                opacity: 0.9,
-                left: `${data.mouthX || 50}%`,
-                top: `${data.mouthY || 62}%`,
-                transform: 'translate(-50%, -50%)',
-                width: mouthState === 'open' ? '22px' : mouthState === 'half' ? '18px' : '14px',
-                height: mouthState === 'open' ? '14px' : mouthState === 'half' ? '8px' : '4px',
-              }}
-            />
-          )}
-
-          {/* INDIKATOR TARGET */}
-          {selected && !data.active && (
-            <div
-              className="absolute w-4 h-4 border-2 border-orange-500 rounded-full flex items-center justify-center animate-ping"
-              style={{
-                left: `${data.mouthX || 50}%`,
-                top: `${data.mouthY || 62}%`,
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              <div className="w-1 h-1 bg-orange-500 rounded-full"></div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* LABEL */}
-      <div
-        className={`mt-4 px-3 py-1 bg-slate-900 text-white text-[8px] font-black uppercase rounded-full tracking-widest
-          transition-opacity duration-300 pointer-events-none flex flex-col items-center gap-1
-          ${data.active || selected ? 'opacity-100 shadow-lg' : 'opacity-0 group-hover:opacity-100'}
-        `}
-      >
-        <span>{data.label || 'Karakter'}</span>
-        {selected && !data.active && (
-          <span className="text-[6px] text-orange-400 lowercase italic">
-            Klik pada gambar untuk geser posisi mulut
-          </span>
+      <div className={`relative transition-all duration-700 ${data.active ? 'scale-150 z-50' : 'opacity-40 grayscale'}`}>
+        <img src={data.imageUrl} className="w-44 h-44 object-contain" />
+        
+        {/* MULUT REALISTIS DENGAN PHONEME SHAPES */}
+        {data.active && (
+          <div 
+            className="absolute bg-[#2d1b0d] rounded-full transition-all duration-75 ease-in-out border-t border-black/20"
+            style={{ 
+              opacity: 0.9,
+              left: `${data.mouthX || 50}%`,
+              top: `${data.mouthY || 62}%`,
+              width: `${mouthScale.w * 3}px`,
+              height: `${mouthScale.h * 3}px`,
+              transform: 'translate(-50%, -50%)'
+            }}
+          >
+            {/* Detail bibir dalam */}
+            <div className="w-full h-[1px] bg-red-400/20 mt-1 mx-auto rounded-full" />
+          </div>
         )}
       </div>
-
       <Handle type="source" position={Position.Bottom} className="opacity-0" />
-
-      <style jsx>{`
-        @keyframes bounce-subtle {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
-        }
-        .animate-bounce-subtle {
-          animation: bounce-subtle 2s infinite ease-in-out;
-        }
-      `}</style>
     </div>
   );
-}
+});
+
+export default StoryNode;
