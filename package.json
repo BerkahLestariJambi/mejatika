@@ -63,6 +63,7 @@
     "sweetalert2": "^11.10.0",
     "tailwind-merge": "^2.5.5",
     "react-simple-typewriter": "^5.0.1",
+    "@monaco-editor/react": "^4.6.0",
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^11.0.5",
     "vaul": "^0.9.9",
