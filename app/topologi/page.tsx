@@ -15,9 +15,8 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-// Impor Cpu ditambahkan agar tidak error
 import { 
-  ShieldCheck, Camera, Monitor, Network, Router, Server, Wifi, 
+  ShieldCheck, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, Zap, HardDrive, DoorOpen, 
   Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw, 
   ChevronRight, Info, Globe, Terminal, Shield, Cpu 
@@ -38,48 +37,16 @@ const curriculumMaterials = [
     category: 'The Hook',
     title: 'Krisis 60 Menit Tanpa Internet',
     icon: <Globe size={20} />,
-    description: 'Bayangkan dunia berhenti berputar karena konektivitas mati total.',
-    points: [
-      'Finansial: Transaksi senilai $2.1 Miliar terhenti seketika.',
-      'Logistik: Pesawat & Rantai pasok dunia macet tanpa data navigasi.',
-      'Analogi: Data (Barang), IP (Alamat), Protokol (Kendaraan), Fisik (Jalan).'
-    ]
+    description: 'Dunia berhenti berputar tanpa konektivitas.',
+    points: ['Finansial terhenti', 'Logistik macet', 'Analogi: Data itu barang.']
   },
   {
     id: 'materi_2',
     category: 'Arsitektur',
-    title: 'Anatomi & Kasta Jaringan',
+    title: 'Anatomi Jaringan',
     icon: <Cpu size={20} />,
-    description: 'Bagaimana perangkat keras bekerja dalam harmoni membagi data.',
-    points: [
-      'Cakupan: PAN (Bluetooth), LAN (Gedung), MAN (Kota), WAN (Internet).',
-      'Topologi Star: Paling stabil, pusat ada pada Switch/Hub.',
-      'Hardware: Switch (Layer 2 - MAC) & Router (Layer 3 - IP Path).'
-    ]
-  },
-  {
-    id: 'materi_3',
-    category: 'Protokol',
-    title: 'Live Terminal & OSI Layer',
-    icon: <Terminal size={20} />,
-    description: 'Komputer bicara melalui model lapisan bahasa yang terstandarisasi.',
-    points: [
-      'OSI Layer: Dari urusan listrik kabel hingga aplikasi di layar.',
-      'Identitas: Gunakan "ipconfig" untuk melihat Alamat Rumah Digital.',
-      'Transport: Memastikan data sampai utuh tanpa cacat menggunakan TCP.'
-    ]
-  },
-  {
-    id: 'materi_4',
-    category: 'Keamanan',
-    title: 'Penjaga Gerbang Digital',
-    icon: <Shield size={20} />,
-    description: 'Melindungi data agar tidak seperti rumah tanpa pintu.',
-    points: [
-      'HTTP vs HTTPS: HTTPS ibarat mengirim surat di dalam brankas baja.',
-      'Encryption: Mengubah data menjadi kode rahasia yang tak terbaca.',
-      'Rain Fade: Alasan internet melambat saat hujan (Sinyal terganggu air).'
-    ]
+    description: 'Harmoni perangkat keras membagi data.',
+    points: ['PAN, LAN, MAN, WAN', 'Topologi Star', 'Layer 2 vs Layer 3']
   }
 ];
 
@@ -113,14 +80,9 @@ const UniversalNode = ({ data, selected }: any) => {
     <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''}`}>
       <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2.5 !h-2.5" />
       <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2.5 !h-2.5" />
-      <Handle type="target" position={Position.Left} className="!bg-blue-600 !w-2.5 !h-2.5" />
-      <Handle type="source" position={Position.Right} className="!bg-blue-600 !w-2.5 !h-2.5" />
-      
       <div style={getNodeStyle()} className="w-full h-full flex flex-col items-center justify-center text-center">
         <div className="mb-1 relative">
-          {shouldAnimate && (
-             <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-25 scale-150"></div>
-          )}
+          {shouldAnimate && <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-25 scale-150"></div>}
           <div className={`${shouldAnimate ? 'animate-pulse text-blue-600' : 'text-slate-700'}`}>
             {iconLib[data.shapeType] || <Monitor size={40}/>}
           </div>
@@ -132,6 +94,8 @@ const UniversalNode = ({ data, selected }: any) => {
           rows={1}
         />
       </div>
+      <Handle type="target" position={Position.Left} className="!bg-blue-600 !w-2.5 !h-2.5" />
+      <Handle type="source" position={Position.Right} className="!bg-blue-600 !w-2.5 !h-2.5" />
     </div>
   );
 };
@@ -151,15 +115,13 @@ function NetworkLabContent() {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
   };
 
-  const clearCanvas = () => { if(confirm("Hapus semua objek di canvas?")) { setNodes([]); setEdges([]); setSelectedLesson(null); } };
+  const clearCanvas = () => { if(confirm("Hapus semua objek di canvas?")) { setNodes([]); setEdges([]); } };
 
   const saveProject = () => {
-    const nodesToSave = nodes.map(n => ({ ...n, data: { ...n.data, icon: null, onChange: null } }));
-    const data = JSON.stringify({ nodes: nodesToSave, edges });
+    const data = JSON.stringify({ nodes: nodes.map(n => ({...n, data: {...n.data, icon: null, onChange: null}})), edges });
     const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
+    link.href = URL.createObjectURL(blob);
     link.download = `sanpio_${Date.now()}.mjtika`;
     link.click();
   };
@@ -171,16 +133,11 @@ function NetworkLabContent() {
     reader.onload = (f) => {
       try {
         const parsed = JSON.parse(f.target?.result as string);
-        const restoredNodes = parsed.nodes.map((n: any) => ({
-          ...n,
-          data: { ...n.data, icon: iconLib[n.data.shapeType], onChange: (v: string) => onNodeLabelChange(n.id, v) }
-        }));
-        setNodes(restoredNodes);
+        setNodes(parsed.nodes.map((n: any) => ({ ...n, data: { ...n.data, onChange: (v: string) => onNodeLabelChange(n.id, v) } })));
         setEdges(parsed.edges);
       } catch (err) { alert("File error!"); }
     };
     reader.readAsText(file);
-    e.target.value = null;
   };
 
   const generateTopology = (type: 'bus' | 'mesh') => {
@@ -190,7 +147,7 @@ function NetworkLabContent() {
       const id = `node-${i}-${Date.now()}`;
       return {
         id, type: 'universal',
-        position: { x: type === 'bus' ? i * 200 + 100 : 400 + 200 * Math.cos(2*Math.PI*i/count), y: 300 + (type === 'mesh' ? 200 * Math.sin(2*Math.PI*i/count) : 0) },
+        position: { x: type === 'bus' ? i * 200 + 150 : 400 + 250 * Math.cos(2*Math.PI*i/count), y: 350 + (type === 'mesh' ? 250 * Math.sin(2*Math.PI*i/count) : 0) },
         data: { type: 'device', shapeType: 'pc', label: `PC-${i+1}`, onChange: (v: string) => onNodeLabelChange(id, v) },
         style: { width: 85, height: 85 }
       }
@@ -207,17 +164,8 @@ function NetworkLabContent() {
   };
 
   const onConnect = useCallback((params: any) => {
-    const sourceNode = nodes.find(n => n.id === params.source);
-    const targetNode = nodes.find(n => n.id === params.target);
-    const isNetwork = sourceNode?.data.type === 'device' || targetNode?.data.type === 'device';
-
-    setEdges((eds) => addEdge({
-      ...params,
-      animated: isNetwork,
-      style: { strokeWidth: 3, stroke: isNetwork ? '#2563eb' : '#64748b' },
-      markerEnd: { type: MarkerType.ArrowClosed, color: isNetwork ? '#2563eb' : '#64748b' }
-    }, eds));
-  }, [nodes]);
+    setEdges((eds) => addEdge({ ...params, animated: true, style: { strokeWidth: 3, stroke: '#2563eb' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#2563eb' } }, eds));
+  }, []);
 
   const onDrop = useCallback((event: any) => {
     event.preventDefault();
@@ -225,10 +173,9 @@ function NetworkLabContent() {
     const val = event.dataTransfer.getData('application/value');
     const rect = reactFlowWrapper.current?.getBoundingClientRect();
     if (!rect) return;
-    const position = { x: event.clientX - rect.left - 45, y: event.clientY - rect.top - 45 };
     const id = `node_${Date.now()}`;
     setNodes((nds) => nds.concat({
-      id, type: 'universal', position,
+      id, type: 'universal', position: { x: event.clientX - rect.left - 45, y: event.clientY - rect.top - 45 },
       data: { type, shapeType: val, label: val.toUpperCase(), bgColor: '#ffffff', borderColor: '#334155', onChange: (v: string) => onNodeLabelChange(id, v) },
       style: { width: type === 'device' ? 85 : 180, height: type === 'device' ? 85 : 150 }
     }));
@@ -236,46 +183,36 @@ function NetworkLabContent() {
 
   return (
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
-      <aside className="w-80 bg-white border-r flex flex-col z-50 shadow-2xl print:hidden">
+      {/* SIDEBAR */}
+      <aside className="w-80 bg-white border-r flex flex-col z-[60] shadow-2xl relative">
         <div className="p-6 bg-slate-900 text-white font-black italic uppercase leading-none flex items-center gap-3">
           <ShieldCheck size={28} className="text-blue-500"/>
-          <div>MEJATIKA LAB <div className="text-[9px] mt-1 opacity-70 font-normal">SANPIO EDITION</div></div>
+          <div>MEJATIKA LAB <div className="text-[9px] mt-1 opacity-70 font-normal tracking-widest text-blue-400">SANPIO EDITION</div></div>
         </div>
 
         <div className="flex bg-slate-50 border-b">
-          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === 'inventory' ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400'}`}>Inventory</button>
-          <button onClick={() => setActiveTab('learning')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === 'learning' ? 'bg-white text-indigo-600 border-b-4 border-indigo-600' : 'text-slate-400'}`}>Kurikulum</button>
-          <button onClick={() => setActiveTab('shapes')} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === 'shapes' ? 'bg-white text-emerald-600 border-b-4 border-emerald-600' : 'text-slate-400'}`}>Shapes</button>
+          {['inventory', 'learning', 'shapes'].map((t) => (
+            <button key={t} onClick={() => setActiveTab(t as any)} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === t ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400'}`}>{t}</button>
+          ))}
         </div>
 
-        <div className="flex-grow overflow-y-auto custom-scrollbar">
+        <div className="flex-grow overflow-y-auto custom-scrollbar p-4">
           {activeTab === 'learning' ? (
-            <div className="p-4 space-y-3">
-              <div className="bg-gradient-to-br from-slate-800 to-indigo-900 p-4 rounded-xl text-white shadow-md mb-4">
-                <p className="text-[10px] font-black uppercase opacity-70">Kurikulum Bab 4</p>
-                <p className="text-lg font-black italic leading-tight">Digital Nerve System</p>
-              </div>
+            <div className="space-y-3">
               {curriculumMaterials.map((mat) => (
-                <button 
-                  key={mat.id} 
-                  onClick={() => setSelectedLesson(mat)}
-                  className={`w-full p-4 rounded-xl border text-left transition-all flex items-center justify-between ${selectedLesson?.id === mat.id ? 'bg-blue-50 border-blue-500 shadow-lg' : 'bg-white border-slate-100 hover:border-blue-300'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={selectedLesson?.id === mat.id ? 'text-blue-600' : 'text-slate-400'}>{mat.icon}</div>
-                    <div>
-                      <span className="text-[8px] font-black text-blue-500 uppercase">{mat.category}</span>
-                      <p className="font-bold text-slate-800 text-xs">{mat.title}</p>
-                    </div>
+                <button key={mat.id} onClick={() => setSelectedLesson(mat)} className="w-full p-4 rounded-xl border bg-white flex items-center justify-between hover:border-blue-300">
+                  <div className="flex items-center gap-3 text-left">
+                    <div className="text-blue-600">{mat.icon}</div>
+                    <div><p className="font-bold text-slate-800 text-xs">{mat.title}</p></div>
                   </div>
                   <ChevronRight size={14} className="text-slate-300" />
                 </button>
               ))}
             </div>
           ) : (
-            <div className="p-4 grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               {(activeTab === 'inventory' ? Object.keys(iconLib).slice(0, 10) : ['cloud', 'circle', 'square', 'chat']).map(item => (
-                <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-3 border rounded-xl flex flex-col items-center bg-white hover:bg-slate-50 cursor-grab shadow-sm">
+                <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-3 border rounded-xl flex flex-col items-center bg-white hover:bg-slate-50 cursor-grab shadow-sm transition-all">
                   {iconLib[item]} <span className="text-[9px] mt-1 font-bold uppercase text-slate-500">{item}</span>
                 </div>
               ))}
@@ -285,47 +222,47 @@ function NetworkLabContent() {
 
         <div className="p-4 space-y-2 border-t bg-slate-50">
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={saveProject} className="flex items-center justify-center gap-2 py-2.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg"><Save size={14}/> SAVE</button>
-            <button onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 py-2.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg"><FolderOpen size={14}/> LOAD</button>
-            <input type="file" ref={fileInputRef} onChange={loadProject} accept=".mjtika" className="hidden" />
+            <button onClick={saveProject} className="py-2.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-2"><Save size={14}/> SAVE</button>
+            <button onClick={() => fileInputRef.current?.click()} className="py-2.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-2"><FolderOpen size={14}/> LOAD</button>
           </div>
           <button onClick={clearCanvas} className="w-full py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-lg border border-red-200 uppercase">Hapus Canvas</button>
+          <input type="file" ref={fileInputRef} onChange={loadProject} accept=".mjtika" className="hidden" />
         </div>
       </aside>
 
+      {/* CANVAS AREA */}
       <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none opacity-[0.05] z-0 select-none">
-          <h1 className="text-[15rem] font-black text-slate-900 leading-none">SANPIO</h1>
+        
+        {/* WATERMARK SANPIO (Di Luar ReactFlow agar tetap di belakang) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+            <h1 className="text-[22vw] font-black text-slate-900 opacity-[0.03] select-none leading-none">SANPIO</h1>
         </div>
 
+        {/* NAMA KELOMPOK OVERLAY */}
+        <div className="absolute bottom-6 right-6 z-[100] bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-xl pointer-events-none">
+            <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1">Project By:</p>
+            <p className="text-sm font-black text-slate-800">KELOMPOK PEMINATAN INFORMATIKA</p>
+            <p className="text-[10px] font-bold text-slate-500 italic">San Pio Lab v2.0</p>
+        </div>
+
+        {/* CURRICULUM POPUP */}
         {selectedLesson && (
-          <div className="absolute top-4 right-4 z-50 w-80 bg-white/95 backdrop-blur-xl border-2 border-blue-500/20 rounded-3xl p-6 shadow-2xl animate-in slide-in-from-top-4">
+          <div className="absolute top-4 right-4 z-[110] w-80 bg-white/95 backdrop-blur-xl border-2 border-blue-500/20 rounded-3xl p-6 shadow-2xl">
              <button onClick={() => setSelectedLesson(null)} className="absolute top-4 right-4 text-slate-300 hover:text-red-500"><Trash2 size={18}/></button>
-             <div className="flex items-center gap-2 mb-2">
-               <div className="p-2 bg-blue-600 text-white rounded-xl">{selectedLesson.icon}</div>
-               <span className="text-[9px] font-black text-blue-600 uppercase">{selectedLesson.category}</span>
-             </div>
-             <h4 className="text-xl font-black text-slate-800 tracking-tighter">{selectedLesson.title}</h4>
-             <p className="text-[11px] text-slate-500 mt-2 italic border-l-2 border-blue-500 pl-3">"{selectedLesson.description}"</p>
-             <div className="mt-5 space-y-2">
+             <h4 className="text-xl font-black text-slate-800 tracking-tighter mb-2">{selectedLesson.title}</h4>
+             <p className="text-[11px] text-slate-500 italic border-l-2 border-blue-500 pl-3 mb-4">"{selectedLesson.description}"</p>
+             <div className="space-y-2">
                 {selectedLesson.points.map((p: string, i: number) => (
-                  <div key={i} className="flex gap-3 items-start">
-                    <div className="mt-1 bg-emerald-100 p-1 rounded-lg text-emerald-600"><Zap size={10}/></div>
-                    <p className="text-[11px] font-extrabold text-slate-600 leading-tight">{p}</p>
-                  </div>
+                  <div key={i} className="flex gap-2 items-center text-[11px] font-bold text-slate-600"><Zap size={10} className="text-emerald-500"/> {p}</div>
                 ))}
-             </div>
-             <div className="mt-6 pt-4 border-t border-slate-100">
-               <div className="flex items-center gap-2 text-[10px] font-black text-blue-600 bg-blue-50 p-3 rounded-xl animate-pulse">
-                  <Info size={14}/> SIMULASIKAN DENGAN INVENTORY
-               </div>
              </div>
           </div>
         )}
 
-        <div className="absolute top-4 left-4 z-10 flex gap-2 bg-white/90 backdrop-blur p-2 rounded-2xl shadow-xl border border-blue-100">
-          <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-blue-50 text-blue-600 rounded-xl flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> AUTO BUS</button>
-          <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all"><RefreshCcw size={12}/> AUTO MESH</button>
+        {/* TOOLBAR */}
+        <div className="absolute top-4 left-4 z-[100] flex gap-2">
+          <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-white text-blue-600 rounded-xl shadow-lg border border-blue-100 flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN BUS</button>
+          <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-white text-indigo-600 rounded-xl shadow-lg border border-indigo-100 flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN MESH</button>
         </div>
 
         <ReactFlow 
@@ -336,24 +273,20 @@ function NetworkLabContent() {
           onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: n.data.type }); }}
           fitView
         >
-          <Background gap={30} size={1} color="#cbd5e1" />
-          <Controls />
+          <Background gap={25} size={1} color="#cbd5e1" />
+          <Controls className="!bg-white !shadow-xl !border-none !rounded-lg overflow-hidden" />
+          
           {menu && (
-            <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border shadow-2xl rounded-2xl p-4 min-w-[220px]">
-              <p className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1 text-center">Config {menu.type}</p>
+            <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border shadow-2xl rounded-2xl p-4 min-w-[200px]">
+              <p className="text-[9px] font-black text-slate-400 mb-3 uppercase border-b pb-1">Config {menu.type}</p>
               <div className="grid grid-cols-5 gap-2 mb-4">
                 {Object.keys(iconLib).filter(k => menu.type === 'device' ? !['cloud','circle','square','chat'].includes(k) : ['cloud','circle','square','chat'].includes(k)).map(ico => (
-                  <button key={ico} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, shapeType: ico}} : n))} className="p-2 hover:bg-blue-50 rounded-lg border flex items-center justify-center">
+                  <button key={ico} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, shapeType: ico}} : n))} className="p-2 hover:bg-blue-50 rounded-lg border flex items-center justify-center transition-colors">
                     {React.cloneElement(iconLib[ico], { size: 18 })}
                   </button>
                 ))}
               </div>
-              <div className="grid grid-cols-5 gap-2 mb-4">
-                {['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#ffffff'].map(c => (
-                  <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, [menu.type === 'shape' ? 'bgColor' : 'borderColor']: c}} : n))} className="w-7 h-7 rounded-full border shadow-sm" style={{ background: c }} />
-                ))}
-              </div>
-              <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all uppercase">Hapus Objek</button>
+              <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all">HAPUS OBJEK</button>
             </div>
           )}
         </ReactFlow>
@@ -362,7 +295,7 @@ function NetworkLabContent() {
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .react-flow__edge.animated path { stroke-dasharray: 8; animation: dash 0.8s linear infinite; }
+        .react-flow__edge.animated path { stroke-dasharray: 8; animation: dash 1s linear infinite; }
         @keyframes dash { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
       `}</style>
     </div>
