@@ -252,3 +252,21 @@
   background: #cbd5e1;
   border-radius: 10px;
 }
+@keyframes talk-shake {
+  0%, 100% { transform: scale(1.5) rotate(0deg); }
+  25% { transform: scale(1.52) rotate(1deg); }
+  75% { transform: scale(1.52) rotate(-1deg); }
+}
+
+@keyframes bounce-subtle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.animate-talk {
+  animation: talk-shake 0.3s infinite ease-in-out;
+}
+
+.animate-bounce-subtle {
+  animation: bounce-subtle 2s infinite ease-in-out;
+}
