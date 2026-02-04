@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -19,7 +19,7 @@ import {
   ShieldCheck, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, Zap, HardDrive, DoorOpen, 
   Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw, 
-  ChevronRight, Info, Globe, Terminal, Shield, Cpu 
+  ChevronRight, Info, Globe, Terminal, Shield, Cpu, Play, Square as StopSquare
 } from 'lucide-react';
 
 // --- KONFIGURASI ICON ---
@@ -60,7 +60,8 @@ const getCloudPath = (color: string, stroke: string) => {
 const UniversalNode = ({ data, selected }: any) => {
   const isDevice = data.type === 'device';
   const isCloud = data.shapeType === 'cloud';
-  const shouldAnimate = isDevice && ['router', 'wifi', 'ap'].includes(data.shapeType);
+  const isSimulating = data.isSimulating;
+  const shouldAnimate = (isDevice && ['router', 'wifi', 'ap'].includes(data.shapeType)) || isSimulating;
   
   const getNodeStyle = (): React.CSSProperties => {
     if (isDevice) return { background: 'transparent', border: 'none' };
@@ -108,8 +109,20 @@ function NetworkLabContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'learning' | 'shapes'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'learning' | 'shapes' | 'simulasi'>('inventory');
   const [selectedLesson, setSelectedLesson] = useState<any>(null);
+  const [isLive, setIsLive] = useState(false);
+
+  // --- LOGIC SIMULASI ---
+  useEffect(() => {
+    if (isLive) {
+      setEdges((eds) => eds.map(edge => ({ ...edge, animated: true, style: { ...edge.style, stroke: '#22c55e', strokeWidth: 4 } })));
+      setNodes((nds) => nds.map(node => ({ ...node, data: { ...node.data, isSimulating: true } })));
+    } else {
+      setEdges((eds) => eds.map(edge => ({ ...edge, animated: false, style: { ...edge.style, stroke: '#2563eb', strokeWidth: 3 } })));
+      setNodes((nds) => nds.map(node => ({ ...node, data: { ...node.data, isSimulating: false } })));
+    }
+  }, [isLive, setEdges, setNodes]);
 
   const onNodeLabelChange = (id: string, label: string) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
@@ -154,18 +167,18 @@ function NetworkLabContent() {
     });
     const newEdges = [];
     if (type === 'bus') {
-      for (let i = 0; i < count - 1; i++) newEdges.push({ id: `e${i}`, source: newNodes[i].id, target: newNodes[i+1].id, animated: true, style: { strokeWidth: 3, stroke: '#2563eb' } });
+      for (let i = 0; i < count - 1; i++) newEdges.push({ id: `e${i}`, source: newNodes[i].id, target: newNodes[i+1].id, animated: isLive, style: { strokeWidth: 3, stroke: '#2563eb' } });
     } else {
       for (let i = 0; i < count; i++) {
-        for (let j = i + 1; j < count; j++) newEdges.push({ id: `e${i}-${j}`, source: newNodes[i].id, target: newNodes[j].id, animated: true, style: { strokeWidth: 3, stroke: '#2563eb' } });
+        for (let j = i + 1; j < count; j++) newEdges.push({ id: `e${i}-${j}`, source: newNodes[i].id, target: newNodes[j].id, animated: isLive, style: { strokeWidth: 3, stroke: '#2563eb' } });
       }
     }
     setNodes(newNodes); setEdges(newEdges);
   };
 
   const onConnect = useCallback((params: any) => {
-    setEdges((eds) => addEdge({ ...params, animated: true, style: { strokeWidth: 3, stroke: '#2563eb' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#2563eb' } }, eds));
-  }, []);
+    setEdges((eds) => addEdge({ ...params, animated: isLive, style: { strokeWidth: 3, stroke: isLive ? '#22c55e' : '#2563eb' }, markerEnd: { type: MarkerType.ArrowClosed, color: isLive ? '#22c55e' : '#2563eb' } }, eds));
+  }, [isLive]);
 
   const onDrop = useCallback((event: any) => {
     event.preventDefault();
@@ -190,17 +203,36 @@ function NetworkLabContent() {
           <div>MEJATIKA LAB <div className="text-[9px] mt-1 opacity-70 font-normal tracking-widest text-blue-400">SANPIO EDITION</div></div>
         </div>
 
-        <div className="flex bg-slate-50 border-b">
-          {['inventory', 'learning', 'shapes'].map((t) => (
-            <button key={t} onClick={() => setActiveTab(t as any)} className={`flex-1 py-4 text-[9px] font-black uppercase transition-all ${activeTab === t ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400'}`}>{t}</button>
+        <div className="flex bg-slate-50 border-b overflow-x-auto custom-scrollbar">
+          {['inventory', 'learning', 'shapes', 'simulasi'].map((t) => (
+            <button key={t} onClick={() => setActiveTab(t as any)} className={`flex-1 min-w-[80px] py-4 text-[8px] font-black uppercase transition-all ${activeTab === t ? 'bg-white text-blue-600 border-b-4 border-blue-600' : 'text-slate-400'}`}>{t}</button>
           ))}
         </div>
 
         <div className="flex-grow overflow-y-auto custom-scrollbar p-4">
-          {activeTab === 'learning' ? (
+          {activeTab === 'simulasi' ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-2xl text-white shadow-lg">
+                <p className="text-[10px] font-black opacity-80 mb-1">NETWORK STATUS</p>
+                <h3 className="text-lg font-black leading-tight uppercase">{isLive ? 'Traffic Active' : 'System Idle'}</h3>
+                <p className="text-[10px] mt-2 font-medium opacity-90 italic">Klik tombol di bawah untuk menjalankan paket data pada koneksi yang aktif.</p>
+              </div>
+              <button 
+                onClick={() => setIsLive(!isLive)}
+                className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black transition-all shadow-md ${isLive ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-emerald-500 text-white hover:bg-emerald-600'}`}
+              >
+                {isLive ? <><StopSquare size={18}/> STOP SIMULATION</> : <><Play size={18}/> START SIMULATION</>}
+              </button>
+              <div className="p-4 border border-blue-100 bg-blue-50/50 rounded-xl space-y-2">
+                 <p className="text-[9px] font-black text-blue-600 uppercase">Live Metrics</p>
+                 <div className="flex justify-between text-[11px] font-bold text-slate-600"><span>Ping:</span> <span>{isLive ? '14ms' : '0ms'}</span></div>
+                 <div className="flex justify-between text-[11px] font-bold text-slate-600"><span>Packet Loss:</span> <span>0%</span></div>
+              </div>
+            </div>
+          ) : activeTab === 'learning' ? (
             <div className="space-y-3">
               {curriculumMaterials.map((mat) => (
-                <button key={mat.id} onClick={() => setSelectedLesson(mat)} className="w-full p-4 rounded-xl border bg-white flex items-center justify-between hover:border-blue-300">
+                <button key={mat.id} onClick={() => setSelectedLesson(mat)} className="w-full p-4 rounded-xl border bg-white flex items-center justify-between hover:border-blue-300 transition-all">
                   <div className="flex items-center gap-3 text-left">
                     <div className="text-blue-600">{mat.icon}</div>
                     <div><p className="font-bold text-slate-800 text-xs">{mat.title}</p></div>
@@ -212,7 +244,7 @@ function NetworkLabContent() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {(activeTab === 'inventory' ? Object.keys(iconLib).slice(0, 10) : ['cloud', 'circle', 'square', 'chat']).map(item => (
-                <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-3 border rounded-xl flex flex-col items-center bg-white hover:bg-slate-50 cursor-grab shadow-sm transition-all">
+                <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-3 border rounded-xl flex flex-col items-center bg-white hover:bg-slate-50 cursor-grab shadow-sm transition-all hover:scale-105 active:scale-95">
                   {iconLib[item]} <span className="text-[9px] mt-1 font-bold uppercase text-slate-500">{item}</span>
                 </div>
               ))}
@@ -233,7 +265,7 @@ function NetworkLabContent() {
       {/* CANVAS AREA */}
       <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
         
-        {/* WATERMARK SANPIO (Di Luar ReactFlow agar tetap di belakang) */}
+        {/* WATERMARK SANPIO */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
             <h1 className="text-[22vw] font-black text-slate-900 opacity-[0.03] select-none leading-none">SANPIO</h1>
         </div>
@@ -245,21 +277,7 @@ function NetworkLabContent() {
             <p className="text-[10px] font-bold text-slate-500 italic">San Pio Lab v2.0</p>
         </div>
 
-        {/* CURRICULUM POPUP */}
-        {selectedLesson && (
-          <div className="absolute top-4 right-4 z-[110] w-80 bg-white/95 backdrop-blur-xl border-2 border-blue-500/20 rounded-3xl p-6 shadow-2xl">
-             <button onClick={() => setSelectedLesson(null)} className="absolute top-4 right-4 text-slate-300 hover:text-red-500"><Trash2 size={18}/></button>
-             <h4 className="text-xl font-black text-slate-800 tracking-tighter mb-2">{selectedLesson.title}</h4>
-             <p className="text-[11px] text-slate-500 italic border-l-2 border-blue-500 pl-3 mb-4">"{selectedLesson.description}"</p>
-             <div className="space-y-2">
-                {selectedLesson.points.map((p: string, i: number) => (
-                  <div key={i} className="flex gap-2 items-center text-[11px] font-bold text-slate-600"><Zap size={10} className="text-emerald-500"/> {p}</div>
-                ))}
-             </div>
-          </div>
-        )}
-
-        {/* TOOLBAR */}
+        {/* TOOLBAR TOPOLOGI */}
         <div className="absolute top-4 left-4 z-[100] flex gap-2">
           <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-white text-blue-600 rounded-xl shadow-lg border border-blue-100 flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN BUS</button>
           <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-white text-indigo-600 rounded-xl shadow-lg border border-indigo-100 flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN MESH</button>
@@ -293,10 +311,10 @@ function NetworkLabContent() {
       </div>
 
       <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .react-flow__edge.animated path { stroke-dasharray: 8; animation: dash 1s linear infinite; }
-        @keyframes dash { from { stroke-dashoffset: 16; } to { stroke-dashoffset: 0; } }
+        .react-flow__edge.animated path { stroke-dasharray: 10; animation: dash 0.5s linear infinite; }
+        @keyframes dash { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
       `}</style>
     </div>
   );
