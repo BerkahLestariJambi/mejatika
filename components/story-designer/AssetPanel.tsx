@@ -1,10 +1,28 @@
 // src/components/story-designer/AssetPanel.tsx
-import React from 'react';
-import { Plus, Trash2, Layout, Type, MousePointer2, BookOpen, Star, Play } from 'lucide-react';
+import React, { useRef } from 'react'; // Import useRef
+import { Plus, Trash2, Layout, Type, MousePointer2, BookOpen, Star, Play, Image as ImageIcon } from 'lucide-react';
 
-export default function AssetPanel({ slides, setSlides, nodes, onStart }: any) {
+export default function AssetPanel({ slides, setSlides, nodes, onStart, onAddImageNode }: any) { // Tambahkan onAddImageNode
+  const fileInputRef = useRef<HTMLInputElement>(null); // Ref untuk input file
+  
   const addSlide = () => {
     setSlides([...slides, { id: `s_${Date.now()}`, title: "Slide Baru", desc: "", targetId: "" }]);
+  };
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        // Panggil fungsi onAddImageNode dari parent (page.tsx)
+        onAddImageNode(reader.result as string, file.name.split('.')[0]); 
+      };
+      reader.readAsDataURL(file);
+    }
+    // Reset input file agar bisa upload gambar yang sama lagi jika diperlukan
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -31,6 +49,21 @@ export default function AssetPanel({ slides, setSlides, nodes, onStart }: any) {
                 <span className="text-[9px] font-bold uppercase mt-1">{item.type}</span>
               </div>
             ))}
+             {/* Tombol Upload Gambar */}
+            <div 
+              className="p-3 border rounded-xl flex flex-col items-center bg-white cursor-pointer hover:bg-blue-50 transition-colors"
+              onClick={() => fileInputRef.current?.click()} // Klik input file tersembunyi
+            >
+              <div className="text-blue-600"><ImageIcon size={20}/></div>
+              <span className="text-[9px] font-bold uppercase mt-1">GAMBAR</span>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleImageUpload} 
+              />
+            </div>
           </div>
         </section>
 
