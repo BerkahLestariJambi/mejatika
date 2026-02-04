@@ -88,8 +88,8 @@ function NetworkLabContent() {
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'inventory' | 'shapes'>('inventory');
   
-  // NAMA ANGGOTA KELOMPOK FIXED
-  const [kelompok, setKelompok] = useState('Eklan Ilang | Andri Jelau | Farel Gaut | Boven Jelanu');
+  // NAMA ANGGOTA KELOMPOK TETAP
+  const [kelompok] = useState('Eklan Ilang | Andri Jelau | Farel Gaut | Boven Jelanu');
 
   const onNodeLabelChange = (id: string, label: string) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
@@ -121,7 +121,6 @@ function NetworkLabContent() {
         }));
         setNodes(restoredNodes);
         setEdges(parsed.edges);
-        if(parsed.kelompok) setKelompok(parsed.kelompok);
       } catch (err) { alert("Format file tidak dikenali!"); }
     };
     reader.readAsText(file);
@@ -224,42 +223,34 @@ function NetworkLabContent() {
           </div>
         </div>
 
+        {/* NAMA KELOMPOK DITAMPILKAN PADA TAB INVENTORY (BUS & MESH) */}
         {activeTab === 'inventory' && (
-          <div className="absolute top-6 left-6 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-md p-2 rounded-2xl shadow-xl border border-white/50">
-            <button onClick={() => generateTopology('empty')} className="px-5 py-2.5 text-[10px] font-black bg-slate-900 text-white rounded-xl flex items-center gap-2 hover:scale-105 transition-all">
-               <PlayCircle size={16} className="text-emerald-400 animate-pulse"/> SIMULASI BARU
-            </button>
-            <div className="w-[1px] h-8 bg-slate-200 mx-1" />
-            <button onClick={() => generateTopology('bus')} className="px-5 py-2.5 text-[10px] font-black bg-blue-50 text-blue-600 rounded-xl flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all border border-blue-100 shadow-sm"><RefreshCcw size={14}/> AUTO BUS</button>
-            <button onClick={() => generateTopology('mesh')} className="px-5 py-2.5 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100 shadow-sm"><Activity size={14}/> AUTO MESH</button>
-          </div>
+          <>
+            <div className="absolute top-6 left-6 z-10 flex items-center gap-2 bg-white/90 backdrop-blur-md p-2 rounded-2xl shadow-xl border border-white/50">
+              <button onClick={() => generateTopology('empty')} className="px-5 py-2.5 text-[10px] font-black bg-slate-900 text-white rounded-xl flex items-center gap-2 hover:scale-105 transition-all">
+                 <PlayCircle size={16} className="text-emerald-400 animate-pulse"/> SIMULASI BARU
+              </button>
+              <div className="w-[1px] h-8 bg-slate-200 mx-1" />
+              <button onClick={() => generateTopology('bus')} className="px-5 py-2.5 text-[10px] font-black bg-blue-50 text-blue-600 rounded-xl flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all border border-blue-100 shadow-sm"><RefreshCcw size={14}/> AUTO BUS</button>
+              <button onClick={() => generateTopology('mesh')} className="px-5 py-2.5 text-[10px] font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100 shadow-sm"><Activity size={14}/> AUTO MESH</button>
+            </div>
+
+            {/* NAMA KELOMPOK DI BAWAH CANVAS (DISPLAY SAJA) */}
+            <div className="absolute bottom-6 left-6 z-10 bg-blue-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 backdrop-blur-sm">
+              <div className="bg-white/20 p-2 rounded-lg"><Users size={20} className="text-emerald-300" /></div>
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-[0.2em] mb-0.5">Anggota Kelompok</span>
+                <span className="text-[12px] font-black uppercase tracking-wider leading-none">{kelompok}</span>
+              </div>
+            </div>
+          </>
         )}
 
-        {/* NAMA KELOMPOK DI BAWAH CANVAS (KIRI) */}
-        <div className="absolute bottom-6 left-6 z-10 bg-blue-900 text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-3 border border-blue-400/30">
-          <Users size={16} className="text-emerald-400" />
-          <div className="flex flex-col">
-            <span className="text-[8px] font-bold opacity-60 uppercase tracking-widest">Team Informatika</span>
-            <span className="text-[11px] font-black uppercase tracking-tight">{kelompok}</span>
-          </div>
-        </div>
-
-        {/* NAMA KELOMPOK DI BAWAH CANVAS (KANAN - EDITABLE) */}
-        <div className="absolute bottom-6 right-6 z-10 bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-2xl min-w-[320px] group transition-all hover:border-blue-400">
-           <div className="flex items-center gap-3">
-             <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors"><Users size={18}/></div>
-             <div className="flex-1">
-                <p className="text-[8px] font-bold text-slate-400 uppercase leading-none mb-1">Daftar Anggota Kelompok</p>
-                <input 
-                  type="text" 
-                  value={kelompok} 
-                  onChange={(e) => setKelompok(e.target.value)}
-                  className="bg-transparent border-none text-[10px] font-black text-slate-800 w-full focus:ring-0 uppercase p-0"
-                  placeholder="MASUKKAN NAMA ANGGOTA..."
-                />
-             </div>
-           </div>
-        </div>
+        {/* FITUR EDITABLE DI REMARK/DISABLE SESUAI PERMINTAAN
+        <div className="absolute bottom-6 right-6 z-10 ...">
+           <input type="text" value={kelompok} ... />
+        </div> 
+        */}
 
         <ReactFlow 
           nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
