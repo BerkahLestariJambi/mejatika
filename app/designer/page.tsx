@@ -16,13 +16,12 @@ import '@xyflow/react/dist/style.css';
 import { Trash2 } from 'lucide-react';
 
 import StoryNode from '@/components/story-designer/StoryNode';
-import BoardNode from '@/components/story-designer/BoardNode'; // Komponen Baru
+import BoardNode from '@/components/story-designer/BoardNode';
 import AssetPanel from '@/components/story-designer/AssetPanel';
-import SlideEditor from '@/components/story-designer/SlideEditor';
 import Player from '@/components/story-designer/Player';
 import { useStory } from '@/hooks/useStory';
 
-// Daftarkan dua tipe node: Karakter (storyNode) dan Papan Tulis (boardNode)
+// Registrasi komponen khusus
 const nodeTypes = { 
   storyNode: StoryNode,
   boardNode: BoardNode 
@@ -41,8 +40,6 @@ function DesignerCore() {
     setActiveSlideIndex,
     isPreviewMode,
     setIsPreviewMode,
-    updateSlide,
-    removeSlide
   } = useStory();
 
   // Daftarkan fungsi ganti background ke window agar bisa diakses AssetPanel
@@ -77,6 +74,7 @@ function DesignerCore() {
     setNodes(nds => nds.concat(newNode));
   }, [setNodes]);
 
+  // FITUR: Hapus Objek Terpilih
   const deleteSelectedElements = useCallback(() => {
     const selectedNodes = nodes.filter((node) => node.selected);
     if (selectedNodes.length === 0) return;
@@ -88,6 +86,7 @@ function DesignerCore() {
     ));
   }, [nodes, setNodes, setSlides]);
 
+  // FITUR: Jalankan Slide (Cinematic Mode)
   const runSlide = useCallback((index: number) => {
     if (index < 0 || index >= slides.length) {
       setIsPreviewMode(false);
@@ -103,11 +102,16 @@ function DesignerCore() {
     const targetNode = nodes.find(n => n.id === slide.targetId);
 
     if (targetNode) {
-      // Zoom ke arah node (baik itu Karakter atau Papan Tulis)
+      /**
+       * PENYESUAIAN KAMERA:
+       * Karena panel putih narasi ada di samping kiri (w-96), 
+       * kita geser titik fokus kamera ke arah kanan (x + 350) 
+       * agar Papan Tulis di tengah tidak tertutup panel.
+       */
       setCenter(
-        targetNode.position.x + 80, 
-        targetNode.position.y + 80, 
-        { zoom: 2.2, duration: 1500 }
+        targetNode.position.x + 350, 
+        targetNode.position.y + 100, 
+        { zoom: 1.5, duration: 1500 }
       );
       
       setNodes(nds => nds.map(n => ({
@@ -117,6 +121,7 @@ function DesignerCore() {
     }
   }, [slides, nodes, setCenter, setNodes, setIsPreviewMode, setActiveSlideIndex, fitView]);
 
+  // FITUR: Tambah Karakter dari Image/Preset
   const handleAddImageNode = useCallback((imageUrl: string, imageName: string) => {
     const id = `node_${Date.now()}`;
     const newNode = {
@@ -138,6 +143,7 @@ function DesignerCore() {
 
   return (
     <div className="flex h-screen w-full bg-slate-900 overflow-hidden font-sans text-slate-900">
+      {/* SIDEBAR ASSET (Hanya muncul jika tidak preview) */}
       {!isPreviewMode && (
         <aside className="w-85 h-full bg-white border-r flex flex-col shadow-2xl z-50">
           <AssetPanel 
@@ -146,7 +152,7 @@ function DesignerCore() {
             nodes={nodes} 
             onStart={() => runSlide(0)} 
             onAddImageNode={handleAddImageNode}
-            onAddBoard={handleAddBoard} // Kirim fungsi tambah papan ke sidebar
+            onAddBoard={handleAddBoard}
           />
         </aside>
       )}
@@ -163,6 +169,7 @@ function DesignerCore() {
           </div>
         )}
 
+        {/* AREA REACT FLOW (CANVAS) */}
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -199,7 +206,7 @@ function DesignerCore() {
           </div>
         )}
 
-        {/* PLAYER CINEMATIC */}
+        {/* PLAYER CINEMATIC (Panel Putih Samping & Navigasi) */}
         {isPreviewMode && slides[activeSlideIndex] && (
           <Player 
             activeSlide={{ ...slides[activeSlideIndex], index: activeSlideIndex }}
