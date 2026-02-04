@@ -1,66 +1,73 @@
 // src/components/story-designer/StoryNode.tsx
 'use client';
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Handle, Position } from '@xyflow/react';
 
-const StoryNode = forwardRef(({ data, selected }: any, ref) => {
-  const [mouthScale, setMouthScale] = useState({ w: 4, h: 1 });
-  const [isTalking, setIsTalking] = useState(false);
+export default function StoryNode({ data, selected }: any) {
+  // Efek berjalan: karakter akan bergeser sedikit ke kiri/kanan secara acak saat aktif
+  const [walkPos, setWalkPos] = useState({ x: 0, y: 0 });
 
-  // Expose fungsi bicara ke parent (Player/Page)
-  useImperativeHandle(ref, () => ({
-    speak(duration: number) {
-      setIsTalking(true);
-      const startTime = Date.now();
-      
-      const animate = () => {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < duration) {
-          // Simulasi fonem: mulut berubah bentuk secara acak tapi cepat
-          const shapes = [
-            { w: 5, h: 4 }, // fonem A/O
-            { w: 3, h: 2 }, // fonem I/E
-            { w: 4, h: 5 }, // fonem U
-            { w: 4, h: 1 }  // fonem M/P/B (tutup)
-          ];
-          const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
-          setMouthScale(randomShape);
-          requestAnimationFrame(() => setTimeout(animate, 80)); // Kecepatan fonem
-        } else {
-          setIsTalking(false);
-          setMouthScale({ w: 4, h: 1 });
-        }
-      };
-      animate();
+  useEffect(() => {
+    let interval: any;
+    if (data.active) {
+      // Setiap 3 detik, guru akan "berjalan" ke titik baru di sekitar posisinya
+      interval = setInterval(() => {
+        setWalkPos({
+          x: (Math.random() - 0.5) * 100, // Geser horizontal -50px sampai 50px
+          y: (Math.random() - 0.5) * 30,  // Geser vertikal sedikit agar natural
+        });
+      }, 3000);
+    } else {
+      setWalkPos({ x: 0, y: 0 });
     }
-  }));
+    return () => clearInterval(interval);
+  }, [data.active]);
 
   return (
     <div className="relative flex flex-col items-center group">
-      <div className={`relative transition-all duration-700 ${data.active ? 'scale-150 z-50' : 'opacity-40 grayscale'}`}>
-        <img src={data.imageUrl} className="w-44 h-44 object-contain" />
+      <Handle type="target" position={Position.Top} className="opacity-0" />
+
+      <div className={`
+        relative transition-all duration-[3000ms] ease-in-out
+        ${data.active ? 'scale-150 z-50' : 'opacity-40 grayscale blur-[0.5px] scale-100'}
+      `}
+      style={{
+        // Logika berpindah tempat (berjalan)
+        transform: `translate(${walkPos.x}px, ${walkPos.y}px) ${data.active ? 'scale(1.5)' : 'scale(1)'}`
+      }}>
         
-        {/* MULUT REALISTIS DENGAN PHONEME SHAPES */}
-        {data.active && (
-          <div 
-            className="absolute bg-[#2d1b0d] rounded-full transition-all duration-75 ease-in-out border-t border-black/20"
-            style={{ 
-              opacity: 0.9,
-              left: `${data.mouthX || 50}%`,
-              top: `${data.mouthY || 62}%`,
-              width: `${mouthScale.w * 3}px`,
-              height: `${mouthScale.h * 3}px`,
-              transform: 'translate(-50%, -50%)'
-            }}
-          >
-            {/* Detail bibir dalam */}
-            <div className="w-full h-[1px] bg-red-400/20 mt-1 mx-auto rounded-full" />
-          </div>
-        )}
+        <div className={`relative ${data.active ? 'animate-walking' : ''}`}>
+          {data.imageUrl ? (
+            <img 
+              src={data.imageUrl} 
+              className="w-44 h-44 object-contain drop-shadow-2xl"
+              alt={data.label}
+            />
+          ) : (
+            <div className="w-40 h-40 bg-slate-200 rounded-full" />
+          )}
+        </div>
       </div>
+
+      {/* Label Nama */}
+      <div className={`mt-4 px-3 py-1 bg-slate-900 text-white text-[8px] font-black uppercase rounded-full transition-opacity
+        ${data.active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+        {data.label}
+      </div>
+
       <Handle type="source" position={Position.Bottom} className="opacity-0" />
+
+      {/* Animasi Goyang Saat Berjalan */}
+      <style jsx>{`
+        @keyframes walking {
+          0%, 100% { transform: rotate(-2deg); }
+          50% { transform: rotate(2deg) translateY(-5px); }
+        }
+        .animate-walking {
+          animation: walking 0.8s infinite ease-in-out;
+        }
+      `}</style>
     </div>
   );
-});
-
-export default StoryNode;
+}
