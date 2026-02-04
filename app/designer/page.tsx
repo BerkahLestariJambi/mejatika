@@ -13,7 +13,7 @@ import {
   Panel
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Trash2, Info } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 
 import StoryNode from '@/components/story-designer/StoryNode';
 import AssetPanel from '@/components/story-designer/AssetPanel';
@@ -27,7 +27,7 @@ function DesignerCore() {
   const { setCenter, fitView } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [bgImage, setBgImage] = useState(''); // State untuk Background Film
+  const [bgImage, setBgImage] = useState('');
 
   const {
     slides,
@@ -40,10 +40,21 @@ function DesignerCore() {
     removeSlide
   } = useStory();
 
-  // Daftarkan fungsi ganti background agar bisa diakses AssetPanel
+  // Daftarkan fungsi ganti background ke window
   useEffect(() => {
     (window as any).setBackground = setBgImage;
   }, []);
+
+  // FITUR: Update Koordinat Mulut per Node
+  const updateMouthPosition = useCallback((nodeId: string, x: number, y: number) => {
+    setNodes((nds) => 
+      nds.map((node) => 
+        node.id === nodeId 
+          ? { ...node, data: { ...node.data, mouthX: x, mouthY: y } } 
+          : node
+      )
+    );
+  }, [setNodes]);
 
   const deleteSelectedElements = useCallback(() => {
     const selectedNodes = nodes.filter((node) => node.selected);
@@ -71,7 +82,6 @@ function DesignerCore() {
     const targetNode = nodes.find(n => n.id === slide.targetId);
 
     if (targetNode) {
-      // ZOOM CINEMATIC: Fokus ke karakter yang bicara
       setCenter(
         targetNode.position.x + 80, 
         targetNode.position.y + 80, 
@@ -96,14 +106,17 @@ function DesignerCore() {
         type: 'image',
         imageUrl: imageUrl,
         active: false,
+        mouthX: 50, // Default tengah horizontal
+        mouthY: 62, // Default area dagu/bibir
+        // Tambahkan fungsi update koordinat ke dalam data node
+        onUpdateMouth: (x: number, y: number) => updateMouthPosition(id, x, y)
       },
     };
     setNodes(nds => nds.concat(newNode));
-  }, [setNodes]);
+  }, [setNodes, updateMouthPosition]);
 
   return (
-    <div className="flex h-screen w-full bg-slate-900 overflow-hidden font-sans">
-      {/* SIDEBAR: Hilang saat Play agar murni jadi film */}
+    <div className="flex h-screen w-full bg-slate-900 overflow-hidden font-sans text-slate-900">
       {!isPreviewMode && (
         <aside className="w-85 h-full bg-white border-r flex flex-col shadow-2xl z-50">
           <AssetPanel 
@@ -117,15 +130,14 @@ function DesignerCore() {
       )}
 
       <main className="flex-grow relative h-full bg-black overflow-hidden">
-        
-        {/* LAYER BACKGROUND FILM */}
+        {/* BACKGROUND LAYER */}
         {bgImage && (
           <div className="absolute inset-0 z-0 pointer-events-none">
             <img 
               src={bgImage} 
               className={`w-full h-full object-cover transition-all duration-1000 ${isPreviewMode ? 'scale-110 blur-0' : 'opacity-40 blur-sm'}`} 
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
           </div>
         )}
 
@@ -139,20 +151,18 @@ function DesignerCore() {
           elementsSelectable={!isPreviewMode}
           panOnDrag={!isPreviewMode}
           zoomOnScroll={!isPreviewMode}
-          selectionKeyCode={isPreviewMode ? null : "Shift"}
           deleteKeyCode={["Backspace", "Delete"]}
           style={{ background: 'transparent' }}
           fitView
         >
-          {/* Grid hanya muncul saat mengedit */}
-          {!isPreviewMode && <Background color="#444" gap={25} size={1} opacity={0.2} />}
+          {!isPreviewMode && <Background color="#555" gap={25} size={1} opacity={0.2} />}
           {!isPreviewMode && <Controls showInteractive={false} className="bg-white border-none shadow-xl" />}
 
           {!isPreviewMode && (
             <Panel position="top-right" className="flex gap-2">
               <button 
                 onClick={deleteSelectedElements}
-                className="p-3 bg-white/90 backdrop-blur text-red-500 rounded-2xl shadow-2xl hover:bg-red-50 transition-all flex items-center gap-2 font-black text-[10px]"
+                className="p-3 bg-white/90 backdrop-blur text-red-600 rounded-2xl shadow-2xl hover:bg-red-50 transition-all flex items-center gap-2 font-black text-[10px] border border-red-100"
               >
                 <Trash2 size={16} /> HAPUS OBJEK
               </button>
@@ -160,14 +170,14 @@ function DesignerCore() {
           )}
         </ReactFlow>
 
-        {/* WATERMARK SANPIO: Hanya muncul saat edit */}
+        {/* WATERMARK SANPIO */}
         {!isPreviewMode && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03] z-0">
-            <h1 className="text-[20vw] font-black select-none tracking-tighter">SANPIO</h1>
+            <h1 className="text-[20vw] font-black select-none tracking-tighter text-white">SANPIO</h1>
           </div>
         )}
 
-        {/* PLAYER: Interface Film Kartun (Subtitle & Suara) */}
+        {/* CINEMATIC PLAYER */}
         {isPreviewMode && slides[activeSlideIndex] && (
           <Player 
             activeSlide={{ ...slides[activeSlideIndex], index: activeSlideIndex }}
