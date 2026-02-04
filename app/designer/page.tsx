@@ -16,12 +16,17 @@ import '@xyflow/react/dist/style.css';
 import { Trash2 } from 'lucide-react';
 
 import StoryNode from '@/components/story-designer/StoryNode';
+import BoardNode from '@/components/story-designer/BoardNode'; // Komponen Baru
 import AssetPanel from '@/components/story-designer/AssetPanel';
 import SlideEditor from '@/components/story-designer/SlideEditor';
 import Player from '@/components/story-designer/Player';
 import { useStory } from '@/hooks/useStory';
 
-const nodeTypes = { storyNode: StoryNode };
+// Daftarkan dua tipe node: Karakter (storyNode) dan Papan Tulis (boardNode)
+const nodeTypes = { 
+  storyNode: StoryNode,
+  boardNode: BoardNode 
+};
 
 function DesignerCore() {
   const { setCenter, fitView } = useReactFlow();
@@ -40,12 +45,12 @@ function DesignerCore() {
     removeSlide
   } = useStory();
 
-  // Daftarkan fungsi ganti background ke window
+  // Daftarkan fungsi ganti background ke window agar bisa diakses AssetPanel
   useEffect(() => {
     (window as any).setBackground = setBgImage;
   }, []);
 
-  // FITUR: Update Koordinat Mulut per Node
+  // FITUR: Update Koordinat Mulut per Node Karakter
   const updateMouthPosition = useCallback((nodeId: string, x: number, y: number) => {
     setNodes((nds) => 
       nds.map((node) => 
@@ -54,6 +59,22 @@ function DesignerCore() {
           : node
       )
     );
+  }, [setNodes]);
+
+  // FITUR: Tambah Papan Tulis (Board)
+  const handleAddBoard = useCallback(() => {
+    const id = `board_${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'boardNode',
+      position: { x: 200, y: 200 },
+      data: { 
+        label: 'PAPAN MATERI', 
+        content: 'Tulis isi materi di sini...', 
+        active: false 
+      },
+    };
+    setNodes(nds => nds.concat(newNode));
   }, [setNodes]);
 
   const deleteSelectedElements = useCallback(() => {
@@ -82,10 +103,11 @@ function DesignerCore() {
     const targetNode = nodes.find(n => n.id === slide.targetId);
 
     if (targetNode) {
+      // Zoom ke arah node (baik itu Karakter atau Papan Tulis)
       setCenter(
         targetNode.position.x + 80, 
         targetNode.position.y + 80, 
-        { zoom: 2.5, duration: 1500 }
+        { zoom: 2.2, duration: 1500 }
       );
       
       setNodes(nds => nds.map(n => ({
@@ -106,9 +128,8 @@ function DesignerCore() {
         type: 'image',
         imageUrl: imageUrl,
         active: false,
-        mouthX: 50, // Default tengah horizontal
-        mouthY: 62, // Default area dagu/bibir
-        // Tambahkan fungsi update koordinat ke dalam data node
+        mouthX: 50,
+        mouthY: 62,
         onUpdateMouth: (x: number, y: number) => updateMouthPosition(id, x, y)
       },
     };
@@ -125,6 +146,7 @@ function DesignerCore() {
             nodes={nodes} 
             onStart={() => runSlide(0)} 
             onAddImageNode={handleAddImageNode}
+            onAddBoard={handleAddBoard} // Kirim fungsi tambah papan ke sidebar
           />
         </aside>
       )}
@@ -137,7 +159,7 @@ function DesignerCore() {
               src={bgImage} 
               className={`w-full h-full object-cover transition-all duration-1000 ${isPreviewMode ? 'scale-110 blur-0' : 'opacity-40 blur-sm'}`} 
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
           </div>
         )}
 
@@ -177,7 +199,7 @@ function DesignerCore() {
           </div>
         )}
 
-        {/* CINEMATIC PLAYER */}
+        {/* PLAYER CINEMATIC */}
         {isPreviewMode && slides[activeSlideIndex] && (
           <Player 
             activeSlide={{ ...slides[activeSlideIndex], index: activeSlideIndex }}
