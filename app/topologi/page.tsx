@@ -19,7 +19,7 @@ import {
   ShieldCheck, Camera, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, Zap, HardDrive, DoorOpen, 
   Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw, PlayCircle, Activity, Users
-} from 'lucide-center';
+} from 'lucide-react';
 
 // Konfigurasi Ikon
 const iconLib: any = {
@@ -87,7 +87,9 @@ function NetworkLabContent() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'inventory' | 'shapes'>('inventory');
-  const [kelompok, setKelompok] = useState('NAMA ANGGOTA KELOMPOK: ');
+  
+  // NAMA ANGGOTA KELOMPOK FIXED
+  const [kelompok, setKelompok] = useState('Eklan Ilang | Andri Jelau | Farel Gaut | Boven Jelanu');
 
   const onNodeLabelChange = (id: string, label: string) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
@@ -211,10 +213,15 @@ function NetworkLabContent() {
       </aside>
 
       <main className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
-        {/* WATERMARK SANPIO */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none opacity-[0.06] z-0 select-none">
-          <h1 className="text-[14rem] font-black text-slate-900 leading-none">SANPIO</h1>
-          <p className="text-4xl font-bold text-slate-700 uppercase tracking-[1.5rem]">MEJATIKA LAB</p>
+        
+        {/* WATERMARK SANPIO LENGKAP */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none opacity-[0.08] z-0 select-none w-full">
+          <h1 className="text-[16rem] font-black text-slate-900 leading-none tracking-tighter">SANPIO</h1>
+          <p className="text-5xl font-black text-slate-800 uppercase tracking-[2rem] -mt-8">MEJATIKA LAB</p>
+          <div className="mt-4 flex justify-center gap-10">
+            <span className="text-2xl font-bold border-y-2 border-slate-900 py-2 px-4 uppercase">Project Peminatan</span>
+            <span className="text-2xl font-bold border-y-2 border-slate-900 py-2 px-4 uppercase">Informatika 2026</span>
+          </div>
         </div>
 
         {activeTab === 'inventory' && (
@@ -228,15 +235,30 @@ function NetworkLabContent() {
           </div>
         )}
 
-        {/* NAMA KELOMPOK DI BAWAH CANVAS */}
-        <div className="absolute bottom-6 right-6 z-10 bg-white/80 backdrop-blur p-4 rounded-2xl border border-slate-200 shadow-xl min-w-[300px] flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-lg text-blue-600"><Users size={20}/></div>
-          <input 
-            type="text" 
-            value={kelompok} 
-            onChange={(e) => setKelompok(e.target.value)}
-            className="bg-transparent border-none text-[11px] font-black text-slate-700 w-full focus:ring-0 uppercase placeholder:text-slate-300"
-          />
+        {/* NAMA KELOMPOK DI BAWAH CANVAS (KIRI) */}
+        <div className="absolute bottom-6 left-6 z-10 bg-blue-900 text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-3 border border-blue-400/30">
+          <Users size={16} className="text-emerald-400" />
+          <div className="flex flex-col">
+            <span className="text-[8px] font-bold opacity-60 uppercase tracking-widest">Team Informatika</span>
+            <span className="text-[11px] font-black uppercase tracking-tight">{kelompok}</span>
+          </div>
+        </div>
+
+        {/* NAMA KELOMPOK DI BAWAH CANVAS (KANAN - EDITABLE) */}
+        <div className="absolute bottom-6 right-6 z-10 bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-2xl min-w-[320px] group transition-all hover:border-blue-400">
+           <div className="flex items-center gap-3">
+             <div className="bg-emerald-100 p-2 rounded-lg text-emerald-600 group-hover:bg-emerald-500 group-hover:text-white transition-colors"><Users size={18}/></div>
+             <div className="flex-1">
+                <p className="text-[8px] font-bold text-slate-400 uppercase leading-none mb-1">Daftar Anggota Kelompok</p>
+                <input 
+                  type="text" 
+                  value={kelompok} 
+                  onChange={(e) => setKelompok(e.target.value)}
+                  className="bg-transparent border-none text-[10px] font-black text-slate-800 w-full focus:ring-0 uppercase p-0"
+                  placeholder="MASUKKAN NAMA ANGGOTA..."
+                />
+             </div>
+           </div>
         </div>
 
         <ReactFlow 
@@ -247,14 +269,14 @@ function NetworkLabContent() {
           onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: n.data.type }); }}
           fitView
         >
-          <Background gap={35} size={1} color="#e2e8f0" />
+          <Background gap={35} size={1} color="#cbd5e1" />
           <Controls />
           {menu && (
             <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 min-w-[240px]">
               <p className="text-[10px] font-black text-slate-400 mb-3 uppercase tracking-tighter">Konfigurasi Warna</p>
               <div className="grid grid-cols-5 gap-2 mb-5">
                 {['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#1e293b'].map(c => (
-                  <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, [menu.type === 'shape' ? 'bgColor' : 'borderColor']: c}} : n))} className="w-8 h-8 rounded-full border-2 border-white shadow-md" style={{ background: c }} />
+                  <button key={c} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, [menu.type === 'shape' ? 'bgColor' : 'borderColor']: c}} : n))} className="w-8 h-8 rounded-full border-2 border-white shadow-md transition-transform hover:scale-125" style={{ background: c }} />
                 ))}
               </div>
               <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-xl hover:bg-red-600 hover:text-white transition-all uppercase flex items-center justify-center gap-2"><Trash2 size={14}/> Hapus Objek</button>
