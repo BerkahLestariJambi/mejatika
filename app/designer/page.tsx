@@ -61,35 +61,35 @@ function DesignerCore() {
     ));
   }, [nodes, setNodes, setSlides]);
 
-  const runSlide = useCallback((index: number) => {
-    if (index < 0 || index >= slides.length) {
-      setIsPreviewMode(false);
-      setActiveSlideIndex(-1);
-      setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, active: false } })));
-      return;
-    }
+// Edit bagian fungsi runSlide di page.tsx
+const runSlide = useCallback((index: number) => {
+  if (index < 0 || index >= slides.length) {
+    setIsPreviewMode(false);
+    setActiveSlideIndex(-1);
+    setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, active: false } })));
+    return;
+  }
 
-    setIsPreviewMode(true);
-    setActiveSlideIndex(index);
-    const slide = slides[index];
-    const targetNode = nodes.find(n => n.id === slide.targetId);
+  setIsPreviewMode(true);
+  setActiveSlideIndex(index);
+  const slide = slides[index];
+  const targetNode = nodes.find(n => n.id === slide.targetId);
 
-    if (targetNode) {
-      const nodeWidth = targetNode.measured?.width || 150;
-      const nodeHeight = targetNode.measured?.height || 150;
-      
-      setCenter(
-        targetNode.position.x + nodeWidth / 2, 
-        targetNode.position.y + nodeHeight / 2, 
-        { zoom: 1.8, duration: 800 }
-      );
-      
-      setNodes(nds => nds.map(n => ({
-        ...n,
-        data: { ...n.data, active: n.id === targetNode.id }
-      })));
-    }
-  }, [slides, nodes, setCenter, setIsPreviewMode, setActiveSlideIndex, setNodes]);
+  if (targetNode) {
+    // Efek Kamera: Zoom in ke aktor (objek) yang sedang "berbicara" atau dibahas
+    setCenter(
+      targetNode.position.x + (targetNode.measured?.width || 100) / 2, 
+      targetNode.position.y + (targetNode.measured?.height || 100) / 2, 
+      { zoom: 2.2, duration: 1200 } // Durasi lebih lambat agar terasa smooth seperti film
+    );
+    
+    // Berikan status 'active' untuk memicu animasi CSS di StoryNode.tsx
+    setNodes(nds => nds.map(n => ({
+      ...n,
+      data: { ...n.data, active: n.id === targetNode.id }
+    })));
+  }
+}, [slides, nodes, setCenter, setNodes]);
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
