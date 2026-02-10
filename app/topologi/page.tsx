@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useRef, useState, useEffect, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -15,11 +15,14 @@ import {
   MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+
+// Penambahan import Globe dan Cpu yang sebelumnya menyebabkan build error
 import { 
   ShieldCheck, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, Zap, HardDrive, DoorOpen, 
   Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw, 
-  ChevronRight, Play, Square as StopSquare, AlertTriangle, Link2Off
+  ChevronRight, Play, Square as StopSquare, AlertTriangle, Link2Off,
+  Globe, Cpu // <--- Pastikan ini ada
 } from 'lucide-react';
 
 // --- KONFIGURASI ICON ---
@@ -61,39 +64,42 @@ const UniversalNode = ({ data, selected }: any) => {
   const isDevice = data.type === 'device';
   const isCloud = data.shapeType === 'cloud';
   const isSimulating = data.isSimulating;
-  const isDown = data.status === 'down'; // Status baru untuk simulasi kerusakan
-  const shouldAnimate = (isDevice && ['router', 'wifi', 'ap'].includes(data.shapeType) && !isDown) || (isSimulating && !isDown);
+  const isDown = data.status === 'down';
+  const isDisconnected = data.isDisconnected; // Perangkat sehat tapi jalur putus
+  
+  // Animasi berhenti jika perangkat rusak (down) ATAU jalur terputus (disconnected)
+  const shouldAnimate = (isDevice && ['router', 'wifi', 'ap'].includes(data.shapeType) && !isDown && !isDisconnected) || (isSimulating && !isDown && !isDisconnected);
   
   const getNodeStyle = (): React.CSSProperties => {
     if (isDevice) return { background: 'transparent', border: 'none' };
     if (isCloud) return { 
-      backgroundImage: getCloudPath(isDown ? '#fef2f2' : (data.bgColor || '#f0fdf4'), isDown ? '#ef4444' : (data.borderColor || '#22c55e')), 
+      backgroundImage: getCloudPath(isDown || isDisconnected ? '#fef2f2' : (data.bgColor || '#f0fdf4'), isDown || isDisconnected ? '#ef4444' : (data.borderColor || '#22c55e')), 
       backgroundSize: '100% 100%', padding: '45px 30px', border: 'none'
     };
     return {
-      background: isDown ? '#fef2f2' : (data.bgColor || '#ffffff'),
-      border: `3px solid ${isDown ? '#ef4444' : (data.borderColor || '#cbd5e1')}`,
+      background: isDown || isDisconnected ? '#fef2f2' : (data.bgColor || '#ffffff'),
+      border: `3px solid ${isDown || isDisconnected ? '#ef4444' : (data.borderColor || '#cbd5e1')}`,
       borderRadius: data.shapeType === 'circle' ? '50%' : data.shapeType === 'chat' ? '4px 4px 4px 0' : '12px',
       padding: '15px',
     };
   };
 
   return (
-    <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''} ${isDown ? 'opacity-80' : ''}`}>
+    <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''} ${isDown || isDisconnected ? 'opacity-70' : ''}`}>
       <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2.5 !h-2.5" />
       <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2.5 !h-2.5" />
       <div style={getNodeStyle()} className="w-full h-full flex flex-col items-center justify-center text-center">
         <div className="mb-1 relative">
           {shouldAnimate && <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-25 scale-150"></div>}
-          <div className={`${shouldAnimate ? 'animate-pulse text-blue-600' : isDown ? 'text-red-600' : 'text-slate-700'}`}>
+          <div className={`${shouldAnimate ? 'animate-pulse text-blue-600' : isDown || isDisconnected ? 'text-red-600' : 'text-slate-700'}`}>
             {iconLib[data.shapeType] || <Monitor size={40}/>}
-            {isDown && <AlertTriangle size={16} className="absolute -top-1 -right-1 text-red-600 animate-bounce" />}
+            {(isDown || isDisconnected) && <AlertTriangle size={16} className="absolute -top-1 -right-1 text-red-600 animate-bounce" />}
           </div>
         </div>
         <textarea
           value={data.label}
           onChange={(e) => data.onChange(e.target.value)}
-          className={`bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1 overflow-hidden ${isDown ? 'text-red-600' : ''}`}
+          className={`bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1 overflow-hidden ${isDown || isDisconnected ? 'text-red-600' : 'text-slate-800'}`}
           rows={1}
         />
       </div>
@@ -114,26 +120,27 @@ function NetworkLabContent() {
   const [activeTab, setActiveTab] = useState<'inventory' | 'learning' | 'shapes' | 'simulasi'>('inventory');
   const [isLive, setIsLive] = useState(false);
 
-  // --- LOGIC SIMULASI TERPUTUS ---
-  // Fungsi untuk mengecek konektivitas (BFS)
+  // --- LOGIC SIMULASI TERPUTUS (BFS) ---
   const checkConnectivity = useCallback(() => {
-    if (!isLive) return;
+    if (!isLive || nodes.length === 0) return;
 
-    // Asumsikan perangkat pertama (index 0) atau 'Server/Router' sebagai source utama internet
-    const startNodeId = nodes.find(n => n.data.shapeType === 'server' || n.data.shapeType === 'router')?.id || nodes[0]?.id;
-    if (!startNodeId) return;
+    // Cari node pusat (server/router)
+    const startNode = nodes.find(n => n.data.shapeType === 'server' || n.data.shapeType === 'router') || nodes[0];
+    const startNodeId = startNode.id;
 
     const visited = new Set();
     const queue = [startNodeId];
     visited.add(startNodeId);
 
-    // Hanya lewati edge yang statusnya tidak 'broken' dan node tidak 'down'
     while (queue.length > 0) {
       const currentId = queue.shift();
       const currentNode = nodes.find(n => n.id === currentId);
+      
+      // Jika node itu sendiri 'down', dia tidak bisa meneruskan data
       if (currentNode?.data.status === 'down') continue;
 
       edges.forEach(edge => {
+        // Jangan lewati jalur yang statusnya 'broken'
         if (edge.data?.status === 'broken') return;
         
         let neighborId = null;
@@ -147,17 +154,15 @@ function NetworkLabContent() {
       });
     }
 
-    // Update status node berdasarkan apakah mereka terjangkau dari source
     setNodes((nds) => nds.map(node => ({
       ...node,
       data: {
         ...node.data,
-        // Jika tidak dikunjungi, berarti terputus (down secara logis)
-        isDisconnected: !visited.has(node.id) && node.id !== startNodeId
+        isSimulating: isLive,
+        isDisconnected: !visited.has(node.id)
       }
     })));
 
-    // Update visual edge
     setEdges((eds) => eds.map(edge => {
       const isBroken = edge.data?.status === 'broken';
       return {
@@ -165,22 +170,20 @@ function NetworkLabContent() {
         animated: isLive && !isBroken,
         style: {
           ...edge.style,
-          stroke: isBroken ? '#ef4444' : '#22c55e',
-          strokeWidth: isBroken ? 2 : 4,
+          stroke: isBroken ? '#ef4444' : (isLive ? '#22c55e' : '#2563eb'),
+          strokeWidth: isBroken ? 2 : 3,
           strokeDasharray: isBroken ? '5,5' : '0'
         }
       };
     }));
-  }, [isLive, nodes, edges, setNodes, setEdges]);
+  }, [isLive, nodes.length, edges.length]); // Dependencies minimal agar tidak infinite loop
 
   useEffect(() => {
-    if (isLive) {
-      checkConnectivity();
-    } else {
-      setEdges((eds) => eds.map(edge => ({ ...edge, animated: false, style: { ...edge.style, stroke: '#2563eb', strokeWidth: 3, strokeDasharray: '0' } })));
-      setNodes((nds) => nds.map(node => ({ ...node, data: { ...node.data, isSimulating: false, isDisconnected: false } })));
+    checkConnectivity();
+    if (!isLive) {
+        setNodes(nds => nds.map(n => ({...n, data: {...n.data, isDisconnected: false, isSimulating: false}})));
     }
-  }, [isLive, checkConnectivity, setEdges, setNodes]);
+  }, [isLive, edges.filter(e => e.data?.status === 'broken').length, nodes.filter(n => n.data.status === 'down').length]);
 
   const onNodeLabelChange = (id: string, label: string) => {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
@@ -219,24 +222,24 @@ function NetworkLabContent() {
       return {
         id, type: 'universal',
         position: { x: type === 'bus' ? i * 200 + 150 : 400 + 250 * Math.cos(2*Math.PI*i/count), y: 350 + (type === 'mesh' ? 250 * Math.sin(2*Math.PI*i/count) : 0) },
-        data: { type: 'device', shapeType: 'pc', label: `PC-${i+1}`, onChange: (v: string) => onNodeLabelChange(id, v) },
+        data: { type: 'device', shapeType: i === 0 && type === 'bus' ? 'router' : 'pc', label: i === 0 && type === 'bus' ? 'GATEWAY' : `PC-${i}`, status: 'up', onChange: (v: string) => onNodeLabelChange(id, v) },
         style: { width: 85, height: 85 }
       }
     });
     const newEdges = [];
     if (type === 'bus') {
-      for (let i = 0; i < count - 1; i++) newEdges.push({ id: `e${i}`, source: newNodes[i].id, target: newNodes[i+1].id, animated: isLive, style: { strokeWidth: 3, stroke: '#2563eb' } });
+      for (let i = 0; i < count - 1; i++) newEdges.push({ id: `e${i}`, source: newNodes[i].id, target: newNodes[i+1].id, style: { strokeWidth: 3, stroke: '#2563eb' } });
     } else {
       for (let i = 0; i < count; i++) {
-        for (let j = i + 1; j < count; j++) newEdges.push({ id: `e${i}-${j}`, source: newNodes[i].id, target: newNodes[j].id, animated: isLive, style: { strokeWidth: 3, stroke: '#2563eb' } });
+        for (let j = i + 1; j < count; j++) newEdges.push({ id: `e${i}-${j}`, source: newNodes[i].id, target: newNodes[j].id, style: { strokeWidth: 3, stroke: '#2563eb' } });
       }
     }
     setNodes(newNodes); setEdges(newEdges);
   };
 
   const onConnect = useCallback((params: any) => {
-    setEdges((eds) => addEdge({ ...params, animated: isLive, style: { strokeWidth: 3, stroke: isLive ? '#22c55e' : '#2563eb' }, markerEnd: { type: MarkerType.ArrowClosed, color: isLive ? '#22c55e' : '#2563eb' } }, eds));
-  }, [isLive]);
+    setEdges((eds) => addEdge({ ...params, style: { strokeWidth: 3, stroke: '#2563eb' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#2563eb' } }, eds));
+  }, []);
 
   const onDrop = useCallback((event: any) => {
     event.preventDefault();
@@ -247,12 +250,11 @@ function NetworkLabContent() {
     const id = `node_${Date.now()}`;
     setNodes((nds) => nds.concat({
       id, type: 'universal', position: { x: event.clientX - rect.left - 45, y: event.clientY - rect.top - 45 },
-      data: { type, shapeType: val, label: val.toUpperCase(), bgColor: '#ffffff', borderColor: '#334155', onChange: (v: string) => onNodeLabelChange(id, v) },
+      data: { type, shapeType: val, label: val.toUpperCase(), status: 'up', bgColor: '#ffffff', borderColor: '#334155', onChange: (v: string) => onNodeLabelChange(id, v) },
       style: { width: type === 'device' ? 85 : 180, height: type === 'device' ? 85 : 150 }
     }));
   }, []);
 
-  // Handler untuk klik kanan pada edge (kabel)
   const onEdgeContextMenu = useCallback((event: React.MouseEvent, edge: any) => {
     event.preventDefault();
     setMenu({ id: edge.id, x: event.clientX, y: event.clientY, type: 'edge', isEdge: true });
@@ -260,7 +262,6 @@ function NetworkLabContent() {
 
   return (
     <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
-      {/* SIDEBAR */}
       <aside className="w-80 bg-white border-r flex flex-col z-[60] shadow-2xl relative">
         <div className="p-6 bg-slate-900 text-white font-black italic uppercase leading-none flex items-center gap-3">
           <ShieldCheck size={28} className="text-blue-500"/>
@@ -279,7 +280,7 @@ function NetworkLabContent() {
               <div className={`p-4 rounded-2xl text-white shadow-lg transition-all ${isLive ? 'bg-gradient-to-br from-emerald-600 to-teal-700' : 'bg-gradient-to-br from-slate-600 to-slate-700'}`}>
                 <p className="text-[10px] font-black opacity-80 mb-1">NETWORK ANALYSIS</p>
                 <h3 className="text-lg font-black leading-tight uppercase">{isLive ? 'Simulation Running' : 'Simulation Offline'}</h3>
-                <p className="text-[10px] mt-2 font-medium opacity-90 italic">Tips: Klik kanan pada perangkat atau kabel untuk mensimulasikan kegagalan (Troubleshoot).</p>
+                <p className="text-[10px] mt-2 font-medium opacity-90 italic">Klik kanan objek untuk merusak koneksi.</p>
               </div>
 
               <button 
@@ -291,13 +292,13 @@ function NetworkLabContent() {
 
               {isLive && (
                 <div className="space-y-2">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Network Health</p>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Live Status</p>
                   <div className="p-3 border-2 border-dashed border-slate-200 rounded-xl bg-white space-y-2">
                     <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
-                      <Zap size={14} className="text-amber-500"/> Total Nodes: {nodes.length}
+                      <Zap size={14} className="text-amber-500"/> Nodes: {nodes.length}
                     </div>
                     <div className="flex items-center gap-2 text-xs font-bold text-red-600">
-                      <Link2Off size={14}/> Broken Paths: {edges.filter(e => e.data?.status === 'broken').length}
+                      <Link2Off size={14}/> Broken: {edges.filter(e => e.data?.status === 'broken').length}
                     </div>
                   </div>
                 </div>
@@ -336,16 +337,9 @@ function NetworkLabContent() {
         </div>
       </aside>
 
-      {/* CANVAS AREA */}
       <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
             <h1 className="text-[22vw] font-black text-slate-900 opacity-[0.03] select-none leading-none">SANPIO</h1>
-        </div>
-
-        <div className="absolute bottom-6 right-6 z-[100] bg-white/80 backdrop-blur-md p-4 rounded-2xl border border-slate-200 shadow-xl pointer-events-none text-right">
-            <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest mb-1">Project By:</p>
-            <p className="text-sm font-black text-slate-800 uppercase">Kelompok Informatika</p>
-            <p className="text-[10px] font-bold text-slate-500 italic">Troubleshoot Simulation v2.1</p>
         </div>
 
         <div className="absolute top-4 left-4 z-[100] flex gap-2">
@@ -363,41 +357,38 @@ function NetworkLabContent() {
           fitView
         >
           <Background gap={25} size={1} color="#cbd5e1" />
-          <Controls className="!bg-white !shadow-xl !border-none !rounded-lg overflow-hidden" />
+          <Controls />
           
           {menu && (
             <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border shadow-2xl rounded-2xl p-4 min-w-[220px]">
               <p className="text-[9px] font-black text-slate-400 mb-3 uppercase border-b pb-1">Config {menu.type}</p>
               
               {!menu.isEdge ? (
-                <>
+                <div className="space-y-2">
                   <div className="grid grid-cols-5 gap-2 mb-4">
                     {Object.keys(iconLib).filter(k => menu.type === 'device' ? !['cloud','circle','square','chat'].includes(k) : ['cloud','circle','square','chat'].includes(k)).map(ico => (
-                      <button key={ico} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, shapeType: ico}} : n))} className="p-2 hover:bg-blue-50 rounded-lg border flex items-center justify-center transition-colors">
+                      <button key={ico} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, shapeType: ico}} : n))} className="p-2 hover:bg-blue-50 rounded-lg border flex items-center justify-center">
                         {React.cloneElement(iconLib[ico], { size: 18 })}
                       </button>
                     ))}
                   </div>
-                  
-                  <div className="space-y-2">
-                    <button 
-                      onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data: {...n.data, status: n.data.status === 'down' ? 'up' : 'down'}} : n))}
-                      className={`w-full py-2 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2 ${nodes.find(n => n.id === menu.id)?.data.status === 'down' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}
-                    >
-                      <Zap size={14}/> {nodes.find(n => n.id === menu.id)?.data.status === 'down' ? 'REPAIR DEVICE' : 'SIMULATE FAILURE'}
-                    </button>
-                    <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Trash2 size={14}/> HAPUS OBJEK</button>
-                  </div>
-                </>
+                  <button 
+                    onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data: {...n.data, status: n.data.status === 'down' ? 'up' : 'down'}} : n))}
+                    className={`w-full py-2 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2 ${nodes.find(n => n.id === menu.id)?.data.status === 'down' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}
+                  >
+                    <Zap size={14}/> {nodes.find(n => n.id === menu.id)?.data.status === 'down' ? 'REPAIR' : 'FAIL DEVICE'}
+                  </button>
+                  <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg">DELETE</button>
+                </div>
               ) : (
                 <div className="space-y-2">
                    <button 
                       onClick={() => setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {...e.data, status: e.data?.status === 'broken' ? 'fine' : 'broken'}} : e))}
-                      className={`w-full py-2 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2 ${edges.find(e => e.id === menu.id)?.data?.status === 'broken' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}
+                      className={`w-full py-2 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2 ${edges.find(e => e.id === menu.id)?.data?.status === 'broken' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}
                     >
-                      <RefreshCcw size={14}/> {edges.find(e => e.id === menu.id)?.data?.status === 'broken' ? 'REPAIR CONNECTION' : 'CUT CONNECTION'}
+                      <RefreshCcw size={14}/> {edges.find(e => e.id === menu.id)?.data?.status === 'broken' ? 'RESTORE' : 'CUT CABLE'}
                     </button>
-                    <button onClick={() => setEdges(eds => eds.filter(e => e.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"><Trash2 size={14}/> DELETE CABLE</button>
+                    <button onClick={() => setEdges(eds => eds.filter(e => e.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg">DELETE</button>
                 </div>
               )}
             </div>
