@@ -217,7 +217,7 @@ function NetworkLabContent() {
             <div className="flex items-center gap-2 mb-2 text-blue-600 border-b pb-1 font-black text-[10px] uppercase tracking-widest">
               <Users size={16} /><span>Anggota Kelompok</span>
             </div>
-            <div className="text-[11px] font-bold text-slate-700 leading-tight">1. Ahmad Mejatika <br/> 2. Siti Jaringan <br/> 3. Budi Topology</div>
+            <div className="text-[11px] font-bold text-slate-700 leading-tight">1.Farel Gaut <br/> 2. Andri Jelau <br/> 3. Eklan Ilang<br/> 4.Boven Jelanu</div>
           </div>
         )}
 
