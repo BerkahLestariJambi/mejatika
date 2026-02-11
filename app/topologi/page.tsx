@@ -62,9 +62,21 @@ const UniversalNode = ({ data, selected }: any) => {
   
   const shouldAnimate = (['router', 'wifi', 'ap'].includes(data.shapeType) && !isDown && !isDisconnected) || (isSimulating && !isDown && !isDisconnected);
   
+  // Jika ini adalah node junction (titik di kabel), tampilkan hanya bulatan kecil
+  if (data.type === 'junction') {
+    return (
+      <div className="group relative">
+        <div className={`w-4 h-4 rounded-full bg-slate-800 border-2 border-white shadow-sm transition-all ${isDown ? 'bg-red-500' : ''}`} />
+        <Handle type="source" position={Position.Bottom} className="opacity-0" />
+        <Handle type="target" position={Position.Top} className="opacity-0" />
+        <Handle type="source" position={Position.Left} className="opacity-0" />
+        <Handle type="target" position={Position.Right} className="opacity-0" />
+      </div>
+    );
+  }
+
   return (
     <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''} ${isDown || isDisconnected ? 'opacity-70' : ''}`}>
-      {/* Handles untuk koneksi fleksibel */}
       <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2 !h-2" />
       <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2 !h-2" />
       <Handle type="target" position={Position.Left} className="!bg-blue-600 !w-2 !h-2" />
@@ -93,7 +105,6 @@ const nodeTypes = { universal: UniversalNode };
 
 function NetworkLabContent() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string; isEdge?: boolean } | null>(null);
@@ -145,65 +156,62 @@ function NetworkLabContent() {
     setTopologyInfo(type);
     setShowDefinition(true);
     
-    const count = 6;
+    const count = 5;
     const timestamp = Date.now();
     const newNodes: any[] = [];
     const newEdges: any[] = [];
 
     if (type === 'bus') {
-      // 1. Buat Backbone Nodes (Titik koneksi tengah yang tidak terlihat)
-      // Ini bertindak sebagai jalur kabel utama yang lurus
       for (let i = 0; i < count; i++) {
-        const busNodeId = `bus-${i}-${timestamp}`;
+        const junctionId = `junc-${i}-${timestamp}`;
+        const deviceId = `node-${i}-${timestamp}`;
+        const isTop = i % 2 === 0;
+
+        // 1. Tambah Node Junction (titik di tengah kabel)
         newNodes.push({
-          id: busNodeId,
+          id: junctionId,
           type: 'universal',
-          position: { x: i * 250 + 100, y: 300 },
-          data: { type: 'device', shapeType: 'hub', label: '', status: 'up', onChange: () => {} },
-          style: { width: 10, height: 10, opacity: 0, pointerEvents: 'none' } // Disembunyikan
+          position: { x: i * 250 + 200, y: 300 },
+          data: { type: 'junction', status: 'up' },
+          draggable: true,
         });
 
-        // 2. Hubungkan antar titik backbone
+        // 2. Hubungkan antar Junction (Backbone)
         if (i > 0) {
           newEdges.push({
             id: `backbone-${i}`,
-            source: newNodes[i-1].id,
-            target: busNodeId,
-            style: { strokeWidth: 6, stroke: '#0f172a' }, // Kabel tebal
+            source: `junc-${i-1}-${timestamp}`,
+            target: junctionId,
+            style: { strokeWidth: 8, stroke: '#0f172a' },
             type: 'straight'
           });
         }
 
-        // 3. Buat Device (PC/Router) selang-seling atas dan bawah
-        const isTop = i % 2 === 0;
-        const deviceId = `node-${i}-${timestamp}`;
-        const isFirst = i === 0;
-
+        // 3. Tambah Perangkat (PC/Router)
         newNodes.push({
           id: deviceId,
           type: 'universal',
-          position: { x: i * 250 + 55, y: isTop ? 100 : 450 },
+          position: { x: i * 250 + 155, y: isTop ? 100 : 450 },
           data: { 
             type: 'device', 
-            shapeType: isFirst ? 'router' : 'pc', 
-            label: isFirst ? 'MEJATIWAY' : `PC-${i}`, 
+            shapeType: i === 0 ? 'router' : 'pc', 
+            label: i === 0 ? 'GATEWAY' : `PC-${i}`, 
             status: 'up', 
             onChange: (v: string) => onNodeLabelChange(deviceId, v) 
           },
           style: { width: 100, height: 100 }
         });
 
-        // 4. Hubungkan device ke backbone
+        // 4. Hubungkan Junction ke Perangkat (Kabel Drop)
         newEdges.push({
           id: `drop-${i}`,
-          source: busNodeId,
+          source: junctionId,
           target: deviceId,
           style: { strokeWidth: 4, stroke: '#0f172a' },
           type: 'straight'
         });
       }
     } else {
-      // Logika Mesh (Tetap melingkar)
       const meshNodes = Array.from({ length: 5 }).map((_, i) => {
         const id = `mesh-${i}-${timestamp}`;
         return {
@@ -231,9 +239,7 @@ function NetworkLabContent() {
 
   const onDrop = useCallback((event: any) => {
     event.preventDefault();
-    const type = event.dataTransfer.getData('application/type'); 
     const val = event.dataTransfer.getData('application/value');
-    if (type === 'shape') return; 
     const rect = reactFlowWrapper.current?.getBoundingClientRect();
     if (!rect) return;
     const id = `node_${Date.now()}`;
