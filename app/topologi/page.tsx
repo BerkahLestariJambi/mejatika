@@ -19,7 +19,7 @@ import {
   ShieldCheck, Monitor, Network, Router, Server, Wifi, 
   Zap, Flame, Radio, Info, Users, ChevronLeft, ChevronRight,
   CheckCircle2, Trash2, Link2Off, AlertTriangle, PencilRuler,
-  Spline // Icon untuk Kabel
+  Spline 
 } from 'lucide-react';
 
 // --- ICON LIBRARY ---
@@ -32,7 +32,7 @@ const iconLib: any = {
   hub: <Zap size={32} />,
   firewall: <Flame size={32} />,
   ap: <Radio size={32} />,
-  kabel: <Spline size={32} /> // Tambahan Icon Kabel
+  kabel: <Spline size={32} /> 
 };
 
 // --- CUSTOM NODE ---
@@ -43,7 +43,6 @@ const UniversalNode = ({ id, data }: any) => {
     return (
       <div className="flex items-center justify-center">
         <div className="w-5 h-5 rounded-full bg-slate-900 border-2 border-white shadow-lg" />
-        {/* Handle Junction dibuat di semua sisi agar kabel drop pasti nempel */}
         <Handle type="target" position={Position.Left} id="left" style={{ opacity: 0 }} />
         <Handle type="source" position={Position.Right} id="right" style={{ opacity: 0 }} />
         <Handle type="source" position={Position.Top} id="top" style={{ opacity: 0 }} />
@@ -54,7 +53,6 @@ const UniversalNode = ({ id, data }: any) => {
 
   return (
     <div className="relative group">
-      {/* Handle Device */}
       <Handle type="target" position={Position.Top} id="t" style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} id="b" style={{ opacity: 0 }} />
       <Handle type="target" position={Position.Left} id="l" style={{ opacity: 0 }} />
@@ -82,7 +80,7 @@ function NetworkLabContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: 'node' | 'edge' } | null>(null);
-  const [showPanel, setShowPanel] = useState(false);
+  const [showPanel, setShowPanel] = useState(true); // Default tampilkan panel
   const [topologyType, setTopologyType] = useState<'bus' | 'mesh' | 'praktek' | null>(null);
   const [isLive, setIsLive] = useState(false);
   const [activeTab, setActiveTab] = useState<'inventory' | 'simulasi'>('inventory');
@@ -94,7 +92,7 @@ function NetworkLabContent() {
   const handleTabClick = (tab: 'inventory' | 'simulasi') => {
     setActiveTab(tab);
     if (tab === 'inventory') {
-      setNodes([]); setEdges([]); setTopologyType('praktek'); setShowPanel(false);
+      setNodes([]); setEdges([]); setTopologyType('praktek');
     }
   };
 
@@ -106,29 +104,21 @@ function NetworkLabContent() {
       const backboneY = 350;
       for (let i = 0; i < 5; i++) {
         const xPos = i * 250 + 200;
-        const jId = `j-${i}`;
-        const dId = `n-${i}`;
+        const jId = `j-${i}`; const dId = `n-${i}`;
         const isTop = i % 2 === 0;
 
-        // Junction Backbone
         newNodes.push({ id: jId, type: 'universal', position: { x: xPos, y: backboneY }, data: { type: 'junction' } });
-
-        // Hubungkan Jalur Utama (Backbone)
         if (i > 0) {
           newEdges.push({ 
             id: `back-${i}`, source: `j-${i-1}`, target: jId, sourceHandle: 'right', targetHandle: 'left',
             style: { strokeWidth: 10, stroke: '#0f172a' }, type: 'straight' 
           });
         }
-
-        // Device (PC/Router)
         newNodes.push({ 
           id: dId, type: 'universal', 
           position: { x: xPos - 55, y: isTop ? backboneY - 180 : backboneY + 80 }, 
           data: { shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `PC-${i}`, onChange: (id:string, val:string) => updateNode(id, {label: val}) } 
         });
-
-        // KABEL DROP: Menghubungkan PC ke Junction (PASTI TERHUBUNG)
         newEdges.push({ 
           id: `drop-${i}`, source: jId, target: dId, 
           sourceHandle: isTop ? 'top' : 'bottom', 
@@ -137,8 +127,7 @@ function NetworkLabContent() {
         });
       }
     } else {
-        // Logika Mesh
-        const mNodes = Array.from({ length: 5 }).map((_, i) => ({ id: `m-${i}`, type: 'universal', position: { x: 400 + 250 * Math.cos(2*Math.PI*i/5), y: 350 + 250 * Math.sin(2*Math.PI*i/5) }, data: { shapeType: 'pc', label: `PC-${i}`, onChange: (id:string, val:string) => updateNode(id, {label: val}) } }));
+        const mNodes = Array.from({ length: 5 }).map((_, i) => ({ id: `m-${i}`, type: 'universal', position: { x: 400 + 250 * Math.cos(2*PI*i/5), y: 350 + 250 * Math.sin(2*PI*i/5) }, data: { shapeType: 'pc', label: `PC-${i}`, onChange: (id:string, val:string) => updateNode(id, {label: val}) } }));
         newNodes.push(...mNodes);
         for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) newEdges.push({ id: `e-${i}-${j}`, source: `m-${i}`, target: `m-${j}`, style: { strokeWidth: 3, stroke: '#2563eb' } });
     }
@@ -147,7 +136,7 @@ function NetworkLabContent() {
 
   const onDrop = (event: any) => {
     const type = event.dataTransfer.getData('application/value');
-    if (type === 'kabel') return; // Kabel tidak didrop sebagai node
+    if (type === 'kabel') return; 
     const rect = reactFlowWrapper.current?.getBoundingClientRect();
     if (!rect) return;
     const id = `node_${Date.now()}`;
@@ -156,6 +145,7 @@ function NetworkLabContent() {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
+      {/* SIDEBAR LEFT */}
       <aside className="w-72 bg-white border-r flex flex-col z-[100] shadow-xl text-slate-900">
         <div className="p-6 bg-slate-900 text-white font-black italic flex items-center gap-3">
           <ShieldCheck className="text-blue-500" size={28}/>
@@ -172,7 +162,6 @@ function NetworkLabContent() {
                 <div key={key} draggable={key !== 'kabel'} onDragStart={(e) => e.dataTransfer.setData('application/value', key)} className={`p-3 border-2 border-slate-100 rounded-xl flex flex-col items-center bg-white hover:border-blue-500 shadow-sm transition-all active:scale-95 ${key === 'kabel' ? 'cursor-help' : 'cursor-grab'}`}>
                   <div className="text-slate-700">{iconLib[key]}</div>
                   <span className="text-[9px] font-black mt-1 uppercase text-slate-500">{key}</span>
-                  {key === 'kabel' && <span className="text-[7px] text-blue-500 font-bold mt-1 text-center leading-none italic">Tarik dari titik node</span>}
                 </div>
               ))}
             </div>
@@ -185,19 +174,20 @@ function NetworkLabContent() {
         <div className="p-4 border-t bg-slate-50 text-[9px] text-slate-400 text-center uppercase tracking-widest font-black italic">SANPIO AI LAB © 2026</div>
       </aside>
 
+      {/* CANVAS AREA */}
       <main className="flex-grow relative" ref={reactFlowWrapper}>
         {topologyType === 'praktek' && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05]">
             <div className="flex flex-col items-center">
               <PencilRuler size={220} className="text-slate-900" />
-              <h1 className="text-8xl font-black tracking-[0.2em] uppercase text-slate-900">CANVAS PRAKTIK</h1>
+              <h1 className="text-8xl font-black tracking-[0.2em] uppercase text-slate-900 text-center">CANVAS PRAKTIK</h1>
             </div>
           </div>
         )}
 
         <div className="absolute top-4 left-4 z-[50] flex gap-2">
-          <button onClick={() => generateTopology('bus')} className="px-5 py-2 bg-white shadow-xl rounded-xl text-[10px] font-black text-blue-600 border border-blue-100 hover:bg-blue-600 hover:text-white transition-all uppercase">Gen Bus</button>
-          <button onClick={() => generateTopology('mesh')} className="px-5 py-2 bg-white shadow-xl rounded-xl text-[10px] font-black text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all uppercase">Gen Mesh</button>
+          <button onClick={() => generateTopology('bus')} className="px-5 py-2 bg-white shadow-xl rounded-xl text-[10px] font-black text-blue-600 border border-blue-100 hover:bg-blue-600 hover:text-white transition-all uppercase tracking-widest">Gen Bus</button>
+          <button onClick={() => generateTopology('mesh')} className="px-5 py-2 bg-white shadow-xl rounded-xl text-[10px] font-black text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all uppercase tracking-widest">Gen Mesh</button>
         </div>
 
         <ReactFlow 
@@ -205,7 +195,7 @@ function NetworkLabContent() {
           onDrop={onDrop} onDragOver={(e) => e.preventDefault()} 
           nodeTypes={nodeTypes} 
           onConnect={(p) => setEdges(eds => addEdge({...p, style:{strokeWidth:4, stroke:'#0f172a'}}, eds))}
-          connectionMode={ConnectionMode.Loose} // Memudahkan penarikan kabel antar handle
+          connectionMode={ConnectionMode.Loose}
           fitView
         >
           <Background color="#cbd5e1" gap={25} variant={"dots" as any} /><Controls />
@@ -213,30 +203,66 @@ function NetworkLabContent() {
 
         {/* ANGGOTA KELOMPOK */}
         {topologyType && (
-          <div className="absolute bottom-6 right-12 bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-2xl z-40">
+          <div className="absolute bottom-6 right-[400px] bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-2xl z-40 transition-all">
             <div className="flex items-center gap-2 mb-2 text-blue-600 border-b pb-1 font-black text-[10px] uppercase tracking-widest">
               <Users size={16} /><span>Anggota Kelompok</span>
             </div>
-            <div className="text-[11px] font-bold text-slate-700 leading-tight">1.Farel Gaut <br/> 2. Andri Jelau <br/> 3. Eklan Ilang<br/> 4.Boven Jelanu</div>
+            <div className="text-[11px] font-bold text-slate-700 leading-tight">
+              1. Farel Gaut <br/> 2. Andri Jelau <br/> 3. Eklan Ilang <br/> 4. Boven Jelanu
+            </div>
           </div>
         )}
+
+        {/* PANEL INFO RIGHT (KEMBALI HADIR) */}
+        <div className={`absolute top-0 right-0 h-full flex z-[110] transition-transform duration-500 ease-in-out ${showPanel ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
+          <div className="h-full flex flex-col justify-center">
+            <button onClick={() => setShowPanel(!showPanel)} className="bg-slate-900 text-white p-2 rounded-l-2xl shadow-2xl flex flex-col items-center gap-3 py-10 hover:bg-blue-600 transition-colors border-l border-white/20">
+              {showPanel ? <ChevronRight size={20}/> : <ChevronLeft size={20}/>}
+              <span className="[writing-mode:vertical-lr] text-[9px] font-black uppercase tracking-[0.3em]">{showPanel ? 'TUTUP INFO' : 'TAMPIL INFO'}</span>
+            </button>
+          </div>
+          <div className="w-[380px] bg-white h-full border-l border-slate-200 p-8 overflow-y-auto shadow-2xl">
+             <div className="flex items-center gap-3 mb-6">
+                <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg"><Info size={24} /></div>
+                <h2 className="text-xl font-black uppercase tracking-tighter text-slate-900">Analisis Jaringan</h2>
+             </div>
+             {topologyType && topologyType !== 'praktek' ? (
+               <div className="space-y-6">
+                 <div className="p-4 bg-blue-50 border-l-4 border-blue-500 italic text-sm text-slate-700 font-medium">
+                    {topologyType === 'bus' ? 'Jaringan dengan satu jalur kabel utama (Backbone).' : 'Koneksi penuh antar perangkat.'}
+                 </div>
+                 <div className="space-y-4">
+                    <h4 className="text-emerald-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border-b pb-1 font-black"><CheckCircle2 size={16}/> Kelebihan</h4>
+                    <ul className="text-xs space-y-2 font-bold text-slate-700 uppercase tracking-tighter"><li>• Sangat hemat kabel</li><li>• Mudah dipasang</li></ul>
+                    <h4 className="text-red-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-6 border-b pb-1 font-black"><AlertTriangle size={16}/> Kekurangan</h4>
+                    <ul className="text-xs space-y-2 font-bold text-slate-700 uppercase tracking-tighter"><li>• Backbone putus = Lumpuh total</li><li>• Kecepatan lambat saat sibuk</li></ul>
+                 </div>
+               </div>
+             ) : (
+               <div className="flex flex-col items-center justify-center h-full text-slate-300 text-center opacity-50">
+                  <PencilRuler size={60} />
+                  <p className="mt-4 font-black uppercase text-[10px] tracking-widest italic">Mode Praktik Mandiri</p>
+               </div>
+             )}
+          </div>
+        </div>
 
         {/* CONTEXT MENU */}
         {menu && (
           <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-52 animate-in zoom-in-95" onMouseLeave={() => setMenu(null)}>
-             <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1 tracking-widest text-center">Opsi Objek</div>
-             {menu.type === 'node' ? (
-               <div className="space-y-2">
-                 <div className="grid grid-cols-4 gap-1">
-                   {Object.keys(iconLib).filter(k => k !== 'kabel').map(ico => (
-                     <button key={ico} onClick={() => { updateNode(menu.id, { shapeType: ico }); setMenu(null); }} className="p-2 border rounded hover:bg-blue-50 transition-colors flex items-center justify-center">{React.cloneElement(iconLib[ico], { size: 14 })}</button>
-                   ))}
-                 </div>
-                 <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 mt-2 uppercase tracking-widest"><Trash2 size={14}/> Hapus</button>
-               </div>
-             ) : (
-                <button onClick={() => { setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {status: 'broken'}, style: {stroke: '#ef4444', strokeWidth: 4}} : e)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 uppercase tracking-widest"><Link2Off size={14}/> Putus Kabel</button>
-             )}
+              <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1 tracking-widest text-center">Edit Objek</div>
+              {menu.type === 'node' ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-4 gap-1">
+                    {Object.keys(iconLib).filter(k => k !== 'kabel').map(ico => (
+                      <button key={ico} onClick={() => { updateNode(menu.id, { shapeType: ico }); setMenu(null); }} className="p-2 border rounded hover:bg-blue-50 transition-colors flex items-center justify-center">{React.cloneElement(iconLib[ico], { size: 14 })}</button>
+                    ))}
+                  </div>
+                  <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 mt-2 uppercase tracking-widest"><Trash2 size={14}/> Hapus</button>
+                </div>
+              ) : (
+                 <button onClick={() => { setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {status: 'broken'}, style: {stroke: '#ef4444', strokeWidth: 4}} : e)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 uppercase tracking-widest"><Link2Off size={14}/> Putus Kabel</button>
+              )}
           </div>
         )}
       </main>
