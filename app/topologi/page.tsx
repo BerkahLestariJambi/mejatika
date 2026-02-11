@@ -17,32 +17,33 @@ import '@xyflow/react/dist/style.css';
 
 import { 
   ShieldCheck, Monitor, Network, Router, Server, Wifi, 
-  Zap, HardDrive, DoorOpen, Flame, Radio, Save, FolderOpen, 
-  RefreshCcw, ChevronRight, Play, Square as StopSquare, 
-  AlertTriangle, Link2Off, Globe, Cpu, Info, Users, ChevronLeft, XCircle, Edit3, Trash2
+  Zap, Flame, Radio, Play, Square as StopSquare, 
+  AlertTriangle, Link2Off, Info, Users, ChevronLeft, ChevronRight,
+  CheckCircle2, Trash2
 } from 'lucide-react';
 
-// --- LIBRARY ICON ---
+// --- ICON LIBRARY ---
 const iconLib: any = {
-  pc: <Monitor size={35} />,
-  router: <Router size={35} />, 
-  switch: <Network size={35} />, 
-  wifi: <Wifi size={35} />, 
-  server: <Server size={35} />, 
-  hub: <Zap size={35} />,
-  firewall: <Flame size={35} />,
-  ap: <Radio size={35} />
+  pc: <Monitor size={32} />,
+  router: <Router size={32} />, 
+  switch: <Network size={32} />, 
+  wifi: <Wifi size={32} />, 
+  server: <Server size={32} />, 
+  hub: <Zap size={32} />,
+  firewall: <Flame size={32} />,
+  ap: <Radio size={32} />
 };
 
 // --- CUSTOM NODE ---
-const UniversalNode = ({ id, data, selected }: any) => {
+const UniversalNode = ({ id, data }: any) => {
   const isDown = data.status === 'down';
   const isDisconnected = data.isDisconnected;
-  
+
   if (data.type === 'junction') {
     return (
-      <div className="relative flex items-center justify-center">
+      <div className="flex items-center justify-center">
         <div className={`w-3 h-3 rounded-full bg-slate-900 border border-white shadow ${isDown ? 'bg-red-500' : ''}`} />
+        {/* Handle junction dibuat lengkap 4 arah agar fleksibel */}
         <Handle type="target" position={Position.Left} id="left" className="opacity-0" />
         <Handle type="source" position={Position.Right} id="right" className="opacity-0" />
         <Handle type="source" position={Position.Top} id="top" className="opacity-0" />
@@ -52,20 +53,20 @@ const UniversalNode = ({ id, data, selected }: any) => {
   }
 
   return (
-    <div className={`relative group transition-all ${selected ? 'scale-110' : ''}`}>
+    <div className="relative group">
       <Handle type="target" position={Position.Top} id="t" className="opacity-0" />
       <Handle type="source" position={Position.Bottom} id="b" className="opacity-0" />
       <Handle type="target" position={Position.Left} id="l" className="opacity-0" />
       <Handle type="source" position={Position.Right} id="r" className="opacity-0" />
       
-      <div className={`w-28 h-28 flex flex-col items-center justify-center bg-white border-[3px] shadow-xl rounded-2xl transition-all ${isDown || isDisconnected ? 'border-red-500 bg-red-50' : 'border-slate-800'}`}>
-        <div className={`${data.isSimulating && !isDown && !isDisconnected ? 'animate-pulse text-blue-600' : isDown || isDisconnected ? 'text-red-600' : 'text-slate-700'}`}>
-          {iconLib[data.shapeType] || <Monitor size={35}/>}
+      <div className={`flex flex-col items-center justify-center p-4 bg-white border-[3px] rounded-2xl shadow-xl transition-all ${isDown || isDisconnected ? 'border-red-500 bg-red-50' : 'border-slate-800'}`}>
+        <div className={`${data.isSimulating && !isDown && !isDisconnected ? 'animate-pulse text-blue-600' : 'text-slate-700'}`}>
+          {iconLib[data.shapeType] || <Monitor size={32}/>}
         </div>
         <input 
-          value={data.label} 
-          onChange={(e) => data.onChange(id, e.target.value)}
-          className="bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 w-full mt-1 p-0 cursor-text"
+          defaultValue={data.label} 
+          onBlur={(e) => data.onChange(id, e.target.value)}
+          className="bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 w-full mt-1 p-0"
         />
         {(isDown || isDisconnected) && <AlertTriangle size={14} className="absolute -top-1 -right-1 text-red-600 animate-bounce" />}
       </div>
@@ -79,181 +80,170 @@ function NetworkLabContent() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string; currentLabel?: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'simulasi'>('inventory');
-  const [isLive, setIsLive] = useState(false);
-  const [topologyInfo, setTopologyInfo] = useState<'bus' | 'mesh' | null>(null);
+  const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: 'node' | 'edge' } | null>(null);
   const [showPanel, setShowPanel] = useState(false);
+  const [topologyType, setTopologyType] = useState<'bus' | 'mesh' | 'praktek' | null>(null);
+  const [isLive, setIsLive] = useState(false);
+  const [activeTab, setActiveTab] = useState<'inventory' | 'simulasi'>('inventory');
 
-  // FUNGSI RENAME & GANTI ICON
-  const updateNodeData = (nodeId: string, newData: any) => {
-    setNodes((nds) => nds.map((n) => n.id === nodeId ? { ...n, data: { ...n.data, ...newData } } : n));
+  const updateNode = (id: string, newData: any) => {
+    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...newData } } : n));
   };
 
-  const onNodeLabelChange = (id: string, label: string) => {
-    updateNodeData(id, { label });
-  };
-
-  // LOGIKA KONEKTIVITAS
-  useEffect(() => {
-    if (!isLive) {
-        setNodes(nds => nds.map(n => ({...n, data: {...n.data, isSimulating: false, isDisconnected: false}})));
-        setEdges(eds => eds.map(e => ({...e, animated: false})));
-        return;
+  const handleTabClick = (tab: 'inventory' | 'simulasi') => {
+    setActiveTab(tab);
+    if (tab === 'inventory') {
+      setNodes([]); setEdges([]); setTopologyType('praktek'); setShowPanel(false);
     }
-    setNodes(nds => nds.map(node => ({ ...node, data: { ...node.data, isSimulating: true } })));
-    setEdges(eds => eds.map(edge => ({ ...edge, animated: edge.data?.status !== 'broken' })));
+  };
+
+  useEffect(() => {
+    setEdges(eds => eds.map(e => ({ ...e, animated: isLive && e.data?.status !== 'broken' })));
+    setNodes(nds => nds.map(n => ({ ...n, data: { ...n.data, isSimulating: isLive } })));
   }, [isLive]);
 
-  // GENERATE TOPOLOGY
   const generateTopology = (type: 'bus' | 'mesh') => {
-    setNodes([]); setEdges([]);
-    setTopologyInfo(type); setShowPanel(true);
+    setNodes([]); setEdges([]); setTopologyType(type); setShowPanel(true);
     const newNodes: any[] = []; const newEdges: any[] = [];
 
     if (type === 'bus') {
       for (let i = 0; i < 5; i++) {
-        const jId = `j-${i}`; const dId = `n-${i}`; const px = i * 250 + 200;
+        const jId = `j-${i}`; const dId = `n-${i}`; const px = i * 250 + 150;
+        // 1. Buat Junction (Titik di Backbone)
         newNodes.push({ id: jId, type: 'universal', position: { x: px, y: 300 }, data: { type: 'junction' } });
-        if (i > 0) newEdges.push({ id: `b-${i}`, source: `j-${i-1}`, target: jId, style: { strokeWidth: 8, stroke: '#0f172a' }, type: 'straight' });
-        newNodes.push({ id: dId, type: 'universal', position: { x: px - 55, y: i % 2 === 0 ? 100 : 450 }, data: { type: 'device', shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `PC-${i}`, onChange: onNodeLabelChange }, style: { width: 110, height: 110 } });
-        newEdges.push({ id: `drop-${i}`, source: jId, target: dId, sourceHandle: i % 2 === 0 ? 'top' : 'bottom', targetHandle: i % 2 === 0 ? 'b' : 't', style: { strokeWidth: 4, stroke: '#0f172a' }, type: 'straight' });
+        // 2. Hubungkan Backbone (Horizontal)
+        if (i > 0) {
+          newEdges.push({ 
+            id: `back-${i}`, source: `j-${i-1}`, target: jId, 
+            sourceHandle: 'right', targetHandle: 'left', // Memastikan antar junction terhubung kiri-kanan
+            style: { strokeWidth: 8, stroke: '#0f172a' }, type: 'straight' 
+          });
+        }
+        // 3. Buat Device (PC/Router)
+        const isTop = i % 2 === 0;
+        newNodes.push({ 
+          id: dId, type: 'universal', position: { x: px - 50, y: isTop ? 100 : 430 }, 
+          data: { shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `PC-${i}`, onChange: (id:string, val:string) => updateNode(id, {label: val}) } 
+        });
+        // 4. Hubungkan Junction ke Device (Vertical)
+        newEdges.push({ 
+          id: `drop-${i}`, source: jId, target: dId, 
+          sourceHandle: isTop ? 'top' : 'bottom', 
+          targetHandle: isTop ? 'b' : 't', 
+          style: { strokeWidth: 4, stroke: '#0f172a' }, type: 'straight' 
+        });
       }
     } else {
-      const meshNodes = Array.from({ length: 5 }).map((_, i) => ({ id: `m-${i}`, type: 'universal', position: { x: 450 + 200 * Math.cos(2*Math.PI*i/5), y: 350 + 200 * Math.sin(2*Math.PI*i/5) }, data: { type: 'device', shapeType: 'pc', label: `PC-${i}`, onChange: onNodeLabelChange } }));
-      newNodes.push(...meshNodes);
-      for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) newEdges.push({ id: `e-${i}-${j}`, source: `m-${i}`, target: `m-${j}`, style: { strokeWidth: 3, stroke: '#2563eb' } });
+      const mNodes = Array.from({ length: 4 }).map((_, i) => ({ id: `m-${i}`, type: 'universal', position: { x: 400 + 200 * Math.cos(2*Math.PI*i/4), y: 300 + 200 * Math.sin(2*Math.PI*i/4) }, data: { shapeType: 'pc', label: `PC-${i}`, onChange: (id:string, val:string) => updateNode(id, {label: val}) } }));
+      newNodes.push(...mNodes);
+      for (let i = 0; i < 4; i++) for (let j = i + 1; j < 4; j++) newEdges.push({ id: `e-${i}-${j}`, source: `m-${i}`, target: `m-${j}`, style: { strokeWidth: 3, stroke: '#2563eb' } });
     }
     setNodes(newNodes); setEdges(newEdges);
   };
 
   const onDrop = (event: any) => {
-    event.preventDefault();
     const type = event.dataTransfer.getData('application/value');
     const rect = reactFlowWrapper.current?.getBoundingClientRect();
     if (!rect) return;
     const id = `node_${Date.now()}`;
-    setNodes((nds) => nds.concat({ id, type: 'universal', position: { x: event.clientX - rect.left - 50, y: event.clientY - rect.top - 50 }, data: { type: 'device', shapeType: type, label: type.toUpperCase(), onChange: onNodeLabelChange } }));
+    setNodes((nds) => nds.concat({ id, type: 'universal', position: { x: event.clientX - rect.left - 50, y: event.clientY - rect.top - 50 }, data: { shapeType: type, label: type.toUpperCase(), onChange: (id:string, val:string) => updateNode(id, {label: val}) } }));
   };
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
-      {/* SIDEBAR LAMA KEMBALI */}
-      <aside className="w-80 bg-white border-r flex flex-col z-[100] shadow-2xl">
+      <aside className="w-72 bg-white border-r flex flex-col z-[100] shadow-xl">
         <div className="p-6 bg-slate-900 text-white font-black italic flex items-center gap-3">
-          <ShieldCheck className="text-blue-500" size={30}/>
-          <div>MEJATIKA LAB <div className="text-[10px] text-blue-400 font-normal">PRAKTIK JARINGAN</div></div>
+          <ShieldCheck className="text-blue-500" size={28}/>
+          <div className="leading-none text-sm tracking-tighter">MEJATIKA LAB</div>
         </div>
-        <div className="flex border-b bg-slate-50">
-          <button onClick={() => setActiveTab('inventory')} className={`flex-1 py-4 text-[10px] font-black uppercase ${activeTab === 'inventory' ? 'bg-white border-b-4 border-blue-600 text-blue-600' : 'text-slate-400'}`}>Inventory</button>
-          <button onClick={() => setActiveTab('simulasi')} className={`flex-1 py-4 text-[10px] font-black uppercase ${activeTab === 'simulasi' ? 'bg-white border-b-4 border-blue-600 text-blue-600' : 'text-slate-400'}`}>Simulasi</button>
+        <div className="flex bg-slate-50 text-[10px] font-black uppercase border-b">
+          <button onClick={() => handleTabClick('inventory')} className={`flex-1 py-4 ${activeTab === 'inventory' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>Inventory (Praktek)</button>
+          <button onClick={() => handleTabClick('simulasi')} className={`flex-1 py-4 ${activeTab === 'simulasi' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>Simulasi</button>
         </div>
-        <div className="flex-grow p-4 overflow-y-auto custom-scrollbar">
+        <div className="flex-grow p-4 overflow-y-auto">
           {activeTab === 'inventory' ? (
             <div className="grid grid-cols-2 gap-3">
               {Object.keys(iconLib).map(key => (
-                <div key={key} draggable onDragStart={(e) => e.dataTransfer.setData('application/value', key)} className="p-4 border-2 rounded-2xl flex flex-col items-center bg-white hover:border-blue-500 cursor-grab shadow-sm transition-all hover:scale-105">
-                  <div className="text-slate-700 mb-2">{iconLib[key]}</div>
-                  <span className="text-[10px] font-bold uppercase">{key}</span>
+                <div key={key} draggable onDragStart={(e) => e.dataTransfer.setData('application/value', key)} className="p-3 border-2 border-slate-100 rounded-xl flex flex-col items-center bg-white hover:border-blue-500 cursor-grab transition-all">
+                  <div className="text-slate-700">{iconLib[key]}</div>
+                  <span className="text-[9px] font-black mt-1 uppercase">{key}</span>
                 </div>
               ))}
             </div>
           ) : (
-            <button onClick={() => setIsLive(!isLive)} className={`w-full py-4 rounded-xl font-black text-white shadow-lg transition-all ${isLive ? 'bg-red-500 hover:bg-red-600' : 'bg-blue-600 hover:bg-blue-700'}`}>
-              {isLive ? 'STOP SIMULATION' : 'START SIMULATION'}
+            <button onClick={() => setIsLive(!isLive)} className={`w-full py-4 rounded-xl font-black text-xs shadow-lg transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'}`}>
+              {isLive ? 'STOP SIMULASI' : 'START SIMULASI'}
             </button>
           )}
         </div>
-        <div className="p-4 border-t bg-slate-50 space-y-2">
-            <button onClick={() => {setNodes([]); setEdges([]); setTopologyInfo(null);}} className="w-full py-3 bg-red-100 text-red-600 text-[10px] font-black rounded-lg uppercase">Reset Canvas</button>
-        </div>
+        <div className="p-4 border-t bg-slate-50 text-[9px] text-slate-400 text-center uppercase">Sanpio AI Lab © 2026</div>
       </aside>
 
-      {/* CANVAS AREA */}
       <main className="flex-grow relative" ref={reactFlowWrapper}>
-        <div className="absolute top-4 left-4 z-[100] flex gap-2">
-            <button onClick={() => generateTopology('bus')} className="px-6 py-2 bg-white shadow-xl border border-blue-100 rounded-xl text-[10px] font-black text-blue-600 hover:bg-blue-600 hover:text-white transition-all tracking-widest uppercase">Gen Bus</button>
-            <button onClick={() => generateTopology('mesh')} className="px-6 py-2 bg-white shadow-xl border border-indigo-100 rounded-xl text-[10px] font-black text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all tracking-widest uppercase">Gen Mesh</button>
+        <div className="absolute top-4 left-4 z-[50] flex gap-2">
+          <button onClick={() => generateTopology('bus')} className="px-5 py-2 bg-white shadow-xl rounded-xl text-[10px] font-black text-blue-600 border border-blue-100 hover:bg-blue-600 hover:text-white transition-all">GEN BUS</button>
+          <button onClick={() => generateTopology('mesh')} className="px-5 py-2 bg-white shadow-xl rounded-xl text-[10px] font-black text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white transition-all">GEN MESH</button>
         </div>
 
-        <ReactFlow 
-          nodes={nodes} edges={edges} onNodesChange={onNodesChange}
-          onDrop={onDrop} onDragOver={(e) => e.preventDefault()}
-          nodeTypes={nodeTypes} onConnect={(p) => setEdges(eds => addEdge({...p, style:{strokeWidth:4, stroke:'#0f172a'}}, eds))}
-          onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: 'node', currentLabel: n.data.label as string }); }}
-          onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ id: ed.id, x: e.clientX, y: e.clientY, type: 'edge' }); }}
-          fitView
-        >
-          <Background color="#cbd5e1" gap={25} />
-          <Controls />
+        <ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onDrop={onDrop} onDragOver={(e) => e.preventDefault()} nodeTypes={nodeTypes} onConnect={(p) => setEdges(eds => addEdge({...p, style:{strokeWidth:4, stroke:'#0f172a'}}, eds))} onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: 'node' }); }} onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ id: ed.id, x: e.clientX, y: e.clientY, type: 'edge' }); }} fitView>
+          <Background color="#e2e8f0" gap={20} /><Controls />
         </ReactFlow>
 
-        {/* NAMA KELOMPOK */}
-        {topologyInfo && (
-          <div className="absolute bottom-6 right-[50px] bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-slate-200 shadow-2xl z-[80]">
-            <div className="flex items-center gap-2 mb-2 text-blue-600 font-black text-[10px] uppercase border-b pb-1 tracking-tighter"><Users size={16}/> Anggota Kelompok</div>
-            <div className="text-[12px] font-bold text-slate-800 italic">1. Ahmad Mejatika <br/> 2. Siti Jaringan <br/> 3. Budi Topology</div>
+        {topologyType && (
+          <div className="absolute bottom-6 right-12 bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-2xl z-40">
+            <div className="flex items-center gap-2 mb-2 text-blue-600 border-b pb-1 font-black text-[10px] uppercase">
+              <Users size={16} /><span>Anggota Kelompok</span>
+            </div>
+            <div className="text-[11px] font-bold text-slate-700 leading-tight">1. Ahmad Mejatika <br/> 2. Siti Jaringan <br/> 3. Budi Topology</div>
           </div>
         )}
 
-        {/* CONTEXT MENU (GANTI ICON & RENAME) */}
         {menu && (
-          <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-56 animate-in fade-in zoom-in-95">
-             <div className="text-[9px] font-black text-slate-400 mb-2 uppercase tracking-widest border-b pb-1">Edit Perangkat</div>
-             {menu.type === 'node' && (
+          <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-52 animate-in zoom-in-95" onMouseLeave={() => setMenu(null)}>
+             <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1">Edit Objek</div>
+             {menu.type === 'node' ? (
                <div className="space-y-2">
-                 <div className="grid grid-cols-4 gap-1 mb-2">
+                 <div className="grid grid-cols-4 gap-1">
                    {Object.keys(iconLib).map(ico => (
-                     <button key={ico} onClick={() => { updateNodeData(menu.id, { shapeType: ico }); setMenu(null); }} className="p-2 border rounded hover:bg-blue-50 text-slate-600">{React.cloneElement(iconLib[ico], { size: 16 })}</button>
+                     <button key={ico} onClick={() => { updateNode(menu.id, { shapeType: ico }); setMenu(null); }} className="p-2 border rounded hover:bg-blue-50">{React.cloneElement(iconLib[ico], { size: 14 })}</button>
                    ))}
                  </div>
-                 <button onClick={() => { updateNodeData(menu.id, { status: 'down' }); setMenu(null); }} className="w-full py-2 bg-amber-50 text-amber-600 text-[10px] font-bold rounded-lg flex items-center justify-center gap-2"><Zap size={14}/> Set Failure</button>
-                 <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg flex items-center justify-center gap-2"><Trash2 size={14}/> Hapus</button>
+                 <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 mt-2"><Trash2 size={14}/> Hapus</button>
                </div>
-             )}
-             {menu.type === 'edge' && (
-               <button onClick={() => { setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {status: 'broken'}} : e)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg flex items-center justify-center gap-2"><Link2Off size={14}/> Putuskan Kabel</button>
+             ) : (
+                <button onClick={() => { setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {status: 'broken'}, style: {stroke: '#ef4444', strokeWidth: 4}} : e)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2"><Link2Off size={14}/> Putus Kabel</button>
              )}
           </div>
         )}
 
-        {/* SLIDE INFO PANEL */}
         <div className={`absolute top-0 right-0 h-full flex z-[110] transition-transform duration-500 ease-in-out ${showPanel ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
           <div className="h-full flex flex-col justify-center">
-            <button onClick={() => setShowPanel(!showPanel)} className="bg-slate-900 text-white p-2 rounded-l-2xl shadow-2xl flex flex-col items-center gap-3 py-10">
+            <button onClick={() => setShowPanel(!showPanel)} className="bg-slate-900 text-white p-2 rounded-l-2xl shadow-2xl flex flex-col items-center gap-3 py-10 hover:bg-blue-600 transition-colors">
               {showPanel ? <ChevronRight size={20}/> : <ChevronLeft size={20}/>}
-              <span className="[writing-mode:vertical-lr] text-[10px] font-black uppercase tracking-[0.3em]">{showPanel ? 'SEMBUNYI' : 'SHOW INFO'}</span>
+              <span className="[writing-mode:vertical-lr] text-[9px] font-black uppercase tracking-[0.3em]">{showPanel ? 'SEMBUNYI' : 'TAMPIL INFO'}</span>
             </button>
           </div>
-          <div className="w-[400px] bg-white h-full shadow-2xl border-l border-slate-200 p-8 overflow-y-auto">
+          <div className="w-[380px] bg-white h-full border-l border-slate-200 p-8 overflow-y-auto shadow-2xl">
              <div className="flex items-center gap-3 mb-6">
-                <Info className="text-blue-600" size={30} />
-                <h2 className="text-2xl font-black uppercase tracking-tighter">Info Topologi</h2>
+                <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg"><Info size={24} /></div>
+                <h2 className="text-xl font-black uppercase tracking-tighter">Detail Topologi</h2>
              </div>
-             {topologyInfo ? (
+             {topologyType && topologyType !== 'praktek' ? (
                <div className="space-y-6">
-                 <div className="p-4 bg-blue-50 rounded-xl border-l-4 border-blue-500 italic text-sm text-slate-700">
-                   {topologyInfo === 'bus' ? 'Topologi Bus menggunakan kabel backbone tunggal.' : 'Topologi Mesh menghubungkan setiap node secara point-to-point.'}
-                 </div>
-                 <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <h4 className="text-emerald-600 font-black text-[11px] uppercase tracking-widest">Kelebihan</h4>
-                      <ul className="text-xs space-y-1 font-bold"><li>• Efisien biaya</li><li>• Mudah diatur</li><li>• Irit kabel</li></ul>
-                    </div>
-                    <div className="space-y-2 border-t pt-4">
-                      <h4 className="text-red-600 font-black text-[11px] uppercase tracking-widest">Kekurangan</h4>
-                      <ul className="text-xs space-y-1 font-bold"><li>• Rawan putus total</li><li>• Tabrakan data tinggi</li><li>• Sulit troubleshoot</li></ul>
-                    </div>
+                 <div className="p-4 bg-blue-50 border-l-4 border-blue-500 italic text-sm text-slate-600 font-medium">{topologyType === 'bus' ? 'Sistem jaringan dengan jalur kabel tunggal (Backbone).' : 'Koneksi penuh antar perangkat.'}</div>
+                 <div className="space-y-4">
+                    <h4 className="text-emerald-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 font-black tracking-widest uppercase"><CheckCircle2 size={16}/> Kelebihan</h4>
+                    <ul className="text-xs space-y-2 font-bold text-slate-700"><li>• Sangat hemat kabel</li><li>• Mudah diimplementasikan</li></ul>
+                    <h4 className="text-red-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-6 border-t pt-4 font-black tracking-widest uppercase"><AlertTriangle size={16}/> Kekurangan</h4>
+                    <ul className="text-xs space-y-2 font-bold text-slate-700"><li>• Backbone putus = Mati semua</li><li>• Sering tabrakan data</li></ul>
                  </div>
                </div>
-             ) : <p className="text-slate-400 font-bold text-center mt-20">Generate topologi untuk melihat info</p>}
+             ) : <p className="text-slate-400 font-bold text-center mt-20 italic">Mode Praktek Aktif.</p>}
           </div>
         </div>
       </main>
 
       <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         .react-flow__handle { background: transparent !important; border: none !important; }
         .react-flow__edge.animated path { stroke-dasharray: 10; animation: dash 0.6s linear infinite; }
         @keyframes dash { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
