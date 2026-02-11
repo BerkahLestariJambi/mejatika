@@ -16,13 +16,12 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
-// Penambahan import Globe dan Cpu yang sebelumnya menyebabkan build error
 import { 
   ShieldCheck, Monitor, Network, Router, Server, Wifi, 
   Circle, Cloud, Square, MessageSquare, Zap, HardDrive, DoorOpen, 
   Flame, Radio, Trash2, Save, FolderOpen, RefreshCcw, 
   ChevronRight, Play, Square as StopSquare, AlertTriangle, Link2Off,
-  Globe, Cpu // <--- Pastikan ini ada
+  Globe, Cpu, Info
 } from 'lucide-react';
 
 // --- KONFIGURASI ICON ---
@@ -65,9 +64,8 @@ const UniversalNode = ({ data, selected }: any) => {
   const isCloud = data.shapeType === 'cloud';
   const isSimulating = data.isSimulating;
   const isDown = data.status === 'down';
-  const isDisconnected = data.isDisconnected; // Perangkat sehat tapi jalur putus
+  const isDisconnected = data.isDisconnected;
   
-  // Animasi berhenti jika perangkat rusak (down) ATAU jalur terputus (disconnected)
   const shouldAnimate = (isDevice && ['router', 'wifi', 'ap'].includes(data.shapeType) && !isDown && !isDisconnected) || (isSimulating && !isDown && !isDisconnected);
   
   const getNodeStyle = (): React.CSSProperties => {
@@ -119,12 +117,12 @@ function NetworkLabContent() {
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: string; isEdge?: boolean } | null>(null);
   const [activeTab, setActiveTab] = useState<'inventory' | 'learning' | 'shapes' | 'simulasi'>('inventory');
   const [isLive, setIsLive] = useState(false);
+  const [topologyInfo, setTopologyInfo] = useState<'bus' | 'mesh' | null>(null);
 
   // --- LOGIC SIMULASI TERPUTUS (BFS) ---
   const checkConnectivity = useCallback(() => {
     if (!isLive || nodes.length === 0) return;
 
-    // Cari node pusat (server/router)
     const startNode = nodes.find(n => n.data.shapeType === 'server' || n.data.shapeType === 'router') || nodes[0];
     const startNodeId = startNode.id;
 
@@ -136,11 +134,9 @@ function NetworkLabContent() {
       const currentId = queue.shift();
       const currentNode = nodes.find(n => n.id === currentId);
       
-      // Jika node itu sendiri 'down', dia tidak bisa meneruskan data
       if (currentNode?.data.status === 'down') continue;
 
       edges.forEach(edge => {
-        // Jangan lewati jalur yang statusnya 'broken'
         if (edge.data?.status === 'broken') return;
         
         let neighborId = null;
@@ -176,7 +172,7 @@ function NetworkLabContent() {
         }
       };
     }));
-  }, [isLive, nodes.length, edges.length]); // Dependencies minimal agar tidak infinite loop
+  }, [isLive, nodes.length, edges.length]);
 
   useEffect(() => {
     checkConnectivity();
@@ -189,7 +185,7 @@ function NetworkLabContent() {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
   };
 
-  const clearCanvas = () => { if(confirm("Hapus semua objek di canvas?")) { setNodes([]); setEdges([]); } };
+  const clearCanvas = () => { if(confirm("Hapus semua objek di canvas?")) { setNodes([]); setEdges([]); setTopologyInfo(null); } };
 
   const saveProject = () => {
     const data = JSON.stringify({ nodes: nodes.map(n => ({...n, data: {...n.data, icon: null, onChange: null}})), edges });
@@ -216,6 +212,7 @@ function NetworkLabContent() {
 
   const generateTopology = (type: 'bus' | 'mesh') => {
     setNodes([]); setEdges([]);
+    setTopologyInfo(type);
     const count = 5;
     const newNodes = Array.from({ length: count }).map((_, i) => {
       const id = `node-${i}-${Date.now()}`;
@@ -346,6 +343,73 @@ function NetworkLabContent() {
           <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-white text-blue-600 rounded-xl shadow-lg border border-blue-100 flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN BUS</button>
           <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-white text-indigo-600 rounded-xl shadow-lg border border-indigo-100 flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN MESH</button>
         </div>
+
+        {/* --- DYNAMIC TOPOLOGY INFO PANEL --- */}
+        {topologyInfo && (
+          <div className="absolute bottom-24 left-6 z-[100] bg-white/90 backdrop-blur-md p-5 rounded-2xl border border-blue-100 shadow-2xl w-[400px] animate-in slide-in-from-bottom-5 duration-300">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-blue-600 rounded-lg text-white">
+                  <Info size={16} />
+                </div>
+                <div>
+                  <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest leading-none">Topology Insight</p>
+                  <h4 className="text-lg font-black text-slate-800 uppercase leading-tight">
+                    {topologyInfo === 'bus' ? 'Bus Topology' : 'Mesh Topology'}
+                  </h4>
+                </div>
+              </div>
+              <button onClick={() => setTopologyInfo(null)} className="text-slate-400 hover:text-red-500 transition-colors">
+                <StopSquare size={16} />
+              </button>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed mb-4 italic">
+              {topologyInfo === 'bus' 
+                ? 'Semua node terhubung ke media transmisi tunggal (backbone). Data dikirimkan secara broadcast di sepanjang jalur utama.'
+                : 'Setiap node memiliki koneksi point-to-point ke setiap node lainnya. Memberikan redundansi tinggi dan performa stabil.'}
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <p className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1">
+                  <Zap size={10}/> Kelebihan
+                </p>
+                <div className="text-[10px] text-slate-700 font-medium space-y-1">
+                  {topologyInfo === 'bus' ? (
+                    <>
+                      <p>• Hemat biaya kabel</p>
+                      <p>• Mudah dipasang</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>• Tidak ada kegagalan tunggal</p>
+                      <p>• Keamanan data terjamin</p>
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="space-y-1.5 border-l pl-4">
+                <p className="text-[9px] font-black text-red-600 uppercase flex items-center gap-1">
+                  <AlertTriangle size={10}/> Kekurangan
+                </p>
+                <div className="text-[10px] text-slate-700 font-medium space-y-1">
+                  {topologyInfo === 'bus' ? (
+                    <>
+                      <p>• Backbone putus = Mati total</p>
+                      <p>• Sering tabrakan data</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>• Sangat boros kabel</p>
+                      <p>• Konfigurasi rumit</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         <ReactFlow 
           nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
