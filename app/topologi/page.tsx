@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -22,7 +22,7 @@ import {
   Spline 
 } from 'lucide-react';
 
-// --- ICON LIBRARY ---
+// --- DATABASE ICON ---
 const iconLib: any = {
   pc: <Monitor size={32} />,
   router: <Router size={32} />, 
@@ -35,7 +35,7 @@ const iconLib: any = {
   kabel: <Spline size={32} /> 
 };
 
-// --- CUSTOM NODE ---
+// --- KOMPONEN NODE CUSTOM ---
 const UniversalNode = ({ id, data }: any) => {
   const isDown = data.status === 'down';
   
@@ -58,14 +58,14 @@ const UniversalNode = ({ id, data }: any) => {
       <Handle type="target" position={Position.Left} id="l" style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Right} id="r" style={{ opacity: 0 }} />
       
-      <div className={`flex flex-col items-center justify-center min-w-[120px] p-4 bg-white border-[3px] rounded-xl shadow-xl transition-all ${isDown ? 'border-red-500 bg-red-50' : 'border-slate-800 hover:border-blue-500'}`}>
+      <div className={`flex flex-col items-center justify-center min-w-[120px] p-4 bg-white border-[3px] rounded-xl shadow-xl transition-all ${isDown ? 'border-red-500 bg-red-50' : 'border-slate-800 hover:border-blue-500 hover:scale-105'}`}>
         <div className={data.isSimulating && !isDown ? 'animate-pulse text-blue-600' : 'text-slate-700'}>
           {iconLib[data.shapeType] || <Monitor size={32}/>}
         </div>
         <input 
           defaultValue={data.label} 
-          onBlur={(e) => data.onChange(id, e.target.value)}
-          className="bg-transparent border-none text-[11px] font-black uppercase text-center focus:ring-0 w-full mt-1 p-0"
+          onChange={(e) => data.onChange(id, e.target.value)}
+          className="bg-transparent border-none text-[11px] font-black uppercase text-center focus:ring-0 w-full mt-1 p-0 cursor-text"
         />
         {isDown && <AlertTriangle size={14} className="absolute -top-1 -right-1 text-red-600 animate-bounce" />}
       </div>
@@ -80,14 +80,19 @@ function NetworkLabContent() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [menu, setMenu] = useState<{ id: string; x: number; y: number; type: 'node' | 'edge' } | null>(null);
-  const [showPanel, setShowPanel] = useState(true); // Default tampilkan panel
+  const [showPanel, setShowPanel] = useState(true);
   const [topologyType, setTopologyType] = useState<'bus' | 'mesh' | 'praktek' | null>(null);
-  const [isLive, setIsLive] = useState(false);
   const [activeTab, setActiveTab] = useState<'inventory' | 'simulasi'>('inventory');
 
-  const updateNode = (id: string, newData: any) => {
-    setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, ...newData } } : n));
-  };
+  // --- FUNGSI UPDATE DATA NODE ---
+  const updateNodeData = useCallback((nodeId: string, newData: any) => {
+    setNodes((nds) => nds.map((node) => {
+      if (node.id === nodeId) {
+        return { ...node, data: { ...node.data, ...newData } };
+      }
+      return node;
+    }));
+  }, [setNodes]);
 
   const handleTabClick = (tab: 'inventory' | 'simulasi') => {
     setActiveTab(tab);
@@ -116,18 +121,16 @@ function NetworkLabContent() {
         }
         newNodes.push({ 
           id: dId, type: 'universal', 
-          position: { x: xPos - 55, y: isTop ? backboneY - 180 : backboneY + 80 }, 
-          data: { shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `PC-${i}`, onChange: (id:string, val:string) => updateNode(id, {label: val}) } 
+          position: { x: xPos - 55, y: isTop ? backboneY - 200 : backboneY + 100 }, 
+          data: { shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `PC-${i}`, onChange: updateNodeData } 
         });
         newEdges.push({ 
-          id: `drop-${i}`, source: jId, target: dId, 
-          sourceHandle: isTop ? 'top' : 'bottom', 
-          targetHandle: isTop ? 'b' : 't', 
+          id: `drop-${i}`, source: jId, target: dId, sourceHandle: isTop ? 'top' : 'bottom', targetHandle: isTop ? 'b' : 't', 
           style: { strokeWidth: 4, stroke: '#0f172a' }, type: 'straight' 
         });
       }
     } else {
-        const mNodes = Array.from({ length: 5 }).map((_, i) => ({ id: `m-${i}`, type: 'universal', position: { x: 400 + 250 * Math.cos(2*PI*i/5), y: 350 + 250 * Math.sin(2*PI*i/5) }, data: { shapeType: 'pc', label: `PC-${i}`, onChange: (id:string, val:string) => updateNode(id, {label: val}) } }));
+        const mNodes = Array.from({ length: 5 }).map((_, i) => ({ id: `m-${i}`, type: 'universal', position: { x: 450 + 250 * Math.cos(2*Math.PI*i/5), y: 350 + 250 * Math.sin(2*PI*i/5) }, data: { shapeType: 'pc', label: `NODE-${i}`, onChange: updateNodeData } }));
         newNodes.push(...mNodes);
         for (let i = 0; i < 5; i++) for (let j = i + 1; j < 5; j++) newEdges.push({ id: `e-${i}-${j}`, source: `m-${i}`, target: `m-${j}`, style: { strokeWidth: 3, stroke: '#2563eb' } });
     }
@@ -136,20 +139,24 @@ function NetworkLabContent() {
 
   const onDrop = (event: any) => {
     const type = event.dataTransfer.getData('application/value');
-    if (type === 'kabel') return; 
+    if (!type || type === 'kabel') return;
     const rect = reactFlowWrapper.current?.getBoundingClientRect();
     if (!rect) return;
     const id = `node_${Date.now()}`;
-    setNodes((nds) => nds.concat({ id, type: 'universal', position: { x: event.clientX - rect.left - 60, y: event.clientY - rect.top - 40 }, data: { shapeType: type, label: type.toUpperCase(), onChange: (id:string, val:string) => updateNode(id, {label: val}) } }));
+    setNodes((nds) => nds.concat({ 
+      id, type: 'universal', 
+      position: { x: event.clientX - rect.left - 60, y: event.clientY - rect.top - 40 }, 
+      data: { shapeType: type, label: type.toUpperCase(), onChange: updateNodeData } 
+    }));
   };
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden" onContextMenu={(e) => e.preventDefault()}>
-      {/* SIDEBAR LEFT */}
+      {/* SIDEBAR */}
       <aside className="w-72 bg-white border-r flex flex-col z-[100] shadow-xl text-slate-900">
         <div className="p-6 bg-slate-900 text-white font-black italic flex items-center gap-3">
           <ShieldCheck className="text-blue-500" size={28}/>
-          <div className="leading-none text-sm tracking-tighter">MEJATIKA LAB</div>
+          <div className="leading-none text-sm tracking-tighter uppercase">Mejatika Lab</div>
         </div>
         <div className="flex bg-slate-50 text-[10px] font-black uppercase border-b">
           <button onClick={() => handleTabClick('inventory')} className={`flex-1 py-4 ${activeTab === 'inventory' ? 'bg-white text-blue-600 border-b-2 border-blue-600' : 'text-slate-400'}`}>Inventory</button>
@@ -166,21 +173,21 @@ function NetworkLabContent() {
               ))}
             </div>
           ) : (
-            <button onClick={() => setIsLive(!isLive)} className={`w-full py-4 rounded-xl font-black text-xs shadow-lg transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'}`}>
-              {isLive ? 'STOP SIMULASI' : 'START SIMULASI'}
-            </button>
+            <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200 text-center">
+              <p className="text-[10px] font-black text-blue-600 uppercase">Mode Simulasi Aktif</p>
+            </div>
           )}
         </div>
-        <div className="p-4 border-t bg-slate-50 text-[9px] text-slate-400 text-center uppercase tracking-widest font-black italic">SANPIO AI LAB © 2026</div>
+        <div className="p-4 border-t bg-slate-50 text-[9px] text-slate-400 text-center uppercase font-black italic">SANPIO AI LAB © 2026</div>
       </aside>
 
-      {/* CANVAS AREA */}
-      <main className="flex-grow relative" ref={reactFlowWrapper}>
+      {/* CANVAS */}
+      <main className="flex-grow relative" ref={reactFlowWrapper} onClick={() => setMenu(null)}>
         {topologyType === 'praktek' && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.05]">
             <div className="flex flex-col items-center">
               <PencilRuler size={220} className="text-slate-900" />
-              <h1 className="text-8xl font-black tracking-[0.2em] uppercase text-slate-900 text-center">CANVAS PRAKTIK</h1>
+              <h1 className="text-8xl font-black tracking-[0.2em] uppercase text-slate-900">CANVAS PRAKTIK</h1>
             </div>
           </div>
         )}
@@ -195,6 +202,8 @@ function NetworkLabContent() {
           onDrop={onDrop} onDragOver={(e) => e.preventDefault()} 
           nodeTypes={nodeTypes} 
           onConnect={(p) => setEdges(eds => addEdge({...p, style:{strokeWidth:4, stroke:'#0f172a'}}, eds))}
+          onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: 'node' }); }}
+          onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ id: ed.id, x: e.clientX, y: e.clientY, type: 'edge' }); }}
           connectionMode={ConnectionMode.Loose}
           fitView
         >
@@ -203,7 +212,7 @@ function NetworkLabContent() {
 
         {/* ANGGOTA KELOMPOK */}
         {topologyType && (
-          <div className="absolute bottom-6 right-[400px] bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-2xl z-40 transition-all">
+          <div className="absolute bottom-6 right-[400px] bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-2xl z-40">
             <div className="flex items-center gap-2 mb-2 text-blue-600 border-b pb-1 font-black text-[10px] uppercase tracking-widest">
               <Users size={16} /><span>Anggota Kelompok</span>
             </div>
@@ -213,7 +222,32 @@ function NetworkLabContent() {
           </div>
         )}
 
-        {/* PANEL INFO RIGHT (KEMBALI HADIR) */}
+        {/* CONTEXT MENU (GANTI ICON DI SINI) */}
+        {menu && (
+          <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-52 animate-in zoom-in-95">
+              <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1 tracking-widest text-center">Edit Objek</div>
+              {menu.type === 'node' ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-4 gap-1">
+                    {Object.keys(iconLib).filter(k => k !== 'kabel').map(ico => (
+                      <button key={ico} onClick={() => { updateNodeData(menu.id, { shapeType: ico }); setMenu(null); }} className="p-2 border rounded hover:bg-blue-50 transition-colors flex items-center justify-center text-slate-700">
+                        {React.cloneElement(iconLib[ico], { size: 16 })}
+                      </button>
+                    ))}
+                  </div>
+                  <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 mt-2 uppercase tracking-widest hover:bg-red-100">
+                    <Trash2 size={14}/> Hapus
+                  </button>
+                </div>
+              ) : (
+                 <button onClick={() => { setEdges(eds => eds.filter(e => e.id !== menu.id)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 uppercase tracking-widest hover:bg-red-100">
+                   <Link2Off size={14}/> Putus Kabel
+                 </button>
+              )}
+          </div>
+        )}
+
+        {/* PANEL INFO KANAN */}
         <div className={`absolute top-0 right-0 h-full flex z-[110] transition-transform duration-500 ease-in-out ${showPanel ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
           <div className="h-full flex flex-col justify-center">
             <button onClick={() => setShowPanel(!showPanel)} className="bg-slate-900 text-white p-2 rounded-l-2xl shadow-2xl flex flex-col items-center gap-3 py-10 hover:bg-blue-600 transition-colors border-l border-white/20">
@@ -232,10 +266,10 @@ function NetworkLabContent() {
                     {topologyType === 'bus' ? 'Jaringan dengan satu jalur kabel utama (Backbone).' : 'Koneksi penuh antar perangkat.'}
                  </div>
                  <div className="space-y-4">
-                    <h4 className="text-emerald-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border-b pb-1 font-black"><CheckCircle2 size={16}/> Kelebihan</h4>
-                    <ul className="text-xs space-y-2 font-bold text-slate-700 uppercase tracking-tighter"><li>• Sangat hemat kabel</li><li>• Mudah dipasang</li></ul>
-                    <h4 className="text-red-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-6 border-b pb-1 font-black"><AlertTriangle size={16}/> Kekurangan</h4>
-                    <ul className="text-xs space-y-2 font-bold text-slate-700 uppercase tracking-tighter"><li>• Backbone putus = Lumpuh total</li><li>• Kecepatan lambat saat sibuk</li></ul>
+                    <h4 className="text-emerald-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 border-b pb-1"><CheckCircle2 size={16}/> Kelebihan</h4>
+                    <ul className="text-xs space-y-2 font-bold text-slate-700 uppercase tracking-tighter"><li>• Hemat kabel</li><li>• Mudah dipasang</li></ul>
+                    <h4 className="text-red-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 mt-6 border-b pb-1"><AlertTriangle size={16}/> Kekurangan</h4>
+                    <ul className="text-xs space-y-2 font-bold text-slate-700 uppercase tracking-tighter"><li>• Jalur utama putus = Mati total</li><li>• Tabrakan data tinggi</li></ul>
                  </div>
                </div>
              ) : (
@@ -246,25 +280,6 @@ function NetworkLabContent() {
              )}
           </div>
         </div>
-
-        {/* CONTEXT MENU */}
-        {menu && (
-          <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-52 animate-in zoom-in-95" onMouseLeave={() => setMenu(null)}>
-              <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1 tracking-widest text-center">Edit Objek</div>
-              {menu.type === 'node' ? (
-                <div className="space-y-2">
-                  <div className="grid grid-cols-4 gap-1">
-                    {Object.keys(iconLib).filter(k => k !== 'kabel').map(ico => (
-                      <button key={ico} onClick={() => { updateNode(menu.id, { shapeType: ico }); setMenu(null); }} className="p-2 border rounded hover:bg-blue-50 transition-colors flex items-center justify-center">{React.cloneElement(iconLib[ico], { size: 14 })}</button>
-                    ))}
-                  </div>
-                  <button onClick={() => { setNodes(nds => nds.filter(n => n.id !== menu.id)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 mt-2 uppercase tracking-widest"><Trash2 size={14}/> Hapus</button>
-                </div>
-              ) : (
-                 <button onClick={() => { setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {status: 'broken'}, style: {stroke: '#ef4444', strokeWidth: 4}} : e)); setMenu(null); }} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-black rounded-lg flex items-center justify-center gap-2 uppercase tracking-widest"><Link2Off size={14}/> Putus Kabel</button>
-              )}
-          </div>
-        )}
       </main>
 
       <style jsx global>{`
