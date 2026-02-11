@@ -38,20 +38,8 @@ const iconLib: any = {
 };
 
 const curriculumMaterials = [
-  {
-    id: 'materi_1',
-    category: 'The Hook',
-    title: 'Krisis 60 Menit Tanpa Internet',
-    icon: <Globe size={20} />,
-    description: 'Dunia berhenti berputar tanpa konektivitas.',
-  },
-  {
-    id: 'materi_2',
-    category: 'Arsitektur',
-    title: 'Anatomi Jaringan',
-    icon: <Cpu size={20} />,
-    description: 'Harmoni perangkat keras membagi data.',
-  }
+  { id: 'materi_1', category: 'The Hook', title: 'Krisis 60 Menit Tanpa Internet', icon: <Globe size={20} />, description: 'Dunia berhenti berputar tanpa konektivitas.' },
+  { id: 'materi_2', category: 'Arsitektur', title: 'Anatomi Jaringan', icon: <Cpu size={20} />, description: 'Harmoni perangkat keras membagi data.' }
 ];
 
 // --- CUSTOM NODE COMPONENT ---
@@ -62,30 +50,30 @@ const UniversalNode = ({ data, selected }: any) => {
   
   const shouldAnimate = (['router', 'wifi', 'ap'].includes(data.shapeType) && !isDown && !isDisconnected) || (isSimulating && !isDown && !isDisconnected);
   
-  // Jika ini adalah node junction (titik di kabel), tampilkan hanya bulatan kecil
+  // NODE KHUSUS UNTUK TITIK DI KABEL (JUNCTION)
   if (data.type === 'junction') {
     return (
-      <div className="group relative">
-        <div className={`w-4 h-4 rounded-full bg-slate-800 border-2 border-white shadow-sm transition-all ${isDown ? 'bg-red-500' : ''}`} />
-        <Handle type="source" position={Position.Bottom} className="opacity-0" />
-        <Handle type="target" position={Position.Top} className="opacity-0" />
-        <Handle type="source" position={Position.Left} className="opacity-0" />
-        <Handle type="target" position={Position.Right} className="opacity-0" />
+      <div className="relative flex items-center justify-center">
+        {/* Bulatan hitam kecil di tengah kabel */}
+        <div className={`w-3 h-3 rounded-full bg-slate-900 border border-white shadow-sm ${isDown ? 'bg-red-500' : ''}`} />
+        <Handle type="target" position={Position.Left} id="left" className="opacity-0" />
+        <Handle type="source" position={Position.Right} id="right" className="opacity-0" />
+        <Handle type="source" position={Position.Top} id="top" className="opacity-0" />
+        <Handle type="source" position={Position.Bottom} id="bottom" className="opacity-0" />
       </div>
     );
   }
 
   return (
-    <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''} ${isDown || isDisconnected ? 'opacity-70' : ''}`}>
-      <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2 !h-2" />
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2 !h-2" />
-      <Handle type="target" position={Position.Left} className="!bg-blue-600 !w-2 !h-2" />
-      <Handle type="source" position={Position.Right} className="!bg-blue-600 !w-2 !h-2" />
+    <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-105' : ''} ${isDown || isDisconnected ? 'opacity-70' : ''}`}>
+      {/* Handle disembunyikan tapi tetap berfungsi */}
+      <Handle type="target" position={Position.Top} id="t" className="opacity-0" />
+      <Handle type="source" position={Position.Bottom} id="b" className="opacity-0" />
       
-      <div className={`w-full h-full flex flex-col items-center justify-center text-center bg-white border-[3px] ${isDown || isDisconnected ? 'border-red-400' : 'border-slate-800'} rounded-xl p-4 shadow-sm transition-colors`}>
+      <div className={`w-full h-full flex flex-col items-center justify-center text-center bg-white border-[3px] ${isDown || isDisconnected ? 'border-red-400' : 'border-slate-800'} rounded-2xl p-4 shadow-md transition-colors`}>
         <div className="mb-1 relative">
-          {shouldAnimate && <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-25 scale-150"></div>}
-          <div className={`${shouldAnimate ? 'animate-pulse text-blue-600' : isDown || isDisconnected ? 'text-red-600' : 'text-slate-700'}`}>
+          {shouldAnimate && <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-20 scale-150"></div>}
+          <div className={`${shouldAnimate ? 'animate-pulse text-blue-600' : isDown || isDisconnected ? 'text-red-600' : 'text-slate-800'}`}>
             {iconLib[data.shapeType] || <Monitor size={40}/>}
             {(isDown || isDisconnected) && <AlertTriangle size={16} className="absolute -top-2 -right-2 text-red-600 animate-bounce" />}
           </div>
@@ -94,7 +82,7 @@ const UniversalNode = ({ data, selected }: any) => {
           value={data.label}
           onChange={(e) => data.onChange(e.target.value)}
           className={`bg-transparent border-none text-[10px] font-black uppercase text-center focus:ring-0 resize-none w-full leading-tight p-0 mt-1 overflow-hidden ${isDown || isDisconnected ? 'text-red-600' : 'text-slate-800'}`}
-          rows={2}
+          rows={1}
         />
       </div>
     </div>
@@ -113,6 +101,7 @@ function NetworkLabContent() {
   const [topologyInfo, setTopologyInfo] = useState<'bus' | 'mesh' | null>(null);
   const [showDefinition, setShowDefinition] = useState(true);
 
+  // LOGIKA SIMULASI (TETAP DIJAGA)
   const checkConnectivity = useCallback(() => {
     if (!isLive || nodes.length === 0) return;
     const startNode = nodes.find(n => n.data.shapeType === 'router' || n.data.shapeType === 'server') || nodes[0];
@@ -138,7 +127,7 @@ function NetworkLabContent() {
     setEdges(eds => eds.map(edge => ({
       ...edge,
       animated: isLive && edge.data?.status !== 'broken',
-      style: { ...edge.style, stroke: edge.data?.status === 'broken' ? '#ef4444' : (isLive ? '#22c55e' : '#0f172a'), strokeWidth: 4 }
+      style: { ...edge.style, stroke: edge.data?.status === 'broken' ? '#ef4444' : (isLive ? '#22c55e' : '#0f172a'), strokeWidth: edge.id.includes('backbone') ? 8 : 4 }
     })));
   }, [isLive, nodes.length, edges.length]);
 
@@ -151,10 +140,10 @@ function NetworkLabContent() {
     setNodes((nds) => nds.map((n) => n.id === id ? { ...n, data: { ...n.data, label } } : n));
   };
 
+  // --- GENERATE TOPOLOGY BUS (FIXED) ---
   const generateTopology = (type: 'bus' | 'mesh') => {
     setNodes([]); setEdges([]);
     setTopologyInfo(type);
-    setShowDefinition(true);
     
     const count = 5;
     const timestamp = Date.now();
@@ -166,32 +155,34 @@ function NetworkLabContent() {
         const junctionId = `junc-${i}-${timestamp}`;
         const deviceId = `node-${i}-${timestamp}`;
         const isTop = i % 2 === 0;
+        const posX = i * 250 + 200;
 
-        // 1. Tambah Node Junction (titik di tengah kabel)
+        // 1. Titik Junction (Pusat Kabel)
         newNodes.push({
           id: junctionId,
           type: 'universal',
-          position: { x: i * 250 + 200, y: 300 },
-          data: { type: 'junction', status: 'up' },
-          draggable: true,
+          position: { x: posX, y: 300 },
+          data: { type: 'junction' },
         });
 
-        // 2. Hubungkan antar Junction (Backbone)
+        // 2. Backbone (Kabel Horizontal)
         if (i > 0) {
           newEdges.push({
             id: `backbone-${i}`,
             source: `junc-${i-1}-${timestamp}`,
             target: junctionId,
+            sourceHandle: 'right',
+            targetHandle: 'left',
             style: { strokeWidth: 8, stroke: '#0f172a' },
             type: 'straight'
           });
         }
 
-        // 3. Tambah Perangkat (PC/Router)
+        // 3. Perangkat (PC/Router)
         newNodes.push({
           id: deviceId,
           type: 'universal',
-          position: { x: i * 250 + 155, y: isTop ? 100 : 450 },
+          position: { x: posX - 50, y: isTop ? 100 : 450 },
           data: { 
             type: 'device', 
             shapeType: i === 0 ? 'router' : 'pc', 
@@ -199,19 +190,22 @@ function NetworkLabContent() {
             status: 'up', 
             onChange: (v: string) => onNodeLabelChange(deviceId, v) 
           },
-          style: { width: 100, height: 100 }
+          style: { width: 110, height: 110 }
         });
 
-        // 4. Hubungkan Junction ke Perangkat (Kabel Drop)
+        // 4. Kabel Drop (Vertikal Tegak Lurus)
         newEdges.push({
           id: `drop-${i}`,
           source: junctionId,
           target: deviceId,
+          sourceHandle: isTop ? 'top' : 'bottom',
+          targetHandle: isTop ? 'b' : 't',
           style: { strokeWidth: 4, stroke: '#0f172a' },
           type: 'straight'
         });
       }
     } else {
+      // Mesh Logic (Tetap)
       const meshNodes = Array.from({ length: 5 }).map((_, i) => {
         const id = `mesh-${i}-${timestamp}`;
         return {
@@ -234,7 +228,7 @@ function NetworkLabContent() {
   };
 
   const onConnect = useCallback((params: any) => {
-    setEdges((eds) => addEdge({ ...params, style: { strokeWidth: 4, stroke: '#0f172a' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#0f172a' } }, eds));
+    setEdges((eds) => addEdge({ ...params, style: { strokeWidth: 4, stroke: '#0f172a' } }, eds));
   }, []);
 
   const onDrop = useCallback((event: any) => {
@@ -251,8 +245,9 @@ function NetworkLabContent() {
   }, []);
 
   return (
-    <div className="flex h-screen w-full bg-slate-100 overflow-hidden" onClick={() => setMenu(null)}>
-      <aside className="w-80 bg-white border-r flex flex-col z-[60] shadow-2xl relative">
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden" onClick={() => setMenu(null)}>
+      {/* Sidebar (Sama seperti sebelumnya) */}
+      <aside className="w-80 bg-white border-r flex flex-col z-[60] shadow-xl relative">
         <div className="p-6 bg-slate-900 text-white font-black italic uppercase flex items-center gap-3">
           <ShieldCheck size={28} className="text-blue-500"/>
           <div>MEJATIKA LAB <div className="text-[9px] mt-1 opacity-70 font-normal tracking-widest text-blue-400">SANPIO EDITION</div></div>
@@ -287,7 +282,7 @@ function NetworkLabContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              <button onClick={() => setIsLive(!isLive)} className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black transition-all ${isLive ? 'bg-red-500 text-white' : 'bg-blue-600 text-white'}`}>
+              <button onClick={() => setIsLive(!isLive)} className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black transition-all ${isLive ? 'bg-red-500 text-white shadow-red-200' : 'bg-blue-600 text-white shadow-blue-200'} shadow-lg`}>
                 {isLive ? <><StopSquare size={18}/> STOP SIMULATION</> : <><Play size={18}/> START SIMULATION</>}
               </button>
             </div>
@@ -303,39 +298,14 @@ function NetworkLabContent() {
         </div>
       </aside>
 
+      {/* Main Canvas Area */}
       <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
-          <h1 className="text-[22vw] font-black text-slate-900 select-none leading-none">SANPIO</h1>
-        </div>
-
         <div className="absolute top-4 left-4 z-[100] flex flex-col gap-2">
           <div className="flex gap-2">
-            <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-white text-blue-600 rounded-xl shadow-lg border border-blue-100 flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN BUS</button>
-            <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-white text-indigo-600 rounded-xl shadow-lg border border-indigo-100 flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN MESH</button>
+            <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-white text-blue-600 rounded-xl shadow-lg border border-blue-100 flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all uppercase tracking-widest"><RefreshCcw size={12}/> Gen Bus</button>
+            <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-white text-indigo-600 rounded-xl shadow-lg border border-indigo-100 flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all uppercase tracking-widest"><RefreshCcw size={12}/> Gen Mesh</button>
           </div>
-          <button 
-            onClick={() => setShowDefinition(!showDefinition)} 
-            className={`py-2 text-[10px] font-black rounded-xl shadow-lg border flex items-center justify-center gap-2 transition-all ${showDefinition ? 'bg-amber-500 text-white border-amber-600' : 'bg-white text-slate-600 border-slate-200'}`}
-          >
-            {showDefinition ? <><EyeOff size={14}/> HIDE INFO PANEL</> : <><Eye size={14}/> SHOW INFO PANEL</>}
-          </button>
         </div>
-
-        {topologyInfo && showDefinition && (
-          <div className="absolute bottom-24 left-6 z-[100] bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-blue-100 shadow-2xl w-[380px]">
-            <div className="flex items-center gap-2 mb-2">
-              <Info size={16} className="text-blue-600" />
-              <h4 className="text-lg font-black text-slate-800 uppercase">{topologyInfo} Topology</h4>
-            </div>
-            <p className="text-[11px] text-slate-600 italic mb-4">
-              {topologyInfo === 'bus' ? 'Semua perangkat terhubung ke kabel utama tunggal (Backbone).' : 'Setiap perangkat terhubung ke setiap perangkat lainnya secara langsung.'}
-            </p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-[10px]"><p className="font-bold text-emerald-600 uppercase">Kelebihan</p>{topologyInfo === 'bus' ? '• Mudah diinstal\n• Hemat biaya kabel' : '• Sangat toleran kerusakan\n• Pengiriman data cepat'}</div>
-              <div className="text-[10px] border-l pl-4"><p className="font-bold text-red-600 uppercase">Kekurangan</p>{topologyInfo === 'bus' ? '• Backbone putus = Semua mati\n• Sulit deteksi masalah' : '• Biaya sangat mahal\n• Instalasi sangat rumit'}</div>
-            </div>
-          </div>
-        )}
 
         <ReactFlow 
           nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
@@ -345,7 +315,7 @@ function NetworkLabContent() {
           onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ id: ed.id, x: e.clientX, y: e.clientY, type: 'edge', isEdge: true }); }}
           fitView
         >
-          <Background gap={25} size={1} color="#cbd5e1" />
+          <Background gap={25} size={1} color="#e2e8f0" />
           <Controls />
           {menu && (
             <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border shadow-2xl rounded-2xl p-4 min-w-[200px]">
@@ -365,11 +335,28 @@ function NetworkLabContent() {
         </ReactFlow>
       </div>
 
+      {/* Global CSS for perfection */}
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-        .react-flow__edge.animated path { stroke-dasharray: 10; animation: dash 0.5s linear infinite; }
-        @keyframes dash { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+        
+        /* Hilangkan lingkaran biru default react-flow handle */
+        .react-flow__handle {
+          background: transparent !important;
+          border: none !important;
+          min-width: 1px !important;
+          min-height: 1px !important;
+        }
+
+        /* Styling garis simulasi agar lebih halus */
+        .react-flow__edge.animated path {
+          stroke-dasharray: 8;
+          animation: dash 0.8s linear infinite;
+        }
+        @keyframes dash {
+          from { stroke-dashoffset: 16; }
+          to { stroke-dashoffset: 0; }
+        }
       `}</style>
     </div>
   );
