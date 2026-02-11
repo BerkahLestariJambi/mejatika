@@ -64,15 +64,18 @@ const UniversalNode = ({ data, selected }: any) => {
   
   return (
     <div className={`relative w-full h-full flex flex-col items-center justify-center transition-all ${selected ? 'scale-110 drop-shadow-2xl' : ''} ${isDown || isDisconnected ? 'opacity-70' : ''}`}>
-      <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2.5 !h-2.5" />
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2.5 !h-2.5" />
+      {/* Handles untuk koneksi fleksibel */}
+      <Handle type="target" position={Position.Top} className="!bg-blue-600 !w-2 !h-2" />
+      <Handle type="source" position={Position.Bottom} className="!bg-blue-600 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} className="!bg-blue-600 !w-2 !h-2" />
+      <Handle type="source" position={Position.Right} className="!bg-blue-600 !w-2 !h-2" />
       
-      <div className="w-full h-full flex flex-col items-center justify-center text-center bg-white border-[3px] border-slate-200 rounded-xl p-4 shadow-sm">
+      <div className={`w-full h-full flex flex-col items-center justify-center text-center bg-white border-[3px] ${isDown || isDisconnected ? 'border-red-400' : 'border-slate-800'} rounded-xl p-4 shadow-sm transition-colors`}>
         <div className="mb-1 relative">
           {shouldAnimate && <div className="absolute inset-0 bg-blue-400 rounded-full animate-ping opacity-25 scale-150"></div>}
           <div className={`${shouldAnimate ? 'animate-pulse text-blue-600' : isDown || isDisconnected ? 'text-red-600' : 'text-slate-700'}`}>
             {iconLib[data.shapeType] || <Monitor size={40}/>}
-            {(isDown || isDisconnected) && <AlertTriangle size={16} className="absolute -top-1 -right-1 text-red-600 animate-bounce" />}
+            {(isDown || isDisconnected) && <AlertTriangle size={16} className="absolute -top-2 -right-2 text-red-600 animate-bounce" />}
           </div>
         </div>
         <textarea
@@ -82,9 +85,6 @@ const UniversalNode = ({ data, selected }: any) => {
           rows={2}
         />
       </div>
-
-      <Handle type="target" position={Position.Left} className="!bg-blue-600 !w-2.5 !h-2.5" />
-      <Handle type="source" position={Position.Right} className="!bg-blue-600 !w-2.5 !h-2.5" />
     </div>
   );
 };
@@ -104,7 +104,7 @@ function NetworkLabContent() {
 
   const checkConnectivity = useCallback(() => {
     if (!isLive || nodes.length === 0) return;
-    const startNode = nodes.find(n => n.data.shapeType === 'server' || n.data.shapeType === 'router') || nodes[0];
+    const startNode = nodes.find(n => n.data.shapeType === 'router' || n.data.shapeType === 'server') || nodes[0];
     const visited = new Set();
     const queue = [startNode.id];
     visited.add(startNode.id);
@@ -127,7 +127,7 @@ function NetworkLabContent() {
     setEdges(eds => eds.map(edge => ({
       ...edge,
       animated: isLive && edge.data?.status !== 'broken',
-      style: { ...edge.style, stroke: edge.data?.status === 'broken' ? '#ef4444' : (isLive ? '#22c55e' : '#2563eb'), strokeWidth: 3 }
+      style: { ...edge.style, stroke: edge.data?.status === 'broken' ? '#ef4444' : (isLive ? '#22c55e' : '#0f172a'), strokeWidth: 4 }
     })));
   }, [isLive, nodes.length, edges.length]);
 
@@ -144,37 +144,96 @@ function NetworkLabContent() {
     setNodes([]); setEdges([]);
     setTopologyInfo(type);
     setShowDefinition(true);
-    const count = 5;
+    
+    const count = 6;
     const timestamp = Date.now();
-    const deviceNodes = Array.from({ length: count }).map((_, i) => {
-      const id = `node-${i}-${timestamp}`;
-      return {
-        id, type: 'universal',
-        position: { x: type === 'bus' ? i * 200 + 150 : 400 + 250 * Math.cos(2*Math.PI*i/count), y: 350 + (type === 'mesh' ? 250 * Math.sin(2*Math.PI*i/count) : 0) },
-        data: { type: 'device', shapeType: i === 0 && type === 'bus' ? 'router' : 'pc', label: i === 0 && type === 'bus' ? 'GATEWAY' : `PC-${i}`, status: 'up', onChange: (v: string) => onNodeLabelChange(id, v) },
-        style: { width: 100, height: 100 }
-      }
-    });
-    const newEdges = [];
+    const newNodes: any[] = [];
+    const newEdges: any[] = [];
+
     if (type === 'bus') {
-      for (let i = 0; i < count - 1; i++) newEdges.push({ id: `e${i}`, source: deviceNodes[i].id, target: deviceNodes[i+1].id, style: { strokeWidth: 3, stroke: '#2563eb' } });
-    } else {
+      // 1. Buat Backbone Nodes (Titik koneksi tengah yang tidak terlihat)
+      // Ini bertindak sebagai jalur kabel utama yang lurus
       for (let i = 0; i < count; i++) {
-        for (let j = i + 1; j < count; j++) newEdges.push({ id: `e${i}-${j}`, source: deviceNodes[i].id, target: deviceNodes[j].id, style: { strokeWidth: 3, stroke: '#2563eb' } });
+        const busNodeId = `bus-${i}-${timestamp}`;
+        newNodes.push({
+          id: busNodeId,
+          type: 'universal',
+          position: { x: i * 250 + 100, y: 300 },
+          data: { type: 'device', shapeType: 'hub', label: '', status: 'up', onChange: () => {} },
+          style: { width: 10, height: 10, opacity: 0, pointerEvents: 'none' } // Disembunyikan
+        });
+
+        // 2. Hubungkan antar titik backbone
+        if (i > 0) {
+          newEdges.push({
+            id: `backbone-${i}`,
+            source: newNodes[i-1].id,
+            target: busNodeId,
+            style: { strokeWidth: 6, stroke: '#0f172a' }, // Kabel tebal
+            type: 'straight'
+          });
+        }
+
+        // 3. Buat Device (PC/Router) selang-seling atas dan bawah
+        const isTop = i % 2 === 0;
+        const deviceId = `node-${i}-${timestamp}`;
+        const isFirst = i === 0;
+
+        newNodes.push({
+          id: deviceId,
+          type: 'universal',
+          position: { x: i * 250 + 55, y: isTop ? 100 : 450 },
+          data: { 
+            type: 'device', 
+            shapeType: isFirst ? 'router' : 'pc', 
+            label: isFirst ? 'MEJATIWAY' : `PC-${i}`, 
+            status: 'up', 
+            onChange: (v: string) => onNodeLabelChange(deviceId, v) 
+          },
+          style: { width: 100, height: 100 }
+        });
+
+        // 4. Hubungkan device ke backbone
+        newEdges.push({
+          id: `drop-${i}`,
+          source: busNodeId,
+          target: deviceId,
+          style: { strokeWidth: 4, stroke: '#0f172a' },
+          type: 'straight'
+        });
+      }
+    } else {
+      // Logika Mesh (Tetap melingkar)
+      const meshNodes = Array.from({ length: 5 }).map((_, i) => {
+        const id = `mesh-${i}-${timestamp}`;
+        return {
+          id, type: 'universal',
+          position: { x: 400 + 250 * Math.cos(2*Math.PI*i/5), y: 350 + 250 * Math.sin(2*Math.PI*i/5) },
+          data: { type: 'device', shapeType: 'pc', label: `PC-${i}`, status: 'up', onChange: (v: string) => onNodeLabelChange(id, v) },
+          style: { width: 100, height: 100 }
+        };
+      });
+      newNodes.push(...meshNodes);
+      for (let i = 0; i < meshNodes.length; i++) {
+        for (let j = i + 1; j < meshNodes.length; j++) {
+          newEdges.push({ id: `e${i}-${j}`, source: meshNodes[i].id, target: meshNodes[j].id, style: { strokeWidth: 3, stroke: '#2563eb' } });
+        }
       }
     }
-    setNodes(deviceNodes); setEdges(newEdges);
+
+    setNodes(newNodes);
+    setEdges(newEdges);
   };
 
   const onConnect = useCallback((params: any) => {
-    setEdges((eds) => addEdge({ ...params, style: { strokeWidth: 3, stroke: '#2563eb' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#2563eb' } }, eds));
+    setEdges((eds) => addEdge({ ...params, style: { strokeWidth: 4, stroke: '#0f172a' }, markerEnd: { type: MarkerType.ArrowClosed, color: '#0f172a' } }, eds));
   }, []);
 
   const onDrop = useCallback((event: any) => {
     event.preventDefault();
     const type = event.dataTransfer.getData('application/type'); 
     const val = event.dataTransfer.getData('application/value');
-    if (type === 'shape') return; // Memblokir shape
+    if (type === 'shape') return; 
     const rect = reactFlowWrapper.current?.getBoundingClientRect();
     if (!rect) return;
     const id = `node_${Date.now()}`;
@@ -240,10 +299,9 @@ function NetworkLabContent() {
 
       <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
-          <h1 className="text-[22vw] font-black text-slate-900 select-none">SANPIO</h1>
+          <h1 className="text-[22vw] font-black text-slate-900 select-none leading-none">SANPIO</h1>
         </div>
 
-        {/* CONTROLS AREA */}
         <div className="absolute top-4 left-4 z-[100] flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-white text-blue-600 rounded-xl shadow-lg border border-blue-100 flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN BUS</button>
@@ -264,11 +322,11 @@ function NetworkLabContent() {
               <h4 className="text-lg font-black text-slate-800 uppercase">{topologyInfo} Topology</h4>
             </div>
             <p className="text-[11px] text-slate-600 italic mb-4">
-              {topologyInfo === 'bus' ? 'Menggunakan satu kabel utama sebagai tulang punggung.' : 'Setiap perangkat terhubung ke setiap perangkat lainnya.'}
+              {topologyInfo === 'bus' ? 'Semua perangkat terhubung ke kabel utama tunggal (Backbone).' : 'Setiap perangkat terhubung ke setiap perangkat lainnya secara langsung.'}
             </p>
             <div className="grid grid-cols-2 gap-4">
-              <div className="text-[10px]"><p className="font-bold text-emerald-600">PROS</p>{topologyInfo === 'bus' ? 'Hemat Kabel' : 'Sangat Redundan'}</div>
-              <div className="text-[10px] border-l pl-4"><p className="font-bold text-red-600">CONS</p>{topologyInfo === 'bus' ? 'Kabel Putus = Mati' : 'Boros Kabel'}</div>
+              <div className="text-[10px]"><p className="font-bold text-emerald-600 uppercase">Kelebihan</p>{topologyInfo === 'bus' ? '• Mudah diinstal\n• Hemat biaya kabel' : '• Sangat toleran kerusakan\n• Pengiriman data cepat'}</div>
+              <div className="text-[10px] border-l pl-4"><p className="font-bold text-red-600 uppercase">Kekurangan</p>{topologyInfo === 'bus' ? '• Backbone putus = Semua mati\n• Sulit deteksi masalah' : '• Biaya sangat mahal\n• Instalasi sangat rumit'}</div>
             </div>
           </div>
         )}
@@ -287,11 +345,15 @@ function NetworkLabContent() {
             <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border shadow-2xl rounded-2xl p-4 min-w-[200px]">
               <p className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1">Quick Action</p>
               {!menu.isEdge ? (
-                <button onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data: {...n.data, status: n.data.status === 'down' ? 'up' : 'down'}} : n))} className="w-full py-2 bg-amber-100 text-amber-600 text-[10px] font-black rounded-lg">FAIL/FIX DEVICE</button>
+                <button onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data: {...n.data, status: n.data.status === 'down' ? 'up' : 'down'}} : n))} className="w-full py-2 bg-amber-100 text-amber-600 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2">
+                  <Zap size={14}/> FAIL/FIX DEVICE
+                </button>
               ) : (
-                <button onClick={() => setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {...e.data, status: e.data?.status === 'broken' ? 'fine' : 'broken'}} : e))} className="w-full py-2 bg-red-100 text-red-600 text-[10px] font-black rounded-lg">CUT/FIX CABLE</button>
+                <button onClick={() => setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {...e.data, status: e.data?.status === 'broken' ? 'fine' : 'broken'}} : e))} className="w-full py-2 bg-red-100 text-red-600 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2">
+                  <Link2Off size={14}/> CUT/FIX CABLE
+                </button>
               )}
-              <button onClick={() => menu.isEdge ? setEdges(eds => eds.filter(e => e.id !== menu.id)) : setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full mt-2 py-2 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-lg">DELETE</button>
+              <button onClick={() => menu.isEdge ? setEdges(eds => eds.filter(e => e.id !== menu.id)) : setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full mt-2 py-2 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-lg uppercase">Delete Object</button>
             </div>
           )}
         </ReactFlow>
