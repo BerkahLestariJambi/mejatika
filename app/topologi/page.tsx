@@ -24,7 +24,7 @@ import {
   Globe, Cpu, Info
 } from 'lucide-react';
 
-// --- KONFIGURASI ICON ---
+// --- CONFIGURATION ---
 const iconLib: any = {
   router: <Router size={40} />, switch: <Network size={40} />, pc: <Monitor size={40} />,
   wifi: <Wifi size={40} />, server: <Server size={40} />, hub: <Zap size={40} />,
@@ -58,7 +58,7 @@ const getCloudPath = (color: string, stroke: string) => {
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 240 180'%3E%3Cpath d='M200 120c15 0 30-15 30-35s-15-35-30-35c0-25-25-45-55-45-20 0-40 10-50 25-10-15-30-25-50-25-30 0-55 20-55 45-15 0-30 15-30 35s15 35 30 35c0 25 25 45 55 45 20 0 40-10 50-25 10 15 30 25 50 25 30 0 55-20 55-45z' fill='${encodedColor}' stroke='${encodedStroke}' stroke-width='6'/%3E%3C/svg%3E")`;
 };
 
-// --- KOMPONEN NODE ---
+// --- CUSTOM NODE COMPONENT ---
 const UniversalNode = ({ data, selected }: any) => {
   const isDevice = data.type === 'device';
   const isCloud = data.shapeType === 'cloud';
@@ -120,7 +120,7 @@ function NetworkLabContent() {
   const [topologyInfo, setTopologyInfo] = useState<'bus' | 'mesh' | null>(null);
   const [showDefinition, setShowDefinition] = useState(true);
 
-  // --- LOGIC SIMULASI TERPUTUS (BFS) ---
+  // --- CONNECTIVITY LOGIC (BFS) ---
   const checkConnectivity = useCallback(() => {
     if (!isLive || nodes.length === 0) return;
 
@@ -134,12 +134,10 @@ function NetworkLabContent() {
     while (queue.length > 0) {
       const currentId = queue.shift();
       const currentNode = nodes.find(n => n.id === currentId);
-      
       if (currentNode?.data.status === 'down') continue;
 
       edges.forEach(edge => {
         if (edge.data?.status === 'broken') return;
-        
         let neighborId = null;
         if (edge.source === currentId) neighborId = edge.target;
         else if (edge.target === currentId) neighborId = edge.source;
@@ -178,7 +176,7 @@ function NetworkLabContent() {
   useEffect(() => {
     checkConnectivity();
     if (!isLive) {
-        setNodes(nds => nds.map(n => ({...n, data: {...n.data, isDisconnected: false, isSimulating: false}})));
+      setNodes(nds => nds.map(n => ({...n, data: {...n.data, isDisconnected: false, isSimulating: false}})));
     }
   }, [isLive, edges.filter(e => e.data?.status === 'broken').length, nodes.filter(n => n.data.status === 'down').length]);
 
@@ -214,17 +212,16 @@ function NetworkLabContent() {
   const generateTopology = (type: 'bus' | 'mesh') => {
     setNodes([]); setEdges([]);
     setTopologyInfo(type);
-    setShowDefinition(true); // Pastikan panel terbuka saat generate baru
+    setShowDefinition(true);
     
     const count = 5;
     const timestamp = Date.now();
 
-    // Node Kelompok (Selalu Muncul Otomatis)
     const groupNodeId = `group-${timestamp}`;
     const groupNode = {
         id: groupNodeId,
         type: 'universal',
-        position: { x: 450, y: 50 },
+        position: { x: 400, y: 50 },
         data: { 
             type: 'shape', 
             shapeType: 'chat', 
@@ -233,7 +230,7 @@ function NetworkLabContent() {
             borderColor: '#2563eb',
             onChange: (v: string) => onNodeLabelChange(groupNodeId, v)
         },
-        style: { width: 400, height: 80 }
+        style: { width: 450, height: 80 }
     };
 
     const deviceNodes = Array.from({ length: count }).map((_, i) => {
@@ -254,7 +251,6 @@ function NetworkLabContent() {
         for (let j = i + 1; j < count; j++) newEdges.push({ id: `e${i}-${j}`, source: deviceNodes[i].id, target: deviceNodes[j].id, style: { strokeWidth: 3, stroke: '#2563eb' } });
       }
     }
-    
     setNodes([groupNode, ...deviceNodes]); 
     setEdges(newEdges);
   };
@@ -275,11 +271,6 @@ function NetworkLabContent() {
       data: { type, shapeType: val, label: val.toUpperCase(), status: 'up', bgColor: '#ffffff', borderColor: '#334155', onChange: (v: string) => onNodeLabelChange(id, v) },
       style: { width: type === 'device' ? 85 : 180, height: type === 'device' ? 85 : 150 }
     }));
-  }, []);
-
-  const onEdgeContextMenu = useCallback((event: React.MouseEvent, edge: any) => {
-    event.preventDefault();
-    setMenu({ id: edge.id, x: event.clientX, y: event.clientY, type: 'edge', isEdge: true });
   }, []);
 
   return (
@@ -304,10 +295,162 @@ function NetworkLabContent() {
                 <h3 className="text-lg font-black leading-tight uppercase">{isLive ? 'Simulation Running' : 'Simulation Offline'}</h3>
                 <p className="text-[10px] mt-2 font-medium opacity-90 italic">Klik kanan objek untuk merusak koneksi.</p>
               </div>
-
               <button 
                 onClick={() => setIsLive(!isLive)}
                 className={`w-full py-4 rounded-xl flex items-center justify-center gap-3 font-black transition-all shadow-md ${isLive ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
               >
                 {isLive ? <><StopSquare size={18}/> STOP SIMULATION</> : <><Play size={18}/> START SIMULATION</>}
-              </
+              </button>
+              {isLive && (
+                <div className="space-y-2">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Live Status</p>
+                  <div className="p-3 border-2 border-dashed border-slate-200 rounded-xl bg-white space-y-2">
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600">
+                      <Zap size={14} className="text-amber-500"/> Nodes: {nodes.length}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-red-600">
+                      <Link2Off size={14}/> Broken: {edges.filter(e => e.data?.status === 'broken').length}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : activeTab === 'learning' ? (
+            <div className="space-y-3">
+              {curriculumMaterials.map((mat) => (
+                <button key={mat.id} className="w-full p-4 rounded-xl border bg-white flex items-center justify-between hover:border-blue-300 transition-all">
+                  <div className="flex items-center gap-3 text-left text-xs">
+                    <div className="text-blue-600">{mat.icon}</div>
+                    <p className="font-bold text-slate-800">{mat.title}</p>
+                  </div>
+                  <ChevronRight size={14} className="text-slate-300" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {(activeTab === 'inventory' ? Object.keys(iconLib).slice(0, 10) : ['cloud', 'circle', 'square', 'chat']).map(item => (
+                <div key={item} draggable onDragStart={e => { e.dataTransfer.setData('application/type', activeTab === 'inventory' ? 'device' : 'shape'); e.dataTransfer.setData('application/value', item); }} className="p-3 border rounded-xl flex flex-col items-center bg-white hover:bg-slate-50 cursor-grab shadow-sm transition-all hover:scale-105 active:scale-95">
+                  {iconLib[item]} <span className="text-[9px] mt-1 font-bold uppercase text-slate-500">{item}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 space-y-2 border-t bg-slate-50">
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={saveProject} className="py-2.5 bg-blue-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-2"><Save size={14}/> SAVE</button>
+            <button onClick={() => fileInputRef.current?.click()} className="py-2.5 bg-emerald-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center gap-2"><FolderOpen size={14}/> LOAD</button>
+          </div>
+          <button onClick={clearCanvas} className="w-full py-3 bg-red-50 text-red-600 text-[10px] font-black rounded-lg border border-red-200 uppercase">Hapus Canvas</button>
+          <input type="file" ref={fileInputRef} onChange={loadProject} accept=".mjtika" className="hidden" />
+        </div>
+      </aside>
+
+      <div className="flex-grow flex flex-col relative" ref={reactFlowWrapper}>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden">
+            <h1 className="text-[22vw] font-black text-slate-900 opacity-[0.03] select-none leading-none">SANPIO</h1>
+        </div>
+
+        <div className="absolute top-4 left-4 z-[100] flex gap-2">
+          <button onClick={() => generateTopology('bus')} className="px-5 py-2 text-[10px] font-black bg-white text-blue-600 rounded-xl shadow-lg border border-blue-100 flex items-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN BUS</button>
+          <button onClick={() => generateTopology('mesh')} className="px-5 py-2 text-[10px] font-black bg-white text-indigo-600 rounded-xl shadow-lg border border-indigo-100 flex items-center gap-2 hover:bg-indigo-600 hover:text-white transition-all"><RefreshCcw size={12}/> GEN MESH</button>
+        </div>
+
+        {topologyInfo && (
+          <div className={`absolute bottom-24 left-6 z-[100] transition-all duration-300 ${showDefinition ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'}`}>
+            <div className="bg-white/95 backdrop-blur-md p-5 rounded-2xl border border-blue-100 shadow-2xl w-[400px] relative">
+              <button onClick={() => setShowDefinition(false)} className="absolute top-4 right-4 text-slate-400 hover:text-red-500">
+                <StopSquare size={16} />
+              </button>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-blue-600 rounded-lg text-white"><Info size={16} /></div>
+                <div>
+                  <p className="text-[8px] font-black text-blue-600 uppercase tracking-widest leading-none">Insight</p>
+                  <h4 className="text-lg font-black text-slate-800 uppercase leading-tight">{topologyInfo} Topology</h4>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-600 leading-relaxed mb-4 italic">
+                {topologyInfo === 'bus' ? 'Semua node terhubung ke media transmisi tunggal (backbone).' : 'Setiap node memiliki koneksi point-to-point ke setiap node lainnya.'}
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <p className="text-[9px] font-black text-emerald-600 uppercase flex items-center gap-1"><Zap size={10}/> Pro</p>
+                  <div className="text-[10px] text-slate-700 font-medium">
+                    {topologyInfo === 'bus' ? <><p>• Hemat kabel</p><p>• Instalasi mudah</p></> : <><p>• Redundansi tinggi</p><p>• Sangat aman</p></>}
+                  </div>
+                </div>
+                <div className="space-y-1.5 border-l pl-4">
+                  <p className="text-[9px] font-black text-red-600 uppercase flex items-center gap-1"><AlertTriangle size={10}/> Con</p>
+                  <div className="text-[10px] text-slate-700 font-medium">
+                    {topologyInfo === 'bus' ? <><p>• Backbone mati = Total mati</p><p>• Tabrakan data</p></> : <><p>• Boros kabel</p><p>• Sangat rumit</p></>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {topologyInfo && !showDefinition && (
+          <button onClick={() => setShowDefinition(true)} className="absolute bottom-24 left-6 z-[100] bg-blue-600 text-white px-4 py-2 rounded-full text-[10px] font-black shadow-lg hover:bg-blue-700 transition-all">SHOW INFO</button>
+        )}
+
+        <ReactFlow 
+          nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+          onDrop={onDrop} onDragOver={e => e.preventDefault()}
+          nodeTypes={nodeTypes} connectionMode={ConnectionMode.Loose}
+          onConnect={onConnect}
+          onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: n.data.type }); }}
+          onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ id: ed.id, x: e.clientX, y: e.clientY, type: 'edge', isEdge: true }); }}
+          fitView
+        >
+          <Background gap={25} size={1} color="#cbd5e1" />
+          <Controls />
+          {menu && (
+            <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border shadow-2xl rounded-2xl p-4 min-w-[220px]">
+              <p className="text-[9px] font-black text-slate-400 mb-3 uppercase border-b pb-1">Config {menu.type}</p>
+              {!menu.isEdge ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-5 gap-2 mb-4">
+                    {Object.keys(iconLib).filter(k => menu.type === 'device' ? !['cloud','circle','square','chat'].includes(k) : ['cloud','circle','square','chat'].includes(k)).map(ico => (
+                      <button key={ico} onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data:{...n.data, shapeType: ico}} : n))} className="p-2 hover:bg-blue-50 rounded-lg border flex items-center justify-center">
+                        {React.cloneElement(iconLib[ico], { size: 18 })}
+                      </button>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setNodes(nds => nds.map(n => n.id === menu.id ? {...n, data: {...n.data, status: n.data.status === 'down' ? 'up' : 'down'}} : n))}
+                    className={`w-full py-2 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2 ${nodes.find(n => n.id === menu.id)?.data.status === 'down' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}
+                  >
+                    <Zap size={14}/> {nodes.find(n => n.id === menu.id)?.data.status === 'down' ? 'REPAIR' : 'FAIL DEVICE'}
+                  </button>
+                  <button onClick={() => setNodes(nds => nds.filter(n => n.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg">DELETE</button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                    <button 
+                      onClick={() => setEdges(eds => eds.map(e => e.id === menu.id ? {...e, data: {...e.data, status: e.data?.status === 'broken' ? 'fine' : 'broken'}} : e))}
+                      className={`w-full py-2 text-[10px] font-black rounded-lg transition-all flex items-center justify-center gap-2 ${edges.find(e => e.id === menu.id)?.data?.status === 'broken' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}
+                    >
+                      <RefreshCcw size={14}/> {edges.find(e => e.id === menu.id)?.data?.status === 'broken' ? 'RESTORE' : 'CUT CABLE'}
+                    </button>
+                    <button onClick={() => setEdges(eds => eds.filter(e => e.id !== menu.id))} className="w-full py-2 bg-red-50 text-red-600 text-[10px] font-bold rounded-lg">DELETE</button>
+                </div>
+              )}
+            </div>
+          )}
+        </ReactFlow>
+      </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .react-flow__edge.animated path { stroke-dasharray: 10; animation: dash 0.5s linear infinite; }
+        @keyframes dash { from { stroke-dashoffset: 20; } to { stroke-dashoffset: 0; } }
+      `}</style>
+    </div>
+  );
+}
+
+export default function NetworkLabEditor() { return <ReactFlowProvider><NetworkLabContent /></ReactFlowProvider>; }
