@@ -136,7 +136,8 @@ function NetworkLabContent() {
         { source: 'ring-0', target: 'ring-1' },
         { source: 'ring-1', target: 'ring-2' },
         { source: 'ring-2', target: 'ring-3' },
-        { source: 'ring-3', target: 'ring-0' }
+        { source: 'ring-3', target: 'ring-4' }
+           { source: 'ring-4', target: 'ring-0' }
       ];
 
       connections.forEach((conn, i) => {
