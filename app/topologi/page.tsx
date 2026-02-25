@@ -50,11 +50,11 @@ const UniversalNode = ({ id, data }: any) => {
 
   return (
     <div className="relative group">
-      {/* Handles untuk koneksi dinamis */}
-      <Handle type="target" position={Position.Top} id="t" style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Bottom} id="b" style={{ opacity: 0 }} />
-      <Handle type="target" position={Position.Left} id="l" style={{ opacity: 0 }} />
-      <Handle type="source" position={Position.Right} id="r" style={{ opacity: 0 }} />
+      {/* MODIFIKASI: DYNAMIC HANDLES 
+          Handle disebar menutupi area node agar koneksi bisa ditarik dari titik manapun (Bebas)
+      */}
+      <Handle type="target" position={Position.Top} id="t" style={{ opacity: 0, width: '100%', height: '50%', top: 0 }} />
+      <Handle type="source" position={Position.Bottom} id="b" style={{ opacity: 0, width: '100%', height: '50%', bottom: 0 }} />
       
       <div className={`flex flex-col items-center justify-center min-w-[120px] p-4 bg-white border-[3px] rounded-xl shadow-xl transition-all ${isDown ? 'border-red-500 bg-red-50 scale-95 opacity-80' : data.isLive ? 'border-blue-500 ring-4 ring-blue-100' : 'border-slate-800 hover:border-blue-500'}`}>
         <div className={activeClass}>
@@ -63,7 +63,7 @@ const UniversalNode = ({ id, data }: any) => {
         <input 
           defaultValue={data.label} 
           onChange={(e) => data.onChange(id, e.target.value)}
-          className="bg-transparent border-none text-[11px] font-black uppercase text-center focus:ring-0 w-full mt-1 p-0 cursor-text"
+          className="bg-transparent border-none text-[11px] font-black uppercase text-center focus:ring-0 w-full mt-1 p-0 cursor-text relative z-10"
         />
         {isDown && <div className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full p-1 shadow-lg"><Link2Off size={12}/></div>}
       </div>
@@ -115,13 +115,12 @@ function NetworkLabContent() {
       }
     } 
     else if (type === 'ring') {
-      // PENYESUAIAN PERSIS GAMBAR: 4 PC membentuk lingkaran
       const distance = 200;
       const ringPositions = [
-        { x: centerX, y: centerY - distance, label: 'PC-1' }, // Atas
-        { x: centerX + distance, y: centerY, label: 'PC-2' }, // Kanan
-        { x: centerX, y: centerY + distance, label: 'PC-3' }, // Bawah
-        { x: centerX - distance, y: centerY, label: 'PC-4' }  // Kiri
+        { x: centerX, y: centerY - distance, label: 'PC-1' },
+        { x: centerX + distance, y: centerY, label: 'PC-2' },
+        { x: centerX, y: centerY + distance, label: 'PC-3' },
+        { x: centerX - distance, y: centerY, label: 'PC-4' }
       ];
 
       ringPositions.forEach((pos, i) => {
@@ -133,12 +132,11 @@ function NetworkLabContent() {
         });
       });
 
-      // Menghubungkan kabel melingkar (Atas -> Kanan -> Bawah -> Kiri -> Atas)
       const connections = [
-        { source: 'ring-0', target: 'ring-1', sh: 'r', th: 't' }, // Atas (Kanan) ke Kanan (Atas)
-        { source: 'ring-1', target: 'ring-2', sh: 'b', th: 'r' }, // Kanan (Bawah) ke Bawah (Kanan)
-        { source: 'ring-2', target: 'ring-3', sh: 'l', th: 'b' }, // Bawah (Kiri) ke Kiri (Bawah)
-        { source: 'ring-3', target: 'ring-0', sh: 't', th: 'l' }  // Kiri (Atas) ke Atas (Kiri)
+        { source: 'ring-0', target: 'ring-1' },
+        { source: 'ring-1', target: 'ring-2' },
+        { source: 'ring-2', target: 'ring-3' },
+        { source: 'ring-3', target: 'ring-0' }
       ];
 
       connections.forEach((conn, i) => {
@@ -146,9 +144,7 @@ function NetworkLabContent() {
           id: `e-ring-${i}`,
           source: conn.source,
           target: conn.target,
-          sourceHandle: conn.sh,
-          targetHandle: conn.th,
-          type: 'smoothstep',
+          type: 'smoothstep', // Menggunakan smoothstep agar belokan kabel fleksibel
           style: { strokeWidth: 4, stroke: '#0f172a' },
           animated: false
         });
@@ -161,7 +157,7 @@ function NetworkLabContent() {
         const nodeId = `star-pc-${i}`;
         const angle = (i * 2 * Math.PI) / 6;
         newNodes.push({ id: nodeId, type: 'universal', position: { x: centerX + 300 * Math.cos(angle) - 60, y: centerY + 300 * Math.sin(angle) - 40 }, data: { shapeType: 'pc', label: `CLIENT-${i+1}`, onChange: updateNodeData, isLive: false } });
-        newEdges.push({ id: `e-star-${i}`, source: hubId, target: nodeId, style: { strokeWidth: 4, stroke: '#0f172a' } });
+        newEdges.push({ id: `e-star-${i}`, source: hubId, target: nodeId, type: 'smoothstep', style: { strokeWidth: 4, stroke: '#0f172a' } });
       }
     }
     else if (type === 'mesh') {
@@ -256,10 +252,12 @@ function NetworkLabContent() {
           }}
           onDragOver={(e) => e.preventDefault()}
           nodeTypes={nodeTypes}
-          onConnect={(p) => setEdges(eds => addEdge({...p, style:{strokeWidth:4, stroke:'#0f172a'}, animated: isLive}, eds))}
+          // MODIFIKASI: Menambahkan type: 'smoothstep' agar jalur kabel lebih luwes
+          onConnect={(p) => setEdges(eds => addEdge({...p, type: 'smoothstep', style:{strokeWidth:4, stroke:'#0f172a'}, animated: isLive}, eds))}
           onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: 'node' }); }}
           onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ id: ed.id, x: e.clientX, y: e.clientY, type: 'edge' }); }}
-          connectionMode={ConnectionMode.Loose} fitView
+          connectionMode={ConnectionMode.Loose} 
+          fitView
         >
           <Background color="#cbd5e1" gap={25} variant={"dots" as any} /><Controls />
         </ReactFlow>
@@ -307,7 +305,7 @@ function NetworkLabContent() {
                <div className="mt-8 border-t pt-4">
                   <h4 className="text-blue-600 mb-2 tracking-widest text-[10px]">INFO KURIKULUM:</h4>
                   <div className="text-[10px] text-slate-400 leading-relaxed italic border-l-2 border-slate-100 pl-3">
-                    {topologyType === 'ring' && "Ring: Sesuai hal 95, setiap komputer terhubung ke dua tetangga membentuk lingkaran melalui sisi luar perangkat (Top, Right, Bottom, Left)."}
+                    {topologyType === 'ring' && "Ring: Sesuai hal 95, setiap komputer terhubung ke dua tetangga membentuk lingkaran melalui jalur terdekat secara dinamis."}
                     {topologyType === 'star' && "Star: Sesuai hal 95, Switch/Hub menjadi pusat transmisi data ke semua client."}
                     {topologyType === 'hybrid' && "Hybrid: Sesuai hal 96, gabungan Topologi Star dan Bus untuk fleksibilitas tinggi."}
                     {!topologyType && "Silakan pilih topologi di atas."}
