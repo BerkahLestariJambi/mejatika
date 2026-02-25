@@ -102,7 +102,7 @@ function NetworkLabContent() {
   const generateTopology = (type: 'bus' | 'mesh' | 'star' | 'ring' | 'hybrid') => {
     setNodes([]); setEdges([]); setTopologyType(type); setIsLive(false);
     const newNodes: any[] = []; const newEdges: any[] = [];
-    const centerX = 600, centerY = 400;
+    const centerX = 600, centerY = 350;
 
     if (type === 'bus') {
       for (let i = 0; i < 5; i++) {
@@ -114,6 +114,46 @@ function NetworkLabContent() {
         newEdges.push({ id: `drop-${i}`, source: `j-${i}`, target: `n-${i}`, style: { strokeWidth: 4, stroke: '#0f172a' } });
       }
     } 
+    else if (type === 'ring') {
+      // PENYESUAIAN PERSIS GAMBAR: 4 PC membentuk lingkaran
+      const distance = 200;
+      const ringPositions = [
+        { x: centerX, y: centerY - distance, label: 'PC-1' }, // Atas
+        { x: centerX + distance, y: centerY, label: 'PC-2' }, // Kanan
+        { x: centerX, y: centerY + distance, label: 'PC-3' }, // Bawah
+        { x: centerX - distance, y: centerY, label: 'PC-4' }  // Kiri
+      ];
+
+      ringPositions.forEach((pos, i) => {
+        newNodes.push({
+          id: `ring-${i}`,
+          type: 'universal',
+          position: { x: pos.x - 60, y: pos.y - 40 },
+          data: { shapeType: 'pc', label: pos.label, onChange: updateNodeData, isLive: false }
+        });
+      });
+
+      // Menghubungkan kabel melingkar (Atas -> Kanan -> Bawah -> Kiri -> Atas)
+      const connections = [
+        { source: 'ring-0', target: 'ring-1', sh: 'r', th: 't' }, // Atas (Kanan) ke Kanan (Atas)
+        { source: 'ring-1', target: 'ring-2', sh: 'b', th: 'r' }, // Kanan (Bawah) ke Bawah (Kanan)
+        { source: 'ring-2', target: 'ring-3', sh: 'l', th: 'b' }, // Bawah (Kiri) ke Kiri (Bawah)
+        { source: 'ring-3', target: 'ring-0', sh: 't', th: 'l' }  // Kiri (Atas) ke Atas (Kiri)
+      ];
+
+      connections.forEach((conn, i) => {
+        newEdges.push({
+          id: `e-ring-${i}`,
+          source: conn.source,
+          target: conn.target,
+          sourceHandle: conn.sh,
+          targetHandle: conn.th,
+          type: 'smoothstep',
+          style: { strokeWidth: 4, stroke: '#0f172a' },
+          animated: false
+        });
+      });
+    }
     else if (type === 'star') {
       const hubId = 'central-hub';
       newNodes.push({ id: hubId, type: 'universal', position: { x: centerX - 60, y: centerY - 40 }, data: { shapeType: 'switch', label: 'SWITCH PUSAT', onChange: updateNodeData, isLive: false } });
@@ -122,35 +162,6 @@ function NetworkLabContent() {
         const angle = (i * 2 * Math.PI) / 6;
         newNodes.push({ id: nodeId, type: 'universal', position: { x: centerX + 300 * Math.cos(angle) - 60, y: centerY + 300 * Math.sin(angle) - 40 }, data: { shapeType: 'pc', label: `CLIENT-${i+1}`, onChange: updateNodeData, isLive: false } });
         newEdges.push({ id: `e-star-${i}`, source: hubId, target: nodeId, style: { strokeWidth: 4, stroke: '#0f172a' } });
-      }
-    }
-    else if (type === 'ring') {
-      // Rekonstruksi Ring: Berantai sisi Kanan ke sisi Kiri
-      const count = 5; 
-      const radius = 250;
-
-      for (let i = 0; i < count; i++) {
-        const angle = (i * 2 * Math.PI) / count - Math.PI / 2;
-        newNodes.push({ 
-          id: `ring-node-${i}`, 
-          type: 'universal', 
-          position: { x: centerX + radius * Math.cos(angle) - 60, y: centerY + radius * Math.sin(angle) - 40 }, 
-          data: { shapeType: 'pc', label: `PC-${i + 1}`, onChange: updateNodeData, isLive: false } 
-        });
-      }
-
-      for (let i = 0; i < count; i++) {
-        const nextIndex = (i + 1) % count;
-        newEdges.push({ 
-          id: `e-ring-${i}`, 
-          source: `ring-node-${i}`, 
-          target: `ring-node-${nextIndex}`,
-          sourceHandle: 'r', // Keluar dari kanan
-          targetHandle: 'l', // Masuk ke kiri
-          type: 'smoothstep', // Melengkung halus seperti cincin
-          style: { strokeWidth: 4, stroke: '#0f172a' },
-          animated: false 
-        });
       }
     }
     else if (type === 'mesh') {
@@ -296,7 +307,7 @@ function NetworkLabContent() {
                <div className="mt-8 border-t pt-4">
                   <h4 className="text-blue-600 mb-2 tracking-widest text-[10px]">INFO KURIKULUM:</h4>
                   <div className="text-[10px] text-slate-400 leading-relaxed italic border-l-2 border-slate-100 pl-3">
-                    {topologyType === 'ring' && "Ring: Sesuai hal 95, setiap komputer terhubung ke dua tetangga membentuk lingkaran melalui sisi samping perangkat."}
+                    {topologyType === 'ring' && "Ring: Sesuai hal 95, setiap komputer terhubung ke dua tetangga membentuk lingkaran melalui sisi luar perangkat (Top, Right, Bottom, Left)."}
                     {topologyType === 'star' && "Star: Sesuai hal 95, Switch/Hub menjadi pusat transmisi data ke semua client."}
                     {topologyType === 'hybrid' && "Hybrid: Sesuai hal 96, gabungan Topologi Star dan Bus untuk fleksibilitas tinggi."}
                     {!topologyType && "Silakan pilih topologi di atas."}
