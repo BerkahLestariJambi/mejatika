@@ -33,7 +33,6 @@ const iconLib: any = {
   kabel: <Spline size={32} /> 
 };
 
-// --- CUSTOM NODE COMPONENT ---
 const UniversalNode = ({ id, data }: any) => {
   const isDown = data.status === 'down';
   const activeClass = data.isLive && !isDown ? 'animate-pulse text-blue-600' : isDown ? 'text-red-600' : 'text-slate-700';
@@ -50,9 +49,6 @@ const UniversalNode = ({ id, data }: any) => {
 
   return (
     <div className="relative group">
-      {/* MODIFIKASI: DYNAMIC HANDLES 
-          Handle disebar menutupi area node agar koneksi bisa ditarik dari titik manapun (Bebas)
-      */}
       <Handle type="target" position={Position.Top} id="t" style={{ opacity: 0, width: '100%', height: '50%', top: 0 }} />
       <Handle type="source" position={Position.Bottom} id="b" style={{ opacity: 0, width: '100%', height: '50%', bottom: 0 }} />
       
@@ -73,7 +69,6 @@ const UniversalNode = ({ id, data }: any) => {
 
 const nodeTypes = { universal: UniversalNode };
 
-// --- MAIN CONTENT ---
 function NetworkLabContent() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -104,7 +99,35 @@ function NetworkLabContent() {
     const newNodes: any[] = []; const newEdges: any[] = [];
     const centerX = 600, centerY = 350;
 
-    if (type === 'bus') {
+    if (type === 'ring') {
+      const nodeCount = 6; // Diubah menjadi 6 PC
+      const radius = 250; 
+
+      for (let i = 0; i < nodeCount; i++) {
+        // Menghitung posisi melingkar menggunakan Sin dan Cos
+        const angle = (i * 2 * Math.PI) / nodeCount;
+        const x = centerX + radius * Math.cos(angle) - 60;
+        const y = centerY + radius * Math.sin(angle) - 40;
+
+        newNodes.push({
+          id: `ring-${i}`,
+          type: 'universal',
+          position: { x, y },
+          data: { shapeType: 'pc', label: `PC-${i + 1}`, onChange: updateNodeData, isLive: false }
+        });
+
+        // Menghubungkan node saat ini ke node berikutnya (0-1, 1-2, ..., 5-0)
+        newEdges.push({
+          id: `e-ring-${i}`,
+          source: `ring-${i}`,
+          target: `ring-${(i + 1) % nodeCount}`,
+          type: 'smoothstep',
+          style: { strokeWidth: 4, stroke: '#0f172a' },
+          animated: false
+        });
+      }
+    } 
+    else if (type === 'bus') {
       for (let i = 0; i < 5; i++) {
         const xPos = i * 250 + 200;
         newNodes.push({ id: `j-${i}`, type: 'universal', position: { x: xPos, y: 350 }, data: { type: 'junction', isLive: false } });
@@ -113,43 +136,6 @@ function NetworkLabContent() {
         newNodes.push({ id: `n-${i}`, type: 'universal', position: { x: xPos - 55, y: isTop ? 150 : 450 }, data: { shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `NODE-${i}`, onChange: updateNodeData, isLive: false } });
         newEdges.push({ id: `drop-${i}`, source: `j-${i}`, target: `n-${i}`, style: { strokeWidth: 4, stroke: '#0f172a' } });
       }
-    } 
-    else if (type === 'ring') {
-      const distance = 200;
-      const ringPositions = [
-        { x: centerX, y: centerY - distance, label: 'PC-1' },
-        { x: centerX + distance, y: centerY, label: 'PC-2' },
-        { x: centerX, y: centerY + distance, label: 'PC-3' },
-        { x: centerX + distance, y: centerY, label: 'PC-4' }
-      ];
-
-      ringPositions.forEach((pos, i) => {
-        newNodes.push({
-          id: `ring-${i}`,
-          type: 'universal',
-          position: { x: pos.x - 60, y: pos.y - 40 },
-          data: { shapeType: 'pc', label: pos.label, onChange: updateNodeData, isLive: false }
-        });
-      });
-
-      const connections = [
-        { source: 'ring-0', target: 'ring-1' },
-        { source: 'ring-1', target: 'ring-2' },
-        { source: 'ring-2', target: 'ring-3' },
-        { source: 'ring-3', target: 'ring-4' }
-           { source: 'ring-4', target: 'ring-1' }
-      ];
-
-      connections.forEach((conn, i) => {
-        newEdges.push({
-          id: `e-ring-${i}`,
-          source: conn.source,
-          target: conn.target,
-          type: 'smoothstep', // Menggunakan smoothstep agar belokan kabel fleksibel
-          style: { strokeWidth: 4, stroke: '#0f172a' },
-          animated: false
-        });
-      });
     }
     else if (type === 'star') {
       const hubId = 'central-hub';
@@ -253,7 +239,6 @@ function NetworkLabContent() {
           }}
           onDragOver={(e) => e.preventDefault()}
           nodeTypes={nodeTypes}
-          // MODIFIKASI: Menambahkan type: 'smoothstep' agar jalur kabel lebih luwes
           onConnect={(p) => setEdges(eds => addEdge({...p, type: 'smoothstep', style:{strokeWidth:4, stroke:'#0f172a'}, animated: isLive}, eds))}
           onNodeContextMenu={(e, n) => { e.preventDefault(); setMenu({ id: n.id, x: e.clientX, y: e.clientY, type: 'node' }); }}
           onEdgeContextMenu={(e, ed) => { e.preventDefault(); setMenu({ id: ed.id, x: e.clientX, y: e.clientY, type: 'edge' }); }}
@@ -306,7 +291,7 @@ function NetworkLabContent() {
                <div className="mt-8 border-t pt-4">
                   <h4 className="text-blue-600 mb-2 tracking-widest text-[10px]">INFO KURIKULUM:</h4>
                   <div className="text-[10px] text-slate-400 leading-relaxed italic border-l-2 border-slate-100 pl-3">
-                    {topologyType === 'ring' && "Ring: Sesuai hal 95, setiap komputer terhubung ke dua tetangga membentuk lingkaran melalui jalur terdekat secara dinamis."}
+                    {topologyType === 'ring' && "Ring: 6 PC terhubung melingkar. Data mengalir dari satu node ke node berikutnya hingga kembali ke awal."}
                     {topologyType === 'star' && "Star: Sesuai hal 95, Switch/Hub menjadi pusat transmisi data ke semua client."}
                     {topologyType === 'hybrid' && "Hybrid: Sesuai hal 96, gabungan Topologi Star dan Bus untuk fleksibilitas tinggi."}
                     {!topologyType && "Silakan pilih topologi di atas."}
