@@ -33,7 +33,7 @@ const iconLib: any = {
   kabel: <Spline size={32} /> 
 };
 
-// Custom Node Component
+// --- CUSTOM NODE COMPONENT ---
 const UniversalNode = ({ id, data }: any) => {
   const isDown = data.status === 'down';
   const activeClass = data.isLive && !isDown ? 'animate-pulse text-blue-600' : isDown ? 'text-red-600' : 'text-slate-700';
@@ -50,6 +50,7 @@ const UniversalNode = ({ id, data }: any) => {
 
   return (
     <div className="relative group">
+      {/* Handles untuk koneksi dinamis */}
       <Handle type="target" position={Position.Top} id="t" style={{ opacity: 0 }} />
       <Handle type="source" position={Position.Bottom} id="b" style={{ opacity: 0 }} />
       <Handle type="target" position={Position.Left} id="l" style={{ opacity: 0 }} />
@@ -72,6 +73,7 @@ const UniversalNode = ({ id, data }: any) => {
 
 const nodeTypes = { universal: UniversalNode };
 
+// --- MAIN CONTENT ---
 function NetworkLabContent() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -90,7 +92,11 @@ function NetworkLabContent() {
     const nextState = !isLive;
     setIsLive(nextState);
     setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, isLive: nextState } })));
-    setEdges((eds) => eds.map((e) => ({ ...e, animated: nextState && e.data?.status !== 'broken' })));
+    setEdges((eds) => eds.map((e) => ({ 
+      ...e, 
+      animated: nextState && e.data?.status !== 'broken',
+      style: { ...e.style, stroke: nextState && e.data?.status !== 'broken' ? '#2563eb' : (e.data?.status === 'broken' ? '#ef4444' : '#0f172a') }
+    })));
   };
 
   const generateTopology = (type: 'bus' | 'mesh' | 'star' | 'ring' | 'hybrid') => {
@@ -118,44 +124,32 @@ function NetworkLabContent() {
         newEdges.push({ id: `e-star-${i}`, source: hubId, target: nodeId, style: { strokeWidth: 4, stroke: '#0f172a' } });
       }
     }
-   else if (type === 'ring') {
-      // Topologi Ring: Kabel melingkar tertutup
-      const count = 4; // Sesuai gambar referensi yang memiliki 4 PC
-      const radius = 220; // Mengatur besar lingkaran
+    else if (type === 'ring') {
+      // Rekonstruksi Ring: Berantai sisi Kanan ke sisi Kiri
+      const count = 5; 
+      const radius = 250;
 
       for (let i = 0; i < count; i++) {
-        // Kalkulasi posisi agar membentuk lingkaran sempurna
-        // -Math.PI / 2 dimulai dari posisi atas (jam 12)
         const angle = (i * 2 * Math.PI) / count - Math.PI / 2;
-        
         newNodes.push({ 
           id: `ring-node-${i}`, 
           type: 'universal', 
-          position: { 
-            x: centerX + radius * Math.cos(angle) - 60, 
-            y: centerY + radius * Math.sin(angle) - 40 
-          }, 
-          data: { 
-            shapeType: 'pc', 
-            label: `PC-${i + 1}`, 
-            onChange: updateNodeData, 
-            isLive: false 
-          } 
+          position: { x: centerX + radius * Math.cos(angle) - 60, y: centerY + radius * Math.sin(angle) - 40 }, 
+          data: { shapeType: 'pc', label: `PC-${i + 1}`, onChange: updateNodeData, isLive: false } 
         });
       }
 
       for (let i = 0; i < count; i++) {
-        // Menghubungkan node i ke node selanjutnya (dan terakhir kembali ke pertama)
+        const nextIndex = (i + 1) % count;
         newEdges.push({ 
           id: `e-ring-${i}`, 
           source: `ring-node-${i}`, 
-          target: `ring-node-${(i + 1) % count}`, 
-          // Menggunakan tipe 'step' atau 'default' dengan lekukan halus
-          type: 'default',
-          style: { 
-            strokeWidth: 3, 
-            stroke: '#0f172a' // Warna kabel gelap solid sesuai gambar
-          } 
+          target: `ring-node-${nextIndex}`,
+          sourceHandle: 'r', // Keluar dari kanan
+          targetHandle: 'l', // Masuk ke kiri
+          type: 'smoothstep', // Melengkung halus seperti cincin
+          style: { strokeWidth: 4, stroke: '#0f172a' },
+          animated: false 
         });
       }
     }
@@ -302,7 +296,7 @@ function NetworkLabContent() {
                <div className="mt-8 border-t pt-4">
                   <h4 className="text-blue-600 mb-2 tracking-widest text-[10px]">INFO KURIKULUM:</h4>
                   <div className="text-[10px] text-slate-400 leading-relaxed italic border-l-2 border-slate-100 pl-3">
-                    {topologyType === 'ring' && "Ring: Sesuai hal 95, setiap komputer terhubung ke dua tetangga membentuk lingkaran."}
+                    {topologyType === 'ring' && "Ring: Sesuai hal 95, setiap komputer terhubung ke dua tetangga membentuk lingkaran melalui sisi samping perangkat."}
                     {topologyType === 'star' && "Star: Sesuai hal 95, Switch/Hub menjadi pusat transmisi data ke semua client."}
                     {topologyType === 'hybrid' && "Hybrid: Sesuai hal 96, gabungan Topologi Star dan Bus untuk fleksibilitas tinggi."}
                     {!topologyType && "Silakan pilih topologi di atas."}
