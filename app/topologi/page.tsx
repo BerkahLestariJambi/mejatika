@@ -21,6 +21,7 @@ import {
   Trash2, Link2Off, Spline, Play, Square, Circle, Star, GitMerge
 } from 'lucide-react';
 
+// --- LIBRARY ICON ---
 const iconLib: any = {
   pc: <Monitor size={32} />,
   router: <Router size={32} />, 
@@ -33,10 +34,12 @@ const iconLib: any = {
   kabel: <Spline size={32} /> 
 };
 
+// --- CUSTOM NODE COMPONENT ---
 const UniversalNode = ({ id, data }: any) => {
   const isDown = data.status === 'down';
   const activeClass = data.isLive && !isDown ? 'animate-pulse text-blue-600' : isDown ? 'text-red-600' : 'text-slate-700';
   
+  // Junction khusus untuk topologi Bus
   if (data.type === 'junction') {
     return (
       <div className="flex items-center justify-center">
@@ -49,6 +52,7 @@ const UniversalNode = ({ id, data }: any) => {
 
   return (
     <div className="relative group">
+      {/* Handle tersebar agar koneksi fleksibel */}
       <Handle type="target" position={Position.Top} id="t" style={{ opacity: 0, width: '100%', height: '50%', top: 0 }} />
       <Handle type="source" position={Position.Bottom} id="b" style={{ opacity: 0, width: '100%', height: '50%', bottom: 0 }} />
       
@@ -69,6 +73,7 @@ const UniversalNode = ({ id, data }: any) => {
 
 const nodeTypes = { universal: UniversalNode };
 
+// --- MAIN COMPONENT ---
 function NetworkLabContent() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -100,11 +105,11 @@ function NetworkLabContent() {
     const centerX = 600, centerY = 350;
 
     if (type === 'ring') {
-      const nodeCount = 6; // Diubah menjadi 6 PC
-      const radius = 250; 
+      const nodeCount = 6; 
+      const radius = 240; 
 
       for (let i = 0; i < nodeCount; i++) {
-        // Menghitung posisi melingkar menggunakan Sin dan Cos
+        // Matematika posisi melingkar
         const angle = (i * 2 * Math.PI) / nodeCount;
         const x = centerX + radius * Math.cos(angle) - 60;
         const y = centerY + radius * Math.sin(angle) - 40;
@@ -116,13 +121,13 @@ function NetworkLabContent() {
           data: { shapeType: 'pc', label: `PC-${i + 1}`, onChange: updateNodeData, isLive: false }
         });
 
-        // Menghubungkan node saat ini ke node berikutnya (0-1, 1-2, ..., 5-0)
+        // Hubungkan PC ke PC berikutnya (Cincin)
         newEdges.push({
           id: `e-ring-${i}`,
           source: `ring-${i}`,
-          target: `ring-${(i + 1) % nodeCount}`,
+          target: `ring-${(i + 1) % nodeCount}`, 
           type: 'smoothstep',
-          style: { strokeWidth: 4, stroke: '#0f172a' },
+          style: { strokeWidth: 5, stroke: '#0f172a' },
           animated: false
         });
       }
@@ -148,16 +153,16 @@ function NetworkLabContent() {
       }
     }
     else if (type === 'mesh') {
-      const count = 5;
-      for (let i = 0; i < count; i++) {
-        newNodes.push({ id: `m-${i}`, type: 'universal', position: { x: centerX + 250 * Math.cos(2*Math.PI*i/count), y: centerY + 250 * Math.sin(2*Math.PI*i/count) }, data: { shapeType: 'pc', label: `NODE-${i}`, onChange: updateNodeData, isLive: false } });
-      }
-      for (let i = 0; i < count; i++) {
-        for (let j = i + 1; j < count; j++) {
-          newEdges.push({ id: `e-mesh-${i}-${j}`, source: `m-${i}`, target: `m-${j}`, style: { strokeWidth: 2, stroke: '#6366f1', opacity: 0.6 } });
+        const count = 5;
+        for (let i = 0; i < count; i++) {
+          newNodes.push({ id: `m-${i}`, type: 'universal', position: { x: centerX + 250 * Math.cos(2*Math.PI*i/count), y: centerY + 250 * Math.sin(2*Math.PI*i/count) }, data: { shapeType: 'pc', label: `NODE-${i}`, onChange: updateNodeData, isLive: false } });
+        }
+        for (let i = 0; i < count; i++) {
+          for (let j = i + 1; j < count; j++) {
+            newEdges.push({ id: `e-mesh-${i}-${j}`, source: `m-${i}`, target: `m-${j}`, style: { strokeWidth: 2, stroke: '#6366f1', opacity: 0.6 } });
+          }
         }
       }
-    }
     else if (type === 'hybrid') {
       const hubs = [{ id: 'h1', x: 300, label: 'HUB LAN A' }, { id: 'h2', x: 900, label: 'HUB LAN B' }];
       hubs.forEach((hub) => {
@@ -177,6 +182,7 @@ function NetworkLabContent() {
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans">
+      {/* SIDEBAR */}
       <aside className="w-72 bg-white border-r flex flex-col z-[100] shadow-xl">
         <div className="p-6 bg-slate-900 text-white font-black italic flex items-center gap-3">
           <ShieldCheck className="text-blue-500" size={28}/>
@@ -212,7 +218,9 @@ function NetworkLabContent() {
         <div className="p-4 border-t text-[9px] text-slate-400 text-center font-black italic uppercase">SANPIO AI LAB © 2026</div>
       </aside>
 
+      {/* MAIN CANVAS */}
       <main className="flex-grow relative" ref={reactFlowWrapper} onClick={() => setMenu(null)}>
+        {/* TOPOLOGY SELECTOR */}
         <div className="absolute top-4 left-4 z-[50] flex flex-wrap gap-2 max-w-2xl">
           {[
             { id: 'bus', label: 'Bus', icon: <Spline size={14}/>, color: 'text-blue-600' },
@@ -248,12 +256,14 @@ function NetworkLabContent() {
           <Background color="#cbd5e1" gap={25} variant={"dots" as any} /><Controls />
         </ReactFlow>
 
-        <div className="absolute bottom-6 right-[400px] bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-2xl z-40 backdrop-blur-sm">
+        {/* FOOTER KELOMPOK */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/90 p-4 rounded-2xl border border-slate-200 shadow-2xl z-40 backdrop-blur-sm">
            <div className="flex items-center gap-2 text-blue-600 font-black text-[10px] uppercase">
              <Users size={16} /><span>Kelompok: Farel, Andri, Eklan, Boven</span>
            </div>
         </div>
 
+        {/* CONTEXT MENU */}
         {menu && (
           <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-52 animate-in zoom-in-95">
               <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-1 tracking-widest text-center">Opsi Objek</div>
@@ -276,6 +286,7 @@ function NetworkLabContent() {
           </div>
         )}
 
+        {/* ANALISIS PANEL */}
         <div className={`absolute top-0 right-0 h-full flex z-[110] transition-transform duration-500 ${showPanel ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
           <button onClick={() => setShowPanel(!showPanel)} className="h-full bg-slate-900 text-white w-10 flex flex-col items-center justify-center gap-4 hover:bg-blue-600 transition-colors">
             {showPanel ? <ChevronRight size={20}/> : <ChevronLeft size={20}/>}
@@ -291,10 +302,10 @@ function NetworkLabContent() {
                <div className="mt-8 border-t pt-4">
                   <h4 className="text-blue-600 mb-2 tracking-widest text-[10px]">INFO KURIKULUM:</h4>
                   <div className="text-[10px] text-slate-400 leading-relaxed italic border-l-2 border-slate-100 pl-3">
-                    {topologyType === 'ring' && "Ring: 6 PC terhubung melingkar. Data mengalir dari satu node ke node berikutnya hingga kembali ke awal."}
-                    {topologyType === 'star' && "Star: Sesuai hal 95, Switch/Hub menjadi pusat transmisi data ke semua client."}
-                    {topologyType === 'hybrid' && "Hybrid: Sesuai hal 96, gabungan Topologi Star dan Bus untuk fleksibilitas tinggi."}
-                    {!topologyType && "Silakan pilih topologi di atas."}
+                    {topologyType === 'ring' && "Ring: 6 PC membentuk lingkaran (cincin). Setiap komputer terhubung ke dua tetangganya. Jika satu kabel putus, seluruh jaringan mati (kecuali dual-ring)."}
+                    {topologyType === 'star' && "Star: Hub/Switch pusat menghubungkan semua client. Paling populer dan mudah dikelola."}
+                    {topologyType === 'bus' && "Bus: Menggunakan kabel tunggal (backbone). Membutuhkan terminator di kedua ujungnya."}
+                    {!topologyType && "Pilih jenis topologi untuk melihat analisis teknisnya."}
                   </div>
                </div>
             </div>
@@ -305,6 +316,7 @@ function NetworkLabContent() {
   );
 }
 
+// --- ENTRY POINT ---
 export default function NetworkLabEditor() { 
   return (
     <ReactFlowProvider>
