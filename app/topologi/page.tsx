@@ -118,14 +118,45 @@ function NetworkLabContent() {
         newEdges.push({ id: `e-star-${i}`, source: hubId, target: nodeId, style: { strokeWidth: 4, stroke: '#0f172a' } });
       }
     }
-    else if (type === 'ring') {
-      const count = 6;
+   else if (type === 'ring') {
+      // Topologi Ring: Kabel melingkar tertutup
+      const count = 4; // Sesuai gambar referensi yang memiliki 4 PC
+      const radius = 220; // Mengatur besar lingkaran
+
       for (let i = 0; i < count; i++) {
-        const angle = (i * 2 * Math.PI) / count;
-        newNodes.push({ id: `ring-node-${i}`, type: 'universal', position: { x: centerX + 250 * Math.cos(angle) - 60, y: centerY + 250 * Math.sin(angle) - 40 }, data: { shapeType: 'pc', label: `NODE-${i+1}`, onChange: updateNodeData, isLive: false } });
+        // Kalkulasi posisi agar membentuk lingkaran sempurna
+        // -Math.PI / 2 dimulai dari posisi atas (jam 12)
+        const angle = (i * 2 * Math.PI) / count - Math.PI / 2;
+        
+        newNodes.push({ 
+          id: `ring-node-${i}`, 
+          type: 'universal', 
+          position: { 
+            x: centerX + radius * Math.cos(angle) - 60, 
+            y: centerY + radius * Math.sin(angle) - 40 
+          }, 
+          data: { 
+            shapeType: 'pc', 
+            label: `PC-${i + 1}`, 
+            onChange: updateNodeData, 
+            isLive: false 
+          } 
+        });
       }
+
       for (let i = 0; i < count; i++) {
-        newEdges.push({ id: `e-ring-${i}`, source: `ring-node-${i}`, target: `ring-node-${(i + 1) % count}`, style: { strokeWidth: 4, stroke: '#2563eb' } });
+        // Menghubungkan node i ke node selanjutnya (dan terakhir kembali ke pertama)
+        newEdges.push({ 
+          id: `e-ring-${i}`, 
+          source: `ring-node-${i}`, 
+          target: `ring-node-${(i + 1) % count}`, 
+          // Menggunakan tipe 'step' atau 'default' dengan lekukan halus
+          type: 'default',
+          style: { 
+            strokeWidth: 3, 
+            stroke: '#0f172a' // Warna kabel gelap solid sesuai gambar
+          } 
+        });
       }
     }
     else if (type === 'mesh') {
