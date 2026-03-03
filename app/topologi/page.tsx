@@ -33,11 +33,10 @@ const iconLib: any = {
   kabel: <Spline size={42} /> 
 };
 
-// --- CUSTOM NODE COMPONENT (ICON ONLY) ---
+// --- CUSTOM NODE COMPONENT ---
 const UniversalNode = ({ id, data }: any) => {
   const isDown = data.status === 'down';
   
-  // Warna ikon berdasarkan status
   const iconColor = isDown 
     ? 'text-red-500 opacity-50' 
     : data.isLive 
@@ -48,33 +47,30 @@ const UniversalNode = ({ id, data }: any) => {
     return (
       <div className="flex items-center justify-center">
         <div className={`w-3 h-3 rounded-full ${data.isLive ? 'bg-blue-500 animate-ping' : 'bg-slate-800'}`} />
-        <Handle type="target" position={Position.Left} id="l" style={{ opacity: 0 }} />
-        <Handle type="source" position={Position.Right} id="r" style={{ opacity: 0 }} />
+        <Handle type="source" position={Position.Left} id="l" style={{ background: '#555' }} />
+        <Handle type="source" position={Position.Right} id="r" style={{ background: '#555' }} />
       </div>
     );
   }
 
   return (
     <div className="relative flex flex-col items-center group transition-transform hover:scale-110">
-      {/* Invisible Handles untuk koneksi kabel */}
-      <Handle type="target" position={Position.Top} id="t" style={{ opacity: 0, top: '20%' }} />
-      <Handle type="source" position={Position.Bottom} id="b" style={{ opacity: 0, bottom: '20%' }} />
-      <Handle type="target" position={Position.Left} id="l" style={{ opacity: 0, left: '20%' }} />
-      <Handle type="source" position={Position.Right} id="r" style={{ opacity: 0, right: '20%' }} />
+      {/* Handles di 4 sisi untuk fleksibilitas tarik garis */}
+      <Handle type="source" position={Position.Top} id="t" style={{ background: '#3b82f6', width: '8px', height: '8px' }} />
+      <Handle type="source" position={Position.Bottom} id="b" style={{ background: '#3b82f6', width: '8px', height: '8px' }} />
+      <Handle type="source" position={Position.Left} id="l" style={{ background: '#3b82f6', width: '8px', height: '8px' }} />
+      <Handle type="source" position={Position.Right} id="r" style={{ background: '#3b82f6', width: '8px', height: '8px' }} />
       
-      {/* Icon Area */}
       <div className={`${iconColor} transition-all duration-300 ${data.isLive && !isDown ? 'animate-bounce' : ''}`}>
         {iconLib[data.shapeType] || <Monitor size={42}/>}
       </div>
 
-      {/* Label di bawah ikon */}
       <input 
         defaultValue={data.label} 
         onChange={(e) => data.onChange(id, e.target.value)}
         className={`bg-transparent border-none text-[10px] font-bold uppercase text-center focus:ring-0 w-24 mt-1 p-0 cursor-text ${isDown ? 'text-red-400' : 'text-slate-600'}`}
       />
 
-      {/* Status Down Overlay */}
       {isDown && (
         <div className="absolute top-0 right-4 bg-red-600 text-white rounded-full p-1 shadow-md">
           <Link2Off size={10}/>
@@ -120,10 +116,10 @@ function NetworkLabContent() {
       for (let i = 0; i < 5; i++) {
         const xPos = i * 250 + 200;
         newNodes.push({ id: `j-${i}`, type: 'universal', position: { x: xPos, y: 350 }, data: { type: 'junction', isLive: false } });
-        if (i > 0) newEdges.push({ id: `back-${i}`, source: `j-${i-1}`, target: `j-${i}`, style: { strokeWidth: 6, stroke: '#1e293b' } });
+        if (i > 0) newEdges.push({ id: `back-${i}`, source: `j-${i-1}`, sourceHandle: 'r', target: `j-${i}`, targetHandle: 'l', style: { strokeWidth: 6, stroke: '#1e293b' } });
         const isTop = i % 2 === 0;
         newNodes.push({ id: `n-${i}`, type: 'universal', position: { x: xPos - 55, y: isTop ? 180 : 480 }, data: { shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `NODE-${i}`, onChange: updateNodeData, isLive: false } });
-        newEdges.push({ id: `drop-${i}`, source: `j-${i}`, target: `n-${i}`, style: { strokeWidth: 3, stroke: '#64748b' } });
+        newEdges.push({ id: `drop-${i}`, source: `j-${i}`, sourceHandle: isTop ? 't' : 'b', target: `n-${i}`, targetHandle: isTop ? 'b' : 't', style: { strokeWidth: 3, stroke: '#64748b' } });
       }
     } 
     else if (type === 'star') {
@@ -131,9 +127,7 @@ function NetworkLabContent() {
       newNodes.push({ id: hubId, type: 'universal', position: { x: centerX - 60, y: centerY - 40 }, data: { shapeType: 'switch', label: 'CENTER SWITCH', onChange: updateNodeData, isLive: false } });
       for (let i = 0; i < 6; i++) {
         const angle = (i * 2 * Math.PI) / 6;
-        const x = centerX + 280 * Math.cos(angle) - 60;
-        const y = centerY + 280 * Math.sin(angle) - 40;
-        newNodes.push({ id: `s-pc-${i}`, type: 'universal', position: { x, y }, data: { shapeType: 'pc', label: `CLIENT-${i+1}`, onChange: updateNodeData, isLive: false } });
+        newNodes.push({ id: `s-pc-${i}`, type: 'universal', position: { x: centerX + 280 * Math.cos(angle) - 60, y: centerY + 280 * Math.sin(angle) - 40 }, data: { shapeType: 'pc', label: `CLIENT-${i+1}`, onChange: updateNodeData, isLive: false } });
         newEdges.push({ id: `es-${i}`, source: hubId, target: `s-pc-${i}`, style: { strokeWidth: 3, stroke: '#1e293b' } });
       }
     }
@@ -148,25 +142,23 @@ function NetworkLabContent() {
       }
     }
     else if (type === 'hybrid') {
-        const hubA = 'ha'; const hubB = 'hb';
-        newNodes.push({ id: hubA, type: 'universal', position: { x: 400, y: 350 }, data: { shapeType: 'switch', label: 'HUB A', onChange: updateNodeData, isLive: false } });
-        newNodes.push({ id: hubB, type: 'universal', position: { x: 800, y: 350 }, data: { shapeType: 'switch', label: 'HUB B', onChange: updateNodeData, isLive: false } });
-        
-        [hubA, hubB].forEach((h, idx) => {
-            for(let j=0; j<2; j++) {
-                const pcId = `p-${h}-${j}`;
-                newNodes.push({ id: pcId, type: 'universal', position: { x: (idx === 0 ? 400 : 800) + (j === 0 ? -150 : 150), y: 180 }, data: { shapeType: 'pc', label: `USER-${idx+1}.${j+1}`, onChange: updateNodeData, isLive: false } });
-                newEdges.push({ id: `e-${pcId}`, source: h, target: pcId, style: { strokeWidth: 3, stroke: '#1e293b' } });
-            }
-        });
-        newEdges.push({ id: 'backbone', source: hubA, target: hubB, style: { strokeWidth: 8, stroke: '#1e293b', strokeDasharray: '10,5' }, label: 'BACKBONE' });
+      const hubA = 'ha'; const hubB = 'hb';
+      newNodes.push({ id: hubA, type: 'universal', position: { x: 400, y: 350 }, data: { shapeType: 'switch', label: 'HUB A', onChange: updateNodeData, isLive: false } });
+      newNodes.push({ id: hubB, type: 'universal', position: { x: 800, y: 350 }, data: { shapeType: 'switch', label: 'HUB B', onChange: updateNodeData, isLive: false } });
+      [hubA, hubB].forEach((h, idx) => {
+        for(let j=0; j<2; j++) {
+          const pcId = `p-${h}-${j}`;
+          newNodes.push({ id: pcId, type: 'universal', position: { x: (idx === 0 ? 400 : 800) + (j === 0 ? -150 : 150), y: 180 }, data: { shapeType: 'pc', label: `USER-${idx+1}.${j+1}`, onChange: updateNodeData, isLive: false } });
+          newEdges.push({ id: `e-${pcId}`, source: h, target: pcId, style: { strokeWidth: 3, stroke: '#1e293b' } });
+        }
+      });
+      newEdges.push({ id: 'backbone', source: hubA, target: hubB, style: { strokeWidth: 8, stroke: '#1e293b', strokeDasharray: '10,5' }, label: 'BACKBONE' });
     }
     setNodes(newNodes); setEdges(newEdges);
   };
 
   return (
     <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans">
-      {/* SIDEBAR */}
       <aside className="w-72 bg-white border-r flex flex-col z-[100] shadow-xl">
         <div className="p-6 bg-slate-900 text-white font-black italic flex items-center gap-3">
           <ShieldCheck className="text-blue-400" size={28}/>
@@ -204,9 +196,7 @@ function NetworkLabContent() {
         <div className="p-4 border-t text-[9px] text-slate-400 text-center font-bold uppercase tracking-widest">SANPIO AI LAB © 2026</div>
       </aside>
 
-      {/* MAIN CANVAS */}
       <main className="flex-grow relative" ref={reactFlowWrapper} onClick={() => setMenu(null)}>
-        {/* TOPOLOGY SELECTOR */}
         <div className="absolute top-4 left-4 z-[50] flex flex-wrap gap-2">
           {['Bus', 'Ring', 'Star', 'Hybrid'].map((label) => (
             <button key={label} onClick={() => generateTopology(label.toLowerCase() as any)} className="px-5 py-2.5 bg-white shadow-lg rounded-full text-[10px] font-black border border-slate-100 hover:bg-blue-600 hover:text-white transition-all uppercase tracking-tighter">
@@ -235,14 +225,12 @@ function NetworkLabContent() {
           <Background color="#e2e8f0" gap={30} variant={"dots" as any} /><Controls />
         </ReactFlow>
 
-        {/* FOOTER */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/80 p-4 rounded-full border border-slate-200 shadow-xl z-40 backdrop-blur-md">
            <div className="flex items-center gap-3 text-slate-800 font-bold text-[10px] uppercase px-4">
              <Users size={14} className="text-blue-600" /><span>Kelompok: Farel, Andri, Eklan, Boven</span>
            </div>
         </div>
 
-        {/* CONTEXT MENU */}
         {menu && (
           <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-52 animate-in zoom-in-95">
               <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-2 tracking-widest text-center">Settings</div>
@@ -260,7 +248,6 @@ function NetworkLabContent() {
           </div>
         )}
 
-        {/* ANALISIS PANEL */}
         <div className={`absolute top-0 right-0 h-full flex z-[110] transition-transform duration-500 ${showPanel ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
           <button onClick={() => setShowPanel(!showPanel)} className="h-full bg-slate-900 text-white w-10 flex flex-col items-center justify-center gap-4 hover:bg-blue-600 transition-colors">
             {showPanel ? <ChevronRight size={20}/> : <ChevronLeft size={20}/>}
@@ -271,15 +258,14 @@ function NetworkLabContent() {
             <div className="space-y-4 text-[10px] font-bold text-slate-600 uppercase">
                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">Topology: <span className="text-blue-600">{topologyType || 'Custom'}</span></div>
                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">Nodes Count: <span>{nodes.length} Devices</span></div>
-               
                <div className="mt-8 border-t pt-4">
                   <h4 className="text-blue-600 mb-3 tracking-widest">Teori Jaringan:</h4>
                   <div className="text-[11px] text-slate-400 leading-relaxed italic border-l-2 border-blue-100 pl-4 normal-case font-medium">
                     {topologyType === 'ring' && "Data mengalir secara estafet dari satu node ke node berikutnya. Sangat efisien namun rawan karena jika satu node mati, seluruh jaringan bisa lumpuh."}
-                    {topologyType === 'star' && "Topologi paling populer saat ini. Semua perangkat terhubung ke switch pusat. Sangat mudah diperbaiki jika ada satu kabel yang putus."}
-                    {topologyType === 'hybrid' && "Menggabungkan dua atau lebih topologi yang berbeda. Memberikan skalabilitas maksimal untuk perusahaan besar."}
-                    {topologyType === 'bus' && "Menggunakan satu kabel utama (backbone). Sederhana dan murah, namun performa menurun jika terlalu banyak node yang terhubung."}
-                    {!topologyType && "Silakan rancang topologi atau pilih template di atas untuk melihat analisis teknis."}
+                    {topologyType === 'star' && "Topologi paling populer saat ini. Semua perangkat terhubung ke switch pusat."}
+                    {topologyType === 'hybrid' && "Menggabungkan dua atau lebih topologi yang berbeda."}
+                    {topologyType === 'bus' && "Menggunakan satu kabel utama (backbone)."}
+                    {!topologyType && "Silakan rancang topologi atau pilih template di atas."}
                   </div>
                </div>
             </div>
