@@ -26,7 +26,7 @@ import {
 // import { generateBus } from './bus';
 
 // PERBAIKAN (Sesuaikan dengan struktur folder):
-import { generateBus } from './bus/bus';
+import { generateBush } from './bush/bush';
 import { generateMesh } from './mesh/mesh';
 import { generateStar } from './star/star';
 import { generateRing } from './ring/ring';
