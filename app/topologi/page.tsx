@@ -22,12 +22,15 @@ import {
 } from 'lucide-react';
 
 // --- IMPORT LOGIKA DARI FOLDER MASING-MASING ---
-import { generateBus } from './bus';
-import { generateMesh } from './mesh';
-import { generateStar } from './star';
-import { generateRing } from './ring';
-import { generateHybrid } from './hybrid';
+// SEBELUMNYA (Ini yang bikin error):
+// import { generateBus } from './bus';
 
+// PERBAIKAN (Sesuaikan dengan struktur folder):
+import { generateBus } from './bus/bus';
+import { generateMesh } from './mesh/mesh';
+import { generateStar } from './star/star';
+import { generateRing } from './ring/ring';
+import { generateHybrid } from './hybrid/hybrid';
 const iconLib: any = {
   pc: <Monitor size={42} />,
   router: <Router size={42} />, 
