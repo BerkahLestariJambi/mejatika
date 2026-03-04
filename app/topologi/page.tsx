@@ -18,8 +18,15 @@ import '@xyflow/react/dist/style.css';
 import { 
   ShieldCheck, Monitor, Network, Router, Server, Wifi, 
   Zap, Flame, Radio, Info, Users, ChevronLeft, ChevronRight,
-  Trash2, Link2Off, Spline, Play, Square, Circle, Star, GitMerge
+  Trash2, Link2Off, Spline, Play, Square
 } from 'lucide-react';
+
+// --- IMPORT LOGIKA DARI FOLDER MASING-MASING ---
+import { generateBus } from './bus';
+import { generateMesh } from './mesh';
+import { generateStar } from './star';
+import { generateRing } from './ring';
+import { generateHybrid } from './hybrid';
 
 const iconLib: any = {
   pc: <Monitor size={42} />,
@@ -36,7 +43,6 @@ const iconLib: any = {
 // --- CUSTOM NODE COMPONENT ---
 const UniversalNode = ({ id, data }: any) => {
   const isDown = data.status === 'down';
-  
   const iconColor = isDown 
     ? 'text-red-500 opacity-50' 
     : data.isLive 
@@ -49,13 +55,14 @@ const UniversalNode = ({ id, data }: any) => {
         <div className={`w-3 h-3 rounded-full ${data.isLive ? 'bg-blue-500 animate-ping' : 'bg-slate-800'}`} />
         <Handle type="source" position={Position.Left} id="l" style={{ background: '#555' }} />
         <Handle type="source" position={Position.Right} id="r" style={{ background: '#555' }} />
+        <Handle type="source" position={Position.Top} id="t" style={{ background: '#555' }} />
+        <Handle type="source" position={Position.Bottom} id="b" style={{ background: '#555' }} />
       </div>
     );
   }
 
   return (
     <div className="relative flex flex-col items-center group transition-transform hover:scale-110">
-      {/* Handles di 4 sisi untuk fleksibilitas tarik garis */}
       <Handle type="source" position={Position.Top} id="t" style={{ background: '#3b82f6', width: '8px', height: '8px' }} />
       <Handle type="source" position={Position.Bottom} id="b" style={{ background: '#3b82f6', width: '8px', height: '8px' }} />
       <Handle type="source" position={Position.Left} id="l" style={{ background: '#3b82f6', width: '8px', height: '8px' }} />
@@ -107,58 +114,26 @@ function NetworkLabContent() {
     })));
   };
 
-  const generateTopology = (type: 'bus' | 'mesh' | 'star' | 'ring' | 'hybrid') => {
+  // --- FUNGSI GENERATE YANG MEMANGGIL FILE EKSTERNAL ---
+  const handleGenerateTopology = (type: string) => {
     setNodes([]); setEdges([]); setTopologyType(type); setIsLive(false);
-    const newNodes: any[] = []; const newEdges: any[] = [];
-    const centerX = 600, centerY = 400;
+    let result = { nodes: [], edges: [] };
+    const CX = 600; const CY = 400;
 
-    if (type === 'bus') {
-      for (let i = 0; i < 5; i++) {
-        const xPos = i * 250 + 200;
-        newNodes.push({ id: `j-${i}`, type: 'universal', position: { x: xPos, y: 350 }, data: { type: 'junction', isLive: false } });
-        if (i > 0) newEdges.push({ id: `back-${i}`, source: `j-${i-1}`, sourceHandle: 'r', target: `j-${i}`, targetHandle: 'l', style: { strokeWidth: 6, stroke: '#1e293b' } });
-        const isTop = i % 2 === 0;
-        newNodes.push({ id: `n-${i}`, type: 'universal', position: { x: xPos - 55, y: isTop ? 180 : 480 }, data: { shapeType: i === 0 ? 'router' : 'pc', label: i === 0 ? 'GATEWAY' : `NODE-${i}`, onChange: updateNodeData, isLive: false } });
-        newEdges.push({ id: `drop-${i}`, source: `j-${i}`, sourceHandle: isTop ? 't' : 'b', target: `n-${i}`, targetHandle: isTop ? 'b' : 't', style: { strokeWidth: 3, stroke: '#64748b' } });
-      }
-    } 
-    else if (type === 'star') {
-      const hubId = 'central-hub';
-      newNodes.push({ id: hubId, type: 'universal', position: { x: centerX - 60, y: centerY - 40 }, data: { shapeType: 'switch', label: 'CENTER SWITCH', onChange: updateNodeData, isLive: false } });
-      for (let i = 0; i < 6; i++) {
-        const angle = (i * 2 * Math.PI) / 6;
-        newNodes.push({ id: `s-pc-${i}`, type: 'universal', position: { x: centerX + 280 * Math.cos(angle) - 60, y: centerY + 280 * Math.sin(angle) - 40 }, data: { shapeType: 'pc', label: `CLIENT-${i+1}`, onChange: updateNodeData, isLive: false } });
-        newEdges.push({ id: `es-${i}`, source: hubId, target: `s-pc-${i}`, style: { strokeWidth: 3, stroke: '#1e293b' } });
-      }
+    switch (type) {
+      case 'bus': result = generateBus(updateNodeData); break;
+      case 'mesh': result = generateMesh(updateNodeData); break;
+      case 'star': result = generateStar(updateNodeData, CX, CY); break;
+      case 'ring': result = generateRing(updateNodeData, CX, CY); break;
+      case 'hybrid': result = generateHybrid(updateNodeData); break;
     }
-    else if (type === 'ring') {
-      const count = 5;
-      for (let i = 0; i < count; i++) {
-        const angle = (i * 2 * Math.PI) / count - Math.PI / 2;
-        newNodes.push({ id: `r-${i}`, type: 'universal', position: { x: centerX + 240 * Math.cos(angle) - 60, y: centerY + 240 * Math.sin(angle) - 40 }, data: { shapeType: 'pc', label: `PC-${i+1}`, onChange: updateNodeData, isLive: false } });
-      }
-      for (let i = 0; i < count; i++) {
-        newEdges.push({ id: `er-${i}`, source: `r-${i}`, target: `r-${(i+1)%count}`, style: { strokeWidth: 3, stroke: '#1e293b' } });
-      }
-    }
-    else if (type === 'hybrid') {
-      const hubA = 'ha'; const hubB = 'hb';
-      newNodes.push({ id: hubA, type: 'universal', position: { x: 400, y: 350 }, data: { shapeType: 'switch', label: 'HUB A', onChange: updateNodeData, isLive: false } });
-      newNodes.push({ id: hubB, type: 'universal', position: { x: 800, y: 350 }, data: { shapeType: 'switch', label: 'HUB B', onChange: updateNodeData, isLive: false } });
-      [hubA, hubB].forEach((h, idx) => {
-        for(let j=0; j<2; j++) {
-          const pcId = `p-${h}-${j}`;
-          newNodes.push({ id: pcId, type: 'universal', position: { x: (idx === 0 ? 400 : 800) + (j === 0 ? -150 : 150), y: 180 }, data: { shapeType: 'pc', label: `USER-${idx+1}.${j+1}`, onChange: updateNodeData, isLive: false } });
-          newEdges.push({ id: `e-${pcId}`, source: h, target: pcId, style: { strokeWidth: 3, stroke: '#1e293b' } });
-        }
-      });
-      newEdges.push({ id: 'backbone', source: hubA, target: hubB, style: { strokeWidth: 8, stroke: '#1e293b', strokeDasharray: '10,5' }, label: 'BACKBONE' });
-    }
-    setNodes(newNodes); setEdges(newEdges);
+
+    setNodes(result.nodes);
+    setEdges(result.edges);
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen w-full bg-slate-50 overflow-hidden font-sans text-slate-900">
       <aside className="w-72 bg-white border-r flex flex-col z-[100] shadow-xl">
         <div className="p-6 bg-slate-900 text-white font-black italic flex items-center gap-3">
           <ShieldCheck className="text-blue-400" size={28}/>
@@ -198,8 +173,8 @@ function NetworkLabContent() {
 
       <main className="flex-grow relative" ref={reactFlowWrapper} onClick={() => setMenu(null)}>
         <div className="absolute top-4 left-4 z-[50] flex flex-wrap gap-2">
-          {['Bus', 'Ring', 'Star', 'Hybrid'].map((label) => (
-            <button key={label} onClick={() => generateTopology(label.toLowerCase() as any)} className="px-5 py-2.5 bg-white shadow-lg rounded-full text-[10px] font-black border border-slate-100 hover:bg-blue-600 hover:text-white transition-all uppercase tracking-tighter">
+          {['Bus', 'Ring', 'Star', 'Mesh', 'Hybrid'].map((label) => (
+            <button key={label} onClick={() => handleGenerateTopology(label.toLowerCase())} className="px-5 py-2.5 bg-white shadow-lg rounded-full text-[10px] font-black border border-slate-100 hover:bg-blue-600 hover:text-white transition-all uppercase tracking-tighter">
               {label}
             </button>
           ))}
@@ -231,6 +206,7 @@ function NetworkLabContent() {
            </div>
         </div>
 
+        {/* --- CONTEXT MENU --- */}
         {menu && (
           <div style={{ top: menu.y, left: menu.x }} className="fixed z-[1000] bg-white border border-slate-200 shadow-2xl rounded-2xl p-4 w-52 animate-in zoom-in-95">
               <div className="text-[9px] font-black text-slate-400 mb-2 uppercase border-b pb-2 tracking-widest text-center">Settings</div>
@@ -248,6 +224,7 @@ function NetworkLabContent() {
           </div>
         )}
 
+        {/* --- REPORT PANEL --- */}
         <div className={`absolute top-0 right-0 h-full flex z-[110] transition-transform duration-500 ${showPanel ? 'translate-x-0' : 'translate-x-[calc(100%-40px)]'}`}>
           <button onClick={() => setShowPanel(!showPanel)} className="h-full bg-slate-900 text-white w-10 flex flex-col items-center justify-center gap-4 hover:bg-blue-600 transition-colors">
             {showPanel ? <ChevronRight size={20}/> : <ChevronLeft size={20}/>}
@@ -265,6 +242,7 @@ function NetworkLabContent() {
                     {topologyType === 'star' && "Topologi paling populer saat ini. Semua perangkat terhubung ke switch pusat."}
                     {topologyType === 'hybrid' && "Menggabungkan dua atau lebih topologi yang berbeda."}
                     {topologyType === 'bus' && "Menggunakan satu kabel utama (backbone)."}
+                    {topologyType === 'mesh' && "Setiap perangkat terhubung ke banyak perangkat lain. Sangat tahan banting (high redundancy)."}
                     {!topologyType && "Silakan rancang topologi atau pilih template di atas."}
                   </div>
                </div>
