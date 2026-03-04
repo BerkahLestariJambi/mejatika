@@ -22,15 +22,13 @@ import {
 } from 'lucide-react';
 
 // --- IMPORT LOGIKA DARI FOLDER MASING-MASING ---
-// SEBELUMNYA (Ini yang bikin error):
-// import { generateBus } from './bus';
-
-// PERBAIKAN (Sesuaikan dengan struktur folder):
-import { generateBush } from './bush/bush';
+// Pastikan file-file ini ada di struktur folder: /app/topologi/bush/bush.ts, dll.
+import { generateBush } from './bush/bush'; 
 import { generateMesh } from './mesh/mesh';
 import { generateStar } from './star/star';
 import { generateRing } from './ring/ring';
 import { generateHybrid } from './hybrid/hybrid';
+
 const iconLib: any = {
   pc: <Monitor size={42} />,
   router: <Router size={42} />, 
@@ -117,18 +115,34 @@ function NetworkLabContent() {
     })));
   };
 
-  // --- FUNGSI GENERATE YANG MEMANGGIL FILE EKSTERNAL ---
+  // --- PERBAIKAN LOGIKA GENERATE ---
   const handleGenerateTopology = (type: string) => {
-    setNodes([]); setEdges([]); setTopologyType(type); setIsLive(false);
-    let result = { nodes: [], edges: [] };
-    const CX = 600; const CY = 400;
+    setNodes([]); 
+    setEdges([]); 
+    setTopologyType(type); 
+    setIsLive(false);
+    
+    let result: { nodes: any[], edges: any[] } = { nodes: [], edges: [] };
+    const CX = 600; 
+    const CY = 400;
 
     switch (type) {
-      case 'bus': result = generateBus(updateNodeData); break;
-      case 'mesh': result = generateMesh(updateNodeData); break;
-      case 'star': result = generateStar(updateNodeData, CX, CY); break;
-      case 'ring': result = generateRing(updateNodeData, CX, CY); break;
-      case 'hybrid': result = generateHybrid(updateNodeData); break;
+      case 'bus': 
+        // Memanggil generateBush sesuai nama yang di-import di atas
+        result = generateBush(updateNodeData); 
+        break;
+      case 'mesh': 
+        result = generateMesh(updateNodeData); 
+        break;
+      case 'star': 
+        result = generateStar(updateNodeData, CX, CY); 
+        break;
+      case 'ring': 
+        result = generateRing(updateNodeData, CX, CY); 
+        break;
+      case 'hybrid': 
+        result = generateHybrid(updateNodeData); 
+        break;
     }
 
     setNodes(result.nodes);
@@ -188,9 +202,8 @@ function NetworkLabContent() {
           nodes={nodes} edges={edges} onNodesChange={onNodesChange}
           onDrop={(e) => {
             const type = e.dataTransfer.getData('application/value');
-            if (!type) return;
-            const rect = reactFlowWrapper.current?.getBoundingClientRect();
-            if (!rect) return;
+            if (!type || !reactFlowWrapper.current) return;
+            const rect = reactFlowWrapper.current.getBoundingClientRect();
             setNodes((nds) => nds.concat({ id: `n-${Date.now()}`, type: 'universal', position: { x: e.clientX - rect.left - 30, y: e.clientY - rect.top - 30 }, data: { shapeType: type, label: type.toUpperCase(), onChange: updateNodeData, isLive } }));
           }}
           onDragOver={(e) => e.preventDefault()}
