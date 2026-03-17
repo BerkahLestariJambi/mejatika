@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   useNodesState,
@@ -21,8 +21,7 @@ import {
   Trash2, Link2Off, Spline, Play, Square
 } from 'lucide-react';
 
-// --- IMPORT LOGIKA DARI FOLDER MASING-MASING ---
-// Pastikan file-file ini ada di struktur folder: /app/topologi/bush/bush.ts, dll.
+// --- IMPORT LOGIKA ---
 import { generateBush } from './bush/bush'; 
 import { generateMesh } from './mesh/mesh';
 import { generateStar } from './star/star';
@@ -115,7 +114,6 @@ function NetworkLabContent() {
     })));
   };
 
-  // --- PERBAIKAN LOGIKA GENERATE ---
   const handleGenerateTopology = (type: string) => {
     setNodes([]); 
     setEdges([]); 
@@ -128,7 +126,7 @@ function NetworkLabContent() {
 
     switch (type) {
       case 'bus': 
-        // Memanggil generateBush sesuai nama yang di-import di atas
+        // Menggunakan fungsi generateBush yang di-import
         result = generateBush(updateNodeData); 
         break;
       case 'mesh': 
@@ -189,6 +187,7 @@ function NetworkLabContent() {
       </aside>
 
       <main className="flex-grow relative" ref={reactFlowWrapper} onClick={() => setMenu(null)}>
+        {/* --- TOPOLOGY BUTTONS --- */}
         <div className="absolute top-4 left-4 z-[50] flex flex-wrap gap-2">
           {['Bus', 'Ring', 'Star', 'Mesh', 'Hybrid'].map((label) => (
             <button key={label} onClick={() => handleGenerateTopology(label.toLowerCase())} className="px-5 py-2.5 bg-white shadow-lg rounded-full text-[10px] font-black border border-slate-100 hover:bg-blue-600 hover:text-white transition-all uppercase tracking-tighter">
@@ -255,10 +254,10 @@ function NetworkLabContent() {
                   <h4 className="text-blue-600 mb-3 tracking-widest">Teori Jaringan:</h4>
                   <div className="text-[11px] text-slate-400 leading-relaxed italic border-l-2 border-blue-100 pl-4 normal-case font-medium">
                     {topologyType === 'ring' && "Data mengalir secara estafet dari satu node ke node berikutnya. Sangat efisien namun rawan karena jika satu node mati, seluruh jaringan bisa lumpuh."}
-                    {topologyType === 'star' && "Topologi paling populer saat ini. Semua perangkat terhubung ke switch pusat."}
-                    {topologyType === 'hybrid' && "Menggabungkan dua atau lebih topologi yang berbeda."}
-                    {topologyType === 'bus' && "Menggunakan satu kabel utama (backbone)."}
-                    {topologyType === 'mesh' && "Setiap perangkat terhubung ke banyak perangkat lain. Sangat tahan banting (high redundancy)."}
+                    {topologyType === 'star' && "Semua perangkat terhubung ke switch pusat. Jika switch mati, semua mati. Jika kabel satu PC putus, hanya PC itu yang mati."}
+                    {topologyType === 'hybrid' && "Kombinasi dari beberapa topologi (misal: Star + Bus). Memberikan fleksibilitas tinggi untuk skala besar."}
+                    {topologyType === 'bus' && "Menggunakan kabel tunggal sebagai jalur komunikasi utama (backbone). Jika kabel utama putus, seluruh jaringan mati."}
+                    {topologyType === 'mesh' && "Tingkat redundansi tertinggi. Setiap perangkat punya jalur cadangan ke perangkat lain."}
                     {!topologyType && "Silakan rancang topologi atau pilih template di atas."}
                   </div>
                </div>
