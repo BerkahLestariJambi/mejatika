@@ -612,16 +612,26 @@ export default function KtiDashboardPage() {
                                 </div>
                               </div>
 
-                              {/* --- INTEGRASI LIVE PREVIEW FILE GURU PEMBIMBING --- */}
+                         {/* --- INTEGRASI LIVE PREVIEW FILE GURU PEMBIMBING --- */}
                               {fileUrl && (
                                 <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
                                   <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between">
                                     <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
                                       🖥️ Live Preview Dokumen Bab {num}
                                     </span>
-                                    <span className="text-[10px] text-slate-400 font-medium">
-                                      {isPdf ? "Format: PDF Native" : "Format: Word via Google Docs Hub"}
-                                    </span>
+                                    <div className="flex items-center gap-2">
+                                      <a 
+                                        href={fileUrl} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        className="text-[10px] bg-white text-indigo-600 hover:bg-indigo-50 font-bold px-2 py-1 rounded border shadow-sm transition"
+                                      >
+                                        ↗️ Buka di Tab Baru
+                                      </a>
+                                      <span className="text-[10px] text-slate-400 font-medium">
+                                        {isPdf ? "Format: PDF Native" : "Format: Word File"}
+                                      </span>
+                                    </div>
                                   </div>
                                   <div className="w-full h-[450px] bg-white">
                                     {isPdf ? (
@@ -631,11 +641,32 @@ export default function KtiDashboardPage() {
                                         title={`Preview PDF Bab ${num}`}
                                       />
                                     ) : (
-                                      <iframe 
-                                        src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`} 
-                                        className="w-full h-full" 
-                                        title={`Preview Word Bab ${num}`}
-                                      />
+                                      /* Fallback UI interaktif jika Google Docs Viewer diblokir oleh kebijakan server/CORS */
+                                      <div className="w-full h-full flex flex-col justify-center items-center p-6 text-center bg-slate-50">
+                                        <span className="text-4xl mb-2 animate-bounce">📄</span>
+                                        <p className="text-xs font-bold text-slate-700">Dokumen Berformat Microsoft Word (.docx)</p>
+                                        <p className="text-[11px] text-slate-400 max-w-sm mt-1 mb-4 leading-relaxed">
+                                          Kebijakan keamanan sistem membatasi pratinjau langsung ekstensi Word di dalam frame halaman ini.
+                                        </p>
+                                        <div className="flex flex-col sm:flex-row gap-2">
+                                          <a 
+                                            href={fileUrl} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm"
+                                          >
+                                            Unduh / Lihat File Asli
+                                          </a>
+                                          <a 
+                                            href={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="bg-white hover:bg-slate-100 text-slate-700 border text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm"
+                                          >
+                                            Coba Paksa Buka di Google Web
+                                          </a>
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 </div>
