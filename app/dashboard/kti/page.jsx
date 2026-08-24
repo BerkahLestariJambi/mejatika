@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import axios from 'axios'; // Atau gunakan instance axios custom Anda yang sudah menyimpan token auth
+import axios from 'axios';
+
+// Menggunakan konstanta API sesuai instruksi Anda
+const API_URL = "https://backend.mejatika.com/api";
 
 export default function KtiDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState(null); // 'siswa' atau 'mentor'
   const [dataKti, setDataKti] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null); // Khusus mentor ketika klik siswa
+  const [selectedStudent, setSelectedStudent] = useState(null); 
 
   // State Form Upload Siswa
   const [uploadData, setUploadData] = useState({ chapter_number: "1", file: null, student_note: "" });
@@ -21,22 +24,28 @@ export default function KtiDashboardPage() {
     fetchDashboardData();
   }, []);
 
+  // Ambil token dari penyimpanan lokal (sesuaikan dengan sistem auth Mejatika Anda)
+  const getAuthHeader = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    return { Authorization: `Bearer ${token}` };
+  };
+
   const fetchDashboardData = async () => {
     setLoading(true);
+    const headers = getAuthHeader();
     try {
-      // Sesuaikan endpoint dengan API backend laravel yang telah dibuat
-      // Pastikan Bearer Token header sudah dikonfigurasi secara global di Axios Anda
-      const response = await axios.get('/api/student/kti/dashboard'); 
+      // Coba akses sebagai siswa terlebih dahulu
+      const response = await axios.get(`${API_URL}/student/kti/dashboard`, { headers }); 
       setRole(response.data.role_detected);
       setDataKti(response.data.data);
     } catch (error) {
-      // Jika route /student gagal karena dia mentor, coba hit endpoint mentor
+      // Jika gagal/403, coba akses sebagai mentor
       try {
-        const response = await axios.get('/api/mentor/kti/dashboard');
+        const response = await axios.get(`${API_URL}/mentor/kti/dashboard`, { headers });
         setRole(response.data.role_detected);
         setDataKti(response.data.data);
       } catch (err) {
-        alert("Gagal memuat data dashboard KTI. Pastikan Anda sudah login.");
+        alert("Gagal memuat data dashboard KTI. Silakan login kembali.");
       }
     } finally {
       setLoading(false);
@@ -55,8 +64,11 @@ export default function KtiDashboardPage() {
     formData.append('student_note', uploadData.student_note);
 
     try {
-      await axios.post('/api/student/kti/chapter/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      await axios.post(`${API_URL}/student/kti/chapter/upload`, formData, {
+        headers: { 
+          ...getAuthHeader(),
+          'Content-Type': 'multipart/form-data' 
+        }
       });
       alert("Bab KTI berhasil diunggah!");
       setUploadData({ chapter_number: "1", file: null, student_note: "" });
@@ -80,8 +92,11 @@ export default function KtiDashboardPage() {
     }
 
     try {
-      await axios.post(`/api/mentor/kti/chapter/${chapterId}/review`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+      await axios.post(`${API_URL}/mentor/kti/chapter/${chapterId}/review`, formData, {
+        headers: { 
+          ...getAuthHeader(),
+          'Content-Type': 'multipart/form-data' 
+        }
       });
       alert("Ulasan bimbingan berhasil dikirim ke siswa!");
       setReviewData({ status: "approved", teacher_feedback: "", feedback_file: null });
@@ -110,11 +125,10 @@ export default function KtiDashboardPage() {
       </header>
 
       {/* ========================================== */}
-      {/* ✍️ TAMPILAN INTERFACE: SISWA / PELAJAR */}
+      {/* ✍️ INTERFACE: SISWA / PELAJAR */}
       {/* ========================================== */}
       {role === 'siswa' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Sisi Kiri: Status Kemajuan Bab */}
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-slate-50 p-4 rounded-xl border">
               <h2 className="text-lg font-semibold text-slate-800 mb-1">{dataKti?.title}</h2>
@@ -132,6 +146,19 @@ export default function KtiDashboardPage() {
                   <div>
                     <h4 className="font-medium text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h4>
                     <p className="text-xs text-gray-400">Versi saat ini: {ch?.current_version || 'Belum ada'}</p>
+                    
+                    {/* Link Download File Siswa Sendiri */}
+                    {ch?.file_path && (
+                      <a 
+                        href={`https://backend.mejatika.com/storage/${ch.file_path}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="text-xs text-indigo-600 hover:underline block mt-1"
+                      >
+                        📄 Lihat Dokumen Yang Diupload
+                      </a>
+                    )}
+
                     {ch?.teacher_feedback && (
                       <div className="mt-2 text-xs bg-amber-50 text-amber-900 p-2 rounded border border-amber-200">
                         <strong>Catatan Mentor:</strong> {ch.teacher_feedback}
@@ -148,7 +175,6 @@ export default function KtiDashboardPage() {
             })}
           </div>
 
-          {/* Sisi Kanan: Form Unggah Bab */}
           <div className="bg-slate-50 p-6 rounded-xl border h-fit">
             <h3 className="font-semibold text-slate-900 mb-4">Unggah Dokumen KTI</h3>
             <form onSubmit={handleUploadKti} className="space-y-4">
@@ -182,7 +208,7 @@ export default function KtiDashboardPage() {
                 <textarea 
                   rows="3"
                   className="w-full text-sm p-2 border rounded bg-white"
-                  placeholder="Contoh: Sudah memperbaiki bagian rumusan masalah Pak.."
+                  placeholder="Contoh: Sudah memperbaiki latar belakang masalah.."
                   value={uploadData.student_note}
                   onChange={(e) => setUploadData({...uploadData, student_note: e.target.value})}
                 ></textarea>
@@ -201,7 +227,7 @@ export default function KtiDashboardPage() {
       )}
 
       {/* ========================================== */}
-      {/* 👨‍🏫 TAMPILAN INTERFACE: MENTOR / GURU PEMBIMBING */}
+      {/* 👨‍🏫 INTERFACE: MENTOR / GURU PEMBIMBING */}
       {/* ========================================== */}
       {role === 'mentor' && (
         <div className="space-y-6">
@@ -224,12 +250,11 @@ export default function KtiDashboardPage() {
                     </button>
                   </div>
                 ))}
-                {dataKti?.length === 0 && <p className="text-sm text-gray-400 italic">Belum ada siswa yang mendaftar bimbingan dengan Anda.</p>}
+                {dataKti?.length === 0 && <p className="text-sm text-gray-400 italic">Belum ada siswa yang mendaftar bimbingan.</p>}
               </div>
             </div>
           ) : (
             <div>
-              {/* Tombol Kembali */}
               <button onClick={() => setSelectedStudent(null)} className="text-sm text-indigo-600 hover:underline mb-4 inline-block">
                 ← Kembali ke Daftar Siswa
               </button>
@@ -248,6 +273,19 @@ export default function KtiDashboardPage() {
                       <div>
                         <h5 className="font-semibold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h5>
                         <p className="text-xs text-gray-500">Versi: {ch?.current_version || 'Belum Diupload'}</p>
+                        
+                        {/* Link Download File Siswa untuk Guru */}
+                        {ch?.file_path && (
+                          <a 
+                            href={`https://backend.mejatika.com/storage/${ch.file_path}`} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-xs text-indigo-600 font-medium hover:underline block mt-1"
+                          >
+                            📥 Unduh Dokumen Siswa
+                          </a>
+                        )}
+
                         {ch?.student_note && <p className="text-xs text-gray-600 mt-1 italic">"Pesan siswa: {ch.student_note}"</p>}
                       </div>
                       
@@ -256,7 +294,6 @@ export default function KtiDashboardPage() {
                           {ch ? translateStatus(ch.status) : 'Kosong'}
                         </span>
                         
-                        {/* Jika ada file yang diupload siswa, guru bisa meriview */}
                         {ch && ch.status === 'pending' && (
                           <div className="bg-slate-50 p-4 rounded-lg border w-full md:w-80 text-xs">
                             <form onSubmit={(e) => handleReviewKti(e, ch.id)} className="space-y-2">
@@ -276,7 +313,7 @@ export default function KtiDashboardPage() {
                                 <textarea 
                                   className="w-full p-1 border rounded bg-white text-xs" 
                                   rows="2"
-                                  placeholder="Tulis ulasan Anda disini..."
+                                  placeholder="Tulis ulasan Anda..."
                                   value={reviewData.teacher_feedback}
                                   onChange={(e) => setReviewData({...reviewData, teacher_feedback: e.target.value})}
                                   required
@@ -305,9 +342,6 @@ export default function KtiDashboardPage() {
   );
 }
 
-// ==========================================
-// 🛠️ HELPER FUNCTIONS (Fungsi Pembantu UI)
-// ==========================================
 function getChapterName(num) {
   const names = {
     1: "Pendahuluan",
