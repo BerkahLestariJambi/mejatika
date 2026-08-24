@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import axios from 'axios';
 
 // Menggunakan konstanta API sesuai instruksi Anda
 const API_URL = "https://backend.mejatika.com/api";
@@ -24,10 +23,10 @@ export default function KtiDashboardPage() {
     fetchDashboardData();
   }, []);
 
-  // Ambil token dari penyimpanan lokal (sesuaikan dengan sistem auth Mejatika Anda)
+  // Ambil token dari localStorage
   const getAuthHeader = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    return { Authorization: `Bearer ${token}` };
+    return { 'Authorization': `Bearer ${token}` };
   };
 
   const fetchDashboardData = async () => {
@@ -35,18 +34,29 @@ export default function KtiDashboardPage() {
     const headers = getAuthHeader();
     try {
       // Coba akses sebagai siswa terlebih dahulu
-      const response = await axios.get(`${API_URL}/student/kti/dashboard`, { headers }); 
-      setRole(response.data.role_detected);
-      setDataKti(response.data.data);
-    } catch (error) {
-      // Jika gagal/403, coba akses sebagai mentor
-      try {
-        const response = await axios.get(`${API_URL}/mentor/kti/dashboard`, { headers });
-        setRole(response.data.role_detected);
-        setDataKti(response.data.data);
-      } catch (err) {
-        alert("Gagal memuat data dashboard KTI. Silakan login kembali.");
+      let response = await fetch(`${API_URL}/student/kti/dashboard`, {
+        method: 'GET',
+        headers: headers
+      });
+
+      // Jika gagal/bukan siswa (misal 403 atau 404), coba akses sebagai mentor
+      if (!response.ok) {
+        response = await fetch(`${API_URL}/mentor/kti/dashboard`, {
+          method: 'GET',
+          headers: headers
+        });
       }
+
+      const resData = await response.json();
+      
+      if (response.ok) {
+        setRole(resData.role_detected);
+        setDataKti(resData.data);
+      } else {
+        alert(resData.message || "Gagal memuat data dashboard KTI.");
+      }
+    } catch (error) {
+      alert("Terjadi kesalahan jaringan saat memuat data.");
     } finally {
       setLoading(false);
     }
@@ -64,17 +74,23 @@ export default function KtiDashboardPage() {
     formData.append('student_note', uploadData.student_note);
 
     try {
-      await axios.post(`${API_URL}/student/kti/chapter/upload`, formData, {
-        headers: { 
-          ...getAuthHeader(),
-          'Content-Type': 'multipart/form-data' 
-        }
+      const response = await fetch(`${API_URL}/student/kti/chapter/upload`, {
+        method: 'POST',
+        headers: getAuthHeader(), // Jangan set Content-Type manual untuk FormData agar browser otomatis mendeteksinya beserta boundary-nya
+        body: formData
       });
-      alert("Bab KTI berhasil diunggah!");
-      setUploadData({ chapter_number: "1", file: null, student_note: "" });
-      fetchDashboardData();
+
+      const resData = await response.json();
+
+      if (response.ok) {
+        alert("Bab KTI berhasil diunggah!");
+        setUploadData({ chapter_number: "1", file: null, student_note: "" });
+        fetchDashboardData();
+      } else {
+        alert(resData.message || "Gagal mengunggah file KTI.");
+      }
     } catch (error) {
-      alert(error.response?.data?.message || "Gagal mengunggah file KTI.");
+      alert("Terjadi kesalahan jaringan saat mengunggah file.");
     } finally {
       setUploading(false);
     }
@@ -92,18 +108,24 @@ export default function KtiDashboardPage() {
     }
 
     try {
-      await axios.post(`${API_URL}/mentor/kti/chapter/${chapterId}/review`, formData, {
-        headers: { 
-          ...getAuthHeader(),
-          'Content-Type': 'multipart/form-data' 
-        }
+      const response = await fetch(`${API_URL}/mentor/kti/chapter/${chapterId}/review`, {
+        method: 'POST',
+        headers: getAuthHeader(),
+        body: formData
       });
-      alert("Ulasan bimbingan berhasil dikirim ke siswa!");
-      setReviewData({ status: "approved", teacher_feedback: "", feedback_file: null });
-      setSelectedStudent(null);
-      fetchDashboardData();
+
+      const resData = await response.json();
+
+      if (response.ok) {
+        alert("Ulasan bimbingan berhasil dikirim ke siswa!");
+        setReviewData({ status: "approved", teacher_feedback: "", feedback_file: null });
+        setSelectedStudent(null);
+        fetchDashboardData();
+      } else {
+        alert(resData.message || "Gagal mengirim ulasan bimbingan.");
+      }
     } catch (error) {
-      alert("Gagal mengirim ulasan bimbingan.");
+      alert("Terjadi kesalahan jaringan saat mengirim ulasan.");
     } finally {
       setReviewing(false);
     }
@@ -147,7 +169,6 @@ export default function KtiDashboardPage() {
                     <h4 className="font-medium text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h4>
                     <p className="text-xs text-gray-400">Versi saat ini: {ch?.current_version || 'Belum ada'}</p>
                     
-                    {/* Link Download File Siswa Sendiri */}
                     {ch?.file_path && (
                       <a 
                         href={`https://backend.mejatika.com/storage/${ch.file_path}`} 
@@ -274,7 +295,6 @@ export default function KtiDashboardPage() {
                         <h5 className="font-semibold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h5>
                         <p className="text-xs text-gray-500">Versi: {ch?.current_version || 'Belum Diupload'}</p>
                         
-                        {/* Link Download File Siswa untuk Guru */}
                         {ch?.file_path && (
                           <a 
                             href={`https://backend.mejatika.com/storage/${ch.file_path}`} 
