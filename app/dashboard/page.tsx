@@ -209,7 +209,7 @@ export default function StudentDashboard() {
     } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
   }
 
-  const renderEmbed = (url: string) => {
+  {/* const renderEmbed = (url: string) => {
     if (!url) return null;
     let embedUrl = url;
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
@@ -223,7 +223,43 @@ export default function StudentDashboard() {
         <iframe src={embedUrl} className="w-full h-full border-none" allowFullScreen />
       </div>
     )
+  }*/}
+  const renderEmbed = (url: string) => {
+  if (!url) return null;
+  let embedUrl = url;
+  let isYouTube = false;
+
+  if (url.includes("youtube.com") || url.includes("youtu.be")) {
+    isYouTube = true;
+    const videoId = url.includes("v=") ? url.split("v=")[1]?.split("&")[0] : url.split("youtu.be/")[1]?.split("?")[0]
+    embedUrl = `https://www.youtube.com/embed/${videoId}`
+  } else if (url.includes("drive.google.com")) {
+    embedUrl = url.replace("/view", "/preview")
   }
+
+  return (
+    <div className="space-y-3 mb-6">
+      <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-200">
+        <iframe src={embedUrl} className="w-full h-full border-none" allowFullScreen />
+      </div>
+      
+      {/* TOMBOL PENYELAMAT: Muncul jika link berasal dari YouTube */}
+      {isYouTube && (
+        <div className="flex justify-end">
+          <a 
+            href={url} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all border border-red-200 shadow-sm"
+          >
+            <MonitorPlay size={14} /> 
+            Video Error? Tonton Langsung di YouTube ↗
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
 
   const handleEnroll = async (courseId: number) => {
     setRegisteringId(courseId)
