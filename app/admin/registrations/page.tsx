@@ -50,7 +50,7 @@ export default function RegistrationsPage() {
     setUpdatingId(id)
     const token = localStorage.getItem("token")
     try {
-      const res = await fetch(`https://backend.mejatika.com/api/registrations/${id}`, {
+      const res = await fetch(`https://backend.mejatika.com/api/admin/registrations/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
