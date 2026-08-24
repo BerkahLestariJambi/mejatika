@@ -567,43 +567,79 @@ export default function KtiDashboardPage() {
                       <div className="space-y-4">
                         {[1, 2, 3, 4, 5].map((num) => {
                           const ch = selectedStudent.chapters?.find((c: any) => c.chapter_number === num);
+                          const fileUrl = ch?.file_path ? `https://backend.mejatika.com/storage/${ch.file_path}` : null;
+                          const isPdf = fileUrl?.toLowerCase().endsWith('.pdf');
+
                           return (
-                            <div key={num} className="p-4 border rounded-xl bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-                              <div>
-                                <h5 className="font-semibold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h5>
-                                <p className="text-xs text-slate-400">Versi: {ch?.current_version || 'Belum Ada'}</p>
-                                {ch?.file_path && (
-                                  <a href={`https://backend.mejatika.com/storage/${ch.file_path}`} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-semibold hover:underline block mt-1">
-                                    📥 Unduh Lampiran Berkas Siswa
-                                  </a>
-                                )}
-                                {ch?.student_note && <p className="text-xs text-slate-500 mt-1 italic">"Pesan siswa: {ch.student_note}"</p>}
+                            <div key={num} className="p-5 border rounded-xl bg-white flex flex-col gap-4 shadow-sm">
+                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                  <h5 className="font-bold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h5>
+                                  <p className="text-xs text-slate-400">Versi: {ch?.current_version || 'Belum Anda'}</p>
+                                  {fileUrl && (
+                                    <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold hover:underline block mt-1">
+                                      📥 Unduh Lampiran Berkas Siswa
+                                    </a>
+                                  )}
+                                  {ch?.student_note && <p className="text-xs text-slate-500 mt-1 italic">"Pesan siswa: {ch.student_note}"</p>}
+                                </div>
+                                
+                                <div className="flex items-center gap-3">
+                                  <span className={`px-2 py-1 rounded text-xs font-bold ${getStatusBadge(ch?.status)}`}>
+                                    {ch ? translateStatus(ch.status) : 'Kosong'}
+                                  </span>
+                                  
+                                  {ch && ch.status === 'pending' && (
+                                    <div className="bg-slate-50 p-4 rounded-xl border w-full md:w-80 text-xs">
+                                      <form onSubmit={(e) => handleReviewKti(e, ch.id)} className="space-y-2">
+                                        <div>
+                                          <label className="block font-semibold mb-0.5">Status Persetujuan</label>
+                                          <select className="w-full p-1.5 border rounded bg-white text-xs" value={reviewData.status} onChange={(e) => setReviewData({...reviewData, status: e.target.value})}>
+                                            <option value="approved">ACC (Setujui Bab)</option>
+                                            <option value="need_revision">Minta Revisi Berkas</option>
+                                          </select>
+                                        </div>
+                                        <div>
+                                          <label className="block font-semibold mb-0.5">Catatan Masukan Koreksi</label>
+                                          <textarea className="w-full p-1.5 border rounded bg-white text-xs" rows={2} placeholder="Tulis instruksi koreksi..." value={reviewData.teacher_feedback} onChange={(e) => setReviewData({...reviewData, teacher_feedback: e.target.value})} required></textarea>
+                                        </div>
+                                        <button type="submit" disabled={reviewing} className="w-full bg-indigo-600 text-white p-2 rounded-xl font-bold hover:bg-indigo-700 transition">
+                                          {reviewing ? 'Memproses...' : 'Kirim Ulasan Penilaian'}
+                                        </button>
+                                      </form>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <span className={`px-2 py-1 rounded text-xs font-bold ${getStatusBadge(ch?.status)}`}>
-                                  {ch ? translateStatus(ch.status) : 'Kosong'}
-                                </span>
-                                {ch && ch.status === 'pending' && (
-                                  <div className="bg-slate-50 p-4 rounded-xl border w-full md:w-80 text-xs">
-                                    <form onSubmit={(e) => handleReviewKti(e, ch.id)} className="space-y-2">
-                                      <div>
-                                        <label className="block font-semibold mb-0.5">Status Persetujuan</label>
-                                        <select className="w-full p-1.5 border rounded bg-white text-xs" value={reviewData.status} onChange={(e) => setReviewData({...reviewData, status: e.target.value})}>
-                                          <option value="approved">ACC (Setujui Bab)</option>
-                                          <option value="need_revision">Minta Revisi Berkas</option>
-                                        </select>
-                                      </div>
-                                      <div>
-                                        <label className="block font-semibold mb-0.5">Catatan Masukan Koreksi</label>
-                                        <textarea className="w-full p-1.5 border rounded bg-white text-xs" rows={2} placeholder="Tulis instruksi koreksi..." value={reviewData.teacher_feedback} onChange={(e) => setReviewData({...reviewData, teacher_feedback: e.target.value})} required></textarea>
-                                      </div>
-                                      <button type="submit" disabled={reviewing} className="w-full bg-indigo-600 text-white p-2 rounded-xl font-bold hover:bg-indigo-700 transition">
-                                        {reviewing ? 'Memproses...' : 'Kirim Ulasan Penilaian'}
-                                      </button>
-                                    </form>
+
+                              {/* --- INTEGRASI LIVE PREVIEW FILE GURU PEMBIMBING --- */}
+                              {fileUrl && (
+                                <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
+                                  <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between">
+                                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+                                      🖥️ Live Preview Dokumen Bab {num}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-medium">
+                                      {isPdf ? "Format: PDF Native" : "Format: Word via Google Docs Hub"}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
+                                  <div className="w-full h-[450px] bg-white">
+                                    {isPdf ? (
+                                      <iframe 
+                                        src={fileUrl} 
+                                        className="w-full h-full" 
+                                        title={`Preview PDF Bab ${num}`}
+                                      />
+                                    ) : (
+                                      <iframe 
+                                        src={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`} 
+                                        className="w-full h-full" 
+                                        title={`Preview Word Bab ${num}`}
+                                      />
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -612,20 +648,14 @@ export default function KtiDashboardPage() {
                   )}
                 </div>
               )}
+              
             </div>
           ) : (
-            /* PANEL KEDUA: PUSAT BIMBINGAN (SOP & ATURAN) */
-            <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4">
-              <h2 className="text-lg font-bold text-slate-900 border-b pb-2">📋 Panduan Penggunaan Layanan Bimbingan KTI</h2>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                Selamat datang di Pusat Kontrol Layanan Bimbingan Karya Tulis Ilmiah Mejatika. Silakan ikuti tata cara pengumpulan berkas berikut:
-              </p>
-              <ol className="list-decimal list-inside text-sm text-slate-600 space-y-2 pl-2">
-                <li>Pastikan berkas dikumpulkan berurutan dimulai dari Bab 1 hingga Bab 5.</li>
-                <li>Format file resmi yang didukung sistem saat ini adalah ekstensi berkas berbentuk <strong className="text-slate-900">.pdf</strong> atau <strong className="text-slate-900">.docx</strong>.</li>
-                <li>Batas maksimum ukuran berkas unggahan per satu file bab adalah sebesar <strong className="text-slate-900">10 Megabytes (MB)</strong>.</li>
-                <li>Jika status bab Anda berubah menjadi <span className="text-red-600 font-semibold">Perlu Revisi</span>, harap baca komentar dari Guru Pembimbing dan unggah kembali versi berkas perbaikan terbaru Anda.</li>
-              </ol>
+            /* PANEL CADANGAN: PUSAT BIMBINGAN */
+            <div className="bg-white p-6 rounded-2xl border shadow-sm text-center">
+              <span className="text-3xl">📚</span>
+              <h2 className="text-lg font-bold text-slate-900 mt-2">Pusat Arsip Bimbingan KTI</h2>
+              <p className="text-xs text-slate-500 mt-1">Gunakan tab menu utama navigasi di sebelah kiri untuk mengelola aktivitas bimbingan penuh.</p>
             </div>
           )}
 
