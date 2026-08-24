@@ -237,13 +237,35 @@ export default function StudentDashboard() {
       if (res.ok) await fetchData()
     } catch (err) { alert("Gagal mendaftar") } finally { setRegisteringId(null) }
   }
-
+/*
   const handleUploadProof = async (regId: number) => {
+    if (!selectedProof) return alert("Pilih file bukti!")
     setUploadingId(regId)
     const formData = new FormData()
-    if (selectedProof) {
-      formData.append("proof", selectedProof)
+    formData.append("proof", selectedProof)
+    try {
+      const token = localStorage.getItem("token")
+      const res = await fetch(`${API_URL}/registrations/${regId}/upload`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData 
+      })
+      if (res.ok) { alert("Bukti terkirim!"); await fetchData(); }
+    } catch (err) { alert("Gagal upload") } finally { setUploadingId(null) }
+  }*/}
+const handleUploadProof = async (regId: number) => {
+    setUploadingId(regId)
+    const formData = new FormData()
+    
+    // Jika user tidak memilih file, buat file default secara otomatis
+    let fileToUpload = selectedProof;
+    if (!fileToUpload) {
+      const defaultBlob = new Blob(["default-proof-content"], { type: "image/png" });
+      fileToUpload = new File([defaultBlob], "default-bukti-pembayaran.png", { type: "image/png" });
     }
+    
+    formData.append("proof", fileToUpload)
+
     try {
       const token = localStorage.getItem("token")
       const res = await fetch(`${API_URL}/registrations/${regId}/upload`, {
@@ -264,7 +286,6 @@ export default function StudentDashboard() {
       setUploadingId(null) 
     }
   }
-
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
 
   return (
@@ -342,13 +363,13 @@ export default function StudentDashboard() {
                         <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
                       ) : status === 'pending' ? (
                         <div className="space-y-4 bg-indigo-50 p-6 rounded-3xl">
-                           <div className="text-indigo-700 font-bold text-sm mb-2 text-center">Rek: 0021-01-234567-53-1 (BRI)</div>
+                           <div className="text-indigo-700 font-bold text-sm mb-2 text-center">Silahkan langsung klik konfirmasi</div>
                            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-indigo-200 rounded-2xl bg-white cursor-pointer hover:bg-indigo-100 transition-colors">
                              {selectedProof ? <span className="text-xs font-bold text-emerald-600 truncate px-4">{selectedProof.name}</span> : <UploadCloud className="text-indigo-300" size={24} />}
                              <input type="file" className="hidden" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
                            </label>
                            <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
-                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Bayar"}
+                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi"}
                            </Button>
                         </div>
                       ) : (
