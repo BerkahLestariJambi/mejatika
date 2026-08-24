@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 // Menggunakan konstanta API sesuai instruksi Anda
 const API_URL = "https://backend.mejatika.com/api";
 
-// --- HELPER FUNCTIONS (Dipindahkan ke atas agar aman dari masalah hoisting) ---
+// --- HELPER FUNCTIONS ---
 function getChapterName(num: number) {
   const names: Record<number, string> = {
     1: "Pendahuluan",
@@ -41,6 +41,19 @@ export default function KtiDashboardPage() {
   const [role, setRole] = useState<string | null>(null); // 'siswa', 'siswakti', 'mentor', atau 'pembimbing'
   const [dataKti, setDataKti] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null); 
+  
+  // State Deteksi Pendaftaran
+  const [isRegistered, setIsRegistered] = useState(true);
+  const [listTeachers, setListTeachers] = useState<any[]>([]);
+
+  // State Form Pendaftaran Baru (Jika Belum Terdaftar)
+  const [registerData, setRegisterData] = useState({
+    title: "",
+    abstract: "",
+    teacher_id: "",
+    academic_year: new Date().getFullYear().toString()
+  });
+  const [registering, setRegistering] = useState(false);
 
   // State Form Upload Siswa
   const [uploadData, setUploadData] = useState({ chapter_number: "1", file: null as File | null, student_note: "" });
@@ -81,17 +94,77 @@ export default function KtiDashboardPage() {
       const resData = await response.json();
       
       if (response.ok) {
-        // Normalisasi teks ke lowercase agar aman dari variasi penulisan API
         const roleDetected = resData.role_detected?.toLowerCase();
         setRole(roleDetected);
         setDataKti(resData.data);
+        setIsRegistered(true);
       } else {
-        alert(resData.message || "Gagal memuat data dashboard KTI.");
+        // Cek jika pesan error menyatakan belum terdaftar program bimbingan
+        if (resData.message && resData.message.includes("belum terdaftar")) {
+          setIsRegistered(false);
+          setRole("siswakti"); // Default fallback role untuk pengisian form
+          fetchTeachersList();
+        } else {
+          alert(resData.message || "Gagal memuat data dashboard KTI.");
+        }
       }
     } catch (error) {
       alert("Terjadi kesalahan jaringan saat memuat data.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Ambil daftar Pembimbing untuk Form Pendaftaran
+  const fetchTeachersList = async () => {
+    try {
+      const response = await fetch(`${API_URL}/teachers-list-or-mentors`, { 
+        method: 'GET'
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setListTeachers(data.teachers || data || []);
+      }
+    } catch (e) {
+      // Data dummy jika endpoint belum siap di backend
+      setListTeachers([
+        { id: 1, name: "Dr. Siswanto, M.Pd" },
+        { id: 2, name: "Budi Utomo, S.T" }
+      ]);
+    }
+  };
+
+  // --- HANDLER SISWA: Kirim Pendaftaran KTI Baru ---
+  const handleRegisterKti = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!registerData.title || !registerData.teacher_id) {
+      return alert("Judul KTI dan Guru Pembimbing wajib diisi!");
+    }
+
+    setRegistering(true);
+    try {
+      const response = await fetch(`${API_URL}/student/kti/register`, { 
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getAuthHeader()
+        },
+        body: JSON.stringify(registerData)
+      });
+
+      const resData = await response.json();
+
+      if (response.ok) {
+        alert("Pendaftaran Judul KTI Berhasil!");
+        setIsRegistered(true);
+        fetchDashboardData(); // Reload data untuk memicu tampilan bimbingan bab
+      } else {
+        alert(resData.message || "Gagal melakukan pendaftaran.");
+      }
+    } catch (error) {
+      alert("Terjadi kesalahan jaringan saat mendaftar.");
+    } finally {
+      setRegistering(false);
     }
   };
 
@@ -183,10 +256,80 @@ export default function KtiDashboardPage() {
         <p className="text-sm text-gray-500">Akses Eksklusif Kelas Karya Tulis Ilmiah Mejatika</p>
       </header>
 
-      {/* ========================================== */}
-      {/* ✍️ INTERFACE: SISWA / SISWAKTI / PELAJAR */}
-      {/* ========================================== */}
-      {isStudentRole && (
+      {/* ======================================================= */}
+      {/* ⚠️ KONDISI BELUM TERDAFTAR: TAMPILKAN FORMULIR REGISTRASI */}
+      {/* ======================================================= */}
+      {!isRegistered && isStudentRole && (
+        <div className="max-w-xl mx-auto border border-amber-200 bg-amber-50/20 p-8 rounded-3xl shadow-sm">
+          <h2 className="text-xl font-black text-slate-900 mb-1 uppercase tracking-tight italic">Pendaftaran Judul KTI Baru</h2>
+          <p className="text-xs text-gray-500 mb-6">Anda belum terdaftar dalam sistem bimbingan. Silakan isi form di bawah ini untuk memulai.</p>
+          
+          <form onSubmit={handleRegisterKti} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Judul Lengkap KTI</label>
+              <input 
+                type="text"
+                required
+                className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Contoh: Pengaruh Media Digital Terhadap Minat Baca..."
+                value={registerData.title}
+                onChange={(e) => setRegisterData({...registerData, title: e.target.value})}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Abstrak / Deskripsi Singkat Ide</label>
+              <textarea 
+                rows={3}
+                className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                placeholder="Gambarkan secara ringkas ide penelitian karya tulis ilmiah Anda..."
+                value={registerData.abstract}
+                onChange={(e) => setRegisterData({...registerData, abstract: e.target.value})}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Pilih Guru Pembimbing</label>
+                <select 
+                  required
+                  className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                  value={registerData.teacher_id}
+                  onChange={(e) => setRegisterData({...registerData, teacher_id: e.target.value})}
+                >
+                  <option value="">-- Pilih Pembimbing --</option>
+                  {listTeachers.map((teacher: any) => (
+                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Tahun Akademik</label>
+                <input 
+                  type="text" 
+                  disabled
+                  className="w-full text-sm p-3 border rounded-xl bg-gray-100 text-gray-500 font-medium"
+                  value={registerData.academic_year}
+                />
+              </div>
+            </div>
+
+            <button 
+              type="submit"
+              disabled={registering}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-xl transition mt-2 disabled:bg-gray-400"
+            >
+              {registering ? 'Memproses Pendaftaran...' : 'Kirim Pengajuan Judul KTI'}
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ======================================================= */}
+      {/* ✍️ INTERFACE JIKA SUDAH TERDAFTAR: SISWA / SISWAKTI */}
+      {/* ======================================================= */}
+      {isRegistered && isStudentRole && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-slate-50 p-4 rounded-xl border">
@@ -285,9 +428,9 @@ export default function KtiDashboardPage() {
       )}
 
       {/* ========================================== */}
-      {/* 👨‍🏫 INTERFACE: MENTOR / PEMBIMBING */}
+      {/* 👨‍🏫 INTERFACE JIKA GURU: MENTOR / PEMBIMBING */}
       {/* ========================================== */}
-      {isMentorRole && (
+      {isRegistered && isMentorRole && (
         <div className="space-y-6">
           {!selectedStudent ? (
             <div>
