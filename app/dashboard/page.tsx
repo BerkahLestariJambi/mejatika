@@ -237,7 +237,7 @@ export default function StudentDashboard() {
       if (res.ok) await fetchData()
     } catch (err) { alert("Gagal mendaftar") } finally { setRegisteringId(null) }
   }
-/*
+  {/*
   const handleUploadProof = async (regId: number) => {
     if (!selectedProof) return alert("Pilih file bukti!")
     setUploadingId(regId)
@@ -252,8 +252,9 @@ export default function StudentDashboard() {
       })
       if (res.ok) { alert("Bukti terkirim!"); await fetchData(); }
     } catch (err) { alert("Gagal upload") } finally { setUploadingId(null) }
-  }*/}
-const handleUploadProof = async (regId: number) => {
+  }
+*/}
+  const handleUploadProof = async (regId: number) => {
     setUploadingId(regId)
     const formData = new FormData()
     
