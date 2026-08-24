@@ -38,7 +38,7 @@ function LoginForm() {
     }
   }, [searchParams])
 
-  // --- LOGIKA REDIRECT LENGKAP TERMASUK ROLE PELAJAR ---
+  // --- LOGIKA REDIRECT BERDASARKAN ROLE BARU ---
   const redirectBasedOnRole = (role: string) => {
     // Normalisasi role ke lowercase untuk menghindari error typo dari API
     const userRole = role?.toLowerCase()
@@ -47,16 +47,21 @@ function LoginForm() {
       case "admin":
         router.push("/admin")
         break
+      
+      // Role Mentor, Kontributor, atau Pembimbing KTI
+      case "pembimbing": // <--- TAMBAHAN ROLE BARU
       case "kontributor":
       case "mentor":
-        router.push("/dashboard/mentor")
+        router.push("/dashboard/kti") 
         break
-      case "pelajar": // <--- DASHBOARD KHUSUS PENULIS ARTIKEL SISWA
-        router.push("/dashboardpelajar")
-        break
+      
+      // Role Pelajar, Peserta, atau Siswa KTI khusus
+      case "siswakti": // <--- TAMBAHAN ROLE BARU
+      case "pelajar": 
       case "peserta":
-        router.push("/dashboard")
+        router.push("/dashboard/kti")
         break
+        
       default:
         router.push("/")
         break
