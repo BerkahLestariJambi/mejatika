@@ -239,10 +239,11 @@ export default function StudentDashboard() {
   }
 
   const handleUploadProof = async (regId: number) => {
-    if (!selectedProof) return alert("Pilih file bukti!")
     setUploadingId(regId)
     const formData = new FormData()
-    formData.append("proof", selectedProof)
+    if (selectedProof) {
+      formData.append("proof", selectedProof)
+    }
     try {
       const token = localStorage.getItem("token")
       const res = await fetch(`${API_URL}/registrations/${regId}/upload`, {
@@ -250,8 +251,18 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}` },
         body: formData 
       })
-      if (res.ok) { alert("Bukti terkirim!"); await fetchData(); }
-    } catch (err) { alert("Gagal upload") } finally { setUploadingId(null) }
+      if (res.ok) { 
+        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Konfirmasi pembayaran berhasil dikirim!', timer: 2000, showConfirmButton: false });
+        setSelectedProof(null);
+        await fetchData(); 
+      } else {
+        Swal.fire("Gagal", "Gagal mengirim konfirmasi ke server.", "error");
+      }
+    } catch (err) { 
+      Swal.fire("Gagal", "Terjadi kesalahan koneksi.", "error");
+    } finally { 
+      setUploadingId(null) 
+    }
   }
 
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
@@ -439,9 +450,7 @@ export default function StudentDashboard() {
                                {!submissionFeedback.student_reply && (
                                  <div className="relative">
                                     <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Tanya mentor..." className="w-full p-5 pr-14 bg-white border rounded-3xl text-sm" />
-                                    <button onClick={handleSendReply} disabled={isSendingReply} className="absolute bottom-4 right-4 h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center transition-transform active:scale-90 disabled:opacity-50">
-                                      {isSendingReply ? <Loader2 className="animate-spin" size={16}/> : <Send size={16}/>}
-                                    </button>
+                                    <button onClick={handleSendReply} className="absolute bottom-4 right-4 h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center transition-transform active:scale-90"><Send size={16}/></button>
                                  </div>
                                )}
                             </div>
