@@ -1,11 +1,19 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/db"
 
+// FIX 1: Paksa route ini menjadi dinamis agar Vercel tidak mengeksekusinya secara statis saat build
+export const dynamic = "force-dynamic"
+
 export async function GET() {
-  const users = await db.getUsers()
-  // Remove password from response
-  const safeUsers = users.map(({ password, ...user }) => user)
-  return NextResponse.json(safeUsers)
+  try {
+    const users = await db.getUsers()
+    // Remove password from response
+    // FIX 2: Menambahkan pengecekan Array agar tidak crash jika users bernilai undefined/null
+    const safeUsers = (users || []).map(({ password, ...user }: any) => user)
+    return NextResponse.json(safeUsers)
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -35,7 +43,7 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const data = await request.json()
-    const index = db.users.findIndex((u) => u.id === data.id)
+    const index = db.users.findIndex((u: any) => u.id === data.id)
 
     if (index === -1) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
@@ -47,7 +55,7 @@ export async function PUT(request: NextRequest) {
       updatedAt: new Date(),
     }
 
-    const { password, ...safeUser } = db.users[index]
+    const { password, ...safeUser } = db.users[index] as any
     return NextResponse.json(safeUser)
   } catch (error) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -63,7 +71,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 })
     }
 
-    const index = db.users.findIndex((u) => u.id === id)
+    const index = db.users.findIndex((u: any) => u.id === id)
 
     if (index === -1) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
