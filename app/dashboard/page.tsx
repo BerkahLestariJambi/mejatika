@@ -258,11 +258,22 @@ export default function StudentDashboard() {
     setUploadingId(regId)
     const formData = new FormData()
     
-    // Jika user tidak memilih file, buat file default secara otomatis
     let fileToUpload = selectedProof;
+    
+    // Jika tidak ada file yang dipilih, buat Base64 Gambar Transparan 1x1 piksel asli
     if (!fileToUpload) {
-      const defaultBlob = new Blob(["default-proof-content"], { type: "image/png" });
-      fileToUpload = new File([defaultBlob], "default-bukti-pembayaran.png", { type: "image/png" });
+      const b64Data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
+      
+      // Proses konversi Base64 menjadi file binary asli (.png)
+      const byteCharacters = atob(b64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "image/png" });
+      
+      fileToUpload = new File([blob], "default-bukti-pembayaran.png", { type: "image/png" });
     }
     
     formData.append("proof", fileToUpload)
@@ -274,12 +285,16 @@ export default function StudentDashboard() {
         headers: { "Authorization": `Bearer ${token}` },
         body: formData 
       })
+      
       if (res.ok) { 
         Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Konfirmasi pembayaran berhasil dikirim!', timer: 2000, showConfirmButton: false });
         setSelectedProof(null);
         await fetchData(); 
       } else {
-        Swal.fire("Gagal", "Gagal mengirim konfirmasi ke server.", "error");
+        // Biar tau pesan error asli dari Laravel (misal: validasi gagal / token expired)
+        const errResponse = await res.json().catch(() => ({}));
+        const msg = errResponse.message || "Gagal mengirim konfirmasi ke server.";
+        Swal.fire("Gagal", msg, "error");
       }
     } catch (err) { 
       Swal.fire("Gagal", "Terjadi kesalahan koneksi.", "error");
