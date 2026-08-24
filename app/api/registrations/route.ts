@@ -14,7 +14,7 @@ export async function PUT(request: Request) {
 
     // 2. Kirim ke Backend Laravel
     // Pastikan URL Laravel Anda menerima parameter {id} seperti ini
-    const response = await fetch(`https://backend.mejatika.com/api/registrations/${id}`, {
+    const response = await fetch(`https://backend.mejatika.com/api/admin/registrations/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
