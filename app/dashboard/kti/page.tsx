@@ -115,18 +115,32 @@ export default function KtiDashboardPage() {
     }
   };
 
-  // Ambil daftar Pembimbing untuk Form Pendaftaran
+// Ambil daftar Pembimbing secara dinamis berdasarkan User Role dari backend
   const fetchTeachersList = async () => {
     try {
-      const response = await fetch(`${API_URL}/teachers-list-or-mentors`, { 
-        method: 'GET'
+      // Wajib menyertakan token autentikasi (getAuthHeader) karena endpoint user dilindungi
+      const response = await fetch(`${API_URL}/users?role=pembimbing`, { 
+        method: 'GET',
+        headers: getAuthHeader()
       });
-      const data = await response.json();
+      
+      const resData = await response.json();
+      
       if (response.ok) {
-        setListTeachers(data.teachers || data || []);
+        // Menangani fleksibilitas struktur data dari backend (array langsung atau di dalam objek)
+        const teachersArray = resData.data || resData.users || resData;
+        if (Array.isArray(teachersArray)) {
+          setListTeachers(teachersArray);
+        } else {
+          console.error("Format data pembimbing tidak valid:", resData);
+        }
+      } else {
+        console.error("Gagal memuat pembimbing:", resData.message);
       }
-    } catch (e) {
-      // Data dummy jika endpoint belum siap di backend
+    } catch (error) {
+      console.error("Terjadi kesalahan jaringan saat mengambil daftar pembimbing:", error);
+      
+      // Fallback Data Dummy Lokal (Hanya berjalan jika API Backend Anda benar-benar offline/eror)
       setListTeachers([
         { id: 1, name: "Dr. Siswanto, M.Pd" },
         { id: 2, name: "Budi Utomo, S.T" }
