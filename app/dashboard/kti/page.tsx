@@ -5,14 +5,45 @@ import { useState, useEffect } from 'react';
 // Menggunakan konstanta API sesuai instruksi Anda
 const API_URL = "https://backend.mejatika.com/api";
 
+// --- HELPER FUNCTIONS (Dipindahkan ke atas agar aman dari masalah hoisting) ---
+function getChapterName(num: number) {
+  const names: Record<number, string> = {
+    1: "Pendahuluan",
+    2: "Tinjauan Pustaka",
+    3: "Metode Penelitian",
+    4: "Pembahasan & Analisis Data",
+    5: "Kesimpulan & Saran"
+  };
+  return names[num];
+}
+
+function translateStatus(status: string) {
+  const trans: Record<string, string> = {
+    'not_uploaded': 'Belum Diunggah',
+    'pending': 'Menunggu Review Guru',
+    'need_revision': 'Perlu Revisi ❌',
+    'approved': 'Disetujui / ACC ✔️'
+  };
+  return trans[status] || status;
+}
+
+function getStatusBadge(status?: string) {
+  switch (status) {
+    case 'pending': return 'bg-blue-50 text-blue-700 border border-blue-200';
+    case 'need_revision': return 'bg-red-50 text-red-700 border border-red-200';
+    case 'approved': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
+    default: return 'bg-gray-50 text-gray-500 border border-gray-200';
+  }
+}
+
 export default function KtiDashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState(null); // 'siswa' atau 'mentor'
-  const [dataKti, setDataKti] = useState(null);
-  const [selectedStudent, setSelectedStudent] = useState(null); 
+  const [role, setRole] = useState<string | null>(null); // 'siswa', 'siswakti', 'mentor', atau 'pembimbing'
+  const [dataKti, setDataKti] = useState<any>(null);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null); 
 
   // State Form Upload Siswa
-  const [uploadData, setUploadData] = useState({ chapter_number: "1", file: null, student_note: "" });
+  const [uploadData, setUploadData] = useState({ chapter_number: "1", file: null as File | null, student_note: "" });
   const [uploading, setUploading] = useState(false);
 
   // State Form Review Mentor
@@ -33,13 +64,13 @@ export default function KtiDashboardPage() {
     setLoading(true);
     const headers = getAuthHeader();
     try {
-      // Coba akses sebagai siswa terlebih dahulu
+      // 1. Coba akses sebagai rute siswa terlebih dahulu
       let response = await fetch(`${API_URL}/student/kti/dashboard`, {
         method: 'GET',
         headers: headers
       });
 
-      // Jika gagal/bukan siswa (misal 403 atau 404), coba akses sebagai mentor
+      // 2. Jika gagal/bukan siswa, coba akses rute mentor
       if (!response.ok) {
         response = await fetch(`${API_URL}/mentor/kti/dashboard`, {
           method: 'GET',
@@ -50,7 +81,9 @@ export default function KtiDashboardPage() {
       const resData = await response.json();
       
       if (response.ok) {
-        setRole(resData.role_detected);
+        // Normalisasi teks ke lowercase agar aman dari variasi penulisan API
+        const roleDetected = resData.role_detected?.toLowerCase();
+        setRole(roleDetected);
         setDataKti(resData.data);
       } else {
         alert(resData.message || "Gagal memuat data dashboard KTI.");
@@ -63,7 +96,7 @@ export default function KtiDashboardPage() {
   };
 
   // --- HANDLER SISWA: Unggah Berkas KTI ---
-  const handleUploadKti = async (e) => {
+  const handleUploadKti = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadData.file) return alert("Silakan pilih file PDF/Docx terlebih dahulu.");
 
@@ -76,7 +109,7 @@ export default function KtiDashboardPage() {
     try {
       const response = await fetch(`${API_URL}/student/kti/chapter/upload`, {
         method: 'POST',
-        headers: getAuthHeader(), // Jangan set Content-Type manual untuk FormData agar browser otomatis mendeteksinya beserta boundary-nya
+        headers: getAuthHeader(),
         body: formData
       });
 
@@ -97,7 +130,7 @@ export default function KtiDashboardPage() {
   };
 
   // --- HANDLER MENTOR: Kirim Hasil Review ---
-  const handleReviewKti = async (e, chapterId) => {
+  const handleReviewKti = async (e: React.FormEvent, chapterId: number) => {
     e.preventDefault();
     setReviewing(true);
     const formData = new FormData();
@@ -139,6 +172,10 @@ export default function KtiDashboardPage() {
     );
   }
 
+  // Cek kategori role grup untuk mempermudah rendering interface
+  const isStudentRole = role === 'siswa' || role === 'siswakti' || role === 'pelajar' || role === 'peserta';
+  const isMentorRole = role === 'mentor' || role === 'pembimbing' || role === 'kontributor';
+
   return (
     <div className="max-w-6xl mx-auto p-6 bg-white min-h-screen text-gray-800">
       <header className="border-b pb-4 mb-6">
@@ -147,9 +184,9 @@ export default function KtiDashboardPage() {
       </header>
 
       {/* ========================================== */}
-      {/* ✍️ INTERFACE: SISWA / PELAJAR */}
+      {/* ✍️ INTERFACE: SISWA / SISWAKTI / PELAJAR */}
       {/* ========================================== */}
-      {role === 'siswa' && (
+      {isStudentRole && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-slate-50 p-4 rounded-xl border">
@@ -162,7 +199,7 @@ export default function KtiDashboardPage() {
 
             <h3 className="font-semibold text-slate-900 mt-4">Status Review 5 Bab KTI</h3>
             {[1, 2, 3, 4, 5].map((num) => {
-              const ch = dataKti?.chapters?.find(c => c.chapter_number === num);
+              const ch = dataKti?.chapters?.find((c: any) => c.chapter_number === num);
               return (
                 <div key={num} className="p-4 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white shadow-sm">
                   <div>
@@ -220,14 +257,14 @@ export default function KtiDashboardPage() {
                   type="file" 
                   accept=".pdf,.docx"
                   className="w-full text-xs bg-white border p-2 rounded"
-                  onChange={(e) => setUploadData({...uploadData, file: e.target.files[0]})}
+                  onChange={(e) => setUploadData({...uploadData, file: e.target.files?.[0] || null})}
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Catatan Tambahan untuk Guru</label>
                 <textarea 
-                  rows="3"
+                  rows={3}
                   className="w-full text-sm p-2 border rounded bg-white"
                   placeholder="Contoh: Sudah memperbaiki latar belakang masalah.."
                   value={uploadData.student_note}
@@ -248,15 +285,15 @@ export default function KtiDashboardPage() {
       )}
 
       {/* ========================================== */}
-      {/* 👨‍🏫 INTERFACE: MENTOR / GURU PEMBIMBING */}
+      {/* 👨‍🏫 INTERFACE: MENTOR / PEMBIMBING */}
       {/* ========================================== */}
-      {role === 'mentor' && (
+      {isMentorRole && (
         <div className="space-y-6">
           {!selectedStudent ? (
             <div>
               <h3 className="font-semibold text-slate-900 mb-3">Daftar Siswa Bimbingan KTI Anda</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {dataKti?.map((item) => (
+                {dataKti?.map((item: any) => (
                   <div key={item.id} className="p-4 border rounded-xl bg-white shadow-sm hover:border-indigo-300 transition duration-150 flex flex-col justify-between">
                     <div>
                       <span className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded">Siswa</span>
@@ -288,7 +325,7 @@ export default function KtiDashboardPage() {
               <h4 className="font-semibold text-slate-900 mb-3">Daftar Bab & Aksi Penilaian</h4>
               <div className="space-y-4">
                 {[1, 2, 3, 4, 5].map((num) => {
-                  const ch = selectedStudent.chapters?.find(c => c.chapter_number === num);
+                  const ch = selectedStudent.chapters?.find((c: any) => c.chapter_number === num);
                   return (
                     <div key={num} className="p-4 border rounded-xl bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
                       <div>
@@ -332,7 +369,7 @@ export default function KtiDashboardPage() {
                                 <label className="block font-medium mb-1">Catatan Penilaian</label>
                                 <textarea 
                                   className="w-full p-1 border rounded bg-white text-xs" 
-                                  rows="2"
+                                  rows={2}
                                   placeholder="Tulis ulasan Anda..."
                                   value={reviewData.teacher_feedback}
                                   onChange={(e) => setReviewData({...reviewData, teacher_feedback: e.target.value})}
@@ -360,34 +397,4 @@ export default function KtiDashboardPage() {
       )}
     </div>
   );
-}
-
-function getChapterName(num) {
-  const names = {
-    1: "Pendahuluan",
-    2: "Tinjauan Pustaka",
-    3: "Metode Penelitian",
-    4: "Pembahasan & Analisis Data",
-    5: "Kesimpulan & Saran"
-  };
-  return names[num];
-}
-
-function translateStatus(status) {
-  const trans = {
-    'not_uploaded': 'Belum Diunggah',
-    'pending': 'Menunggu Review Guru',
-    'need_revision': 'Perlu Revisi ❌',
-    'approved': 'Disetujui / ACC ✔️'
-  };
-  return trans[status] || status;
-}
-
-function getStatusBadge(status) {
-  switch (status) {
-    case 'pending': return 'bg-blue-50 text-blue-700 border border-blue-200';
-    case 'need_revision': return 'bg-red-50 text-red-700 border border-red-200';
-    case 'approved': return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-    default: return 'bg-gray-50 text-gray-500 border border-gray-200';
-  }
 }
