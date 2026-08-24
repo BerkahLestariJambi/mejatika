@@ -115,11 +115,10 @@ export default function KtiDashboardPage() {
     }
   };
 
-// Ambil daftar Pembimbing secara dinamis berdasarkan User Role dari backend
-  const fetchTeachersList = async () => {
+const fetchTeachersList = async () => {
     try {
-      // Wajib menyertakan token autentikasi (getAuthHeader) karena endpoint user dilindungi
-      const response = await fetch(`${API_URL}/users?role=pembimbing`, { 
+      // Ambil seluruh data user dari master endpoint
+      const response = await fetch(`${API_URL}/users`, { 
         method: 'GET',
         headers: getAuthHeader()
       });
@@ -127,23 +126,29 @@ export default function KtiDashboardPage() {
       const resData = await response.json();
       
       if (response.ok) {
-        // Menangani fleksibilitas struktur data dari backend (array langsung atau di dalam objek)
-        const teachersArray = resData.data || resData.users || resData;
-        if (Array.isArray(teachersArray)) {
-          setListTeachers(teachersArray);
-        } else {
-          console.error("Format data pembimbing tidak valid:", resData);
+        // Ekstrak array dari struktur response (mengantisipasi jika dibungkus objek .data)
+        const allUsers = resData.data || resData.users || (Array.isArray(resData) ? resData : []);
+        
+        if (Array.isArray(allUsers)) {
+          // FILTER DI FRONTEND: Ambil hanya user yang rolenya 'pembimbing' atau 'mentor'
+          const filteredTeachers = allUsers.filter((user: any) => {
+            const userRole = String(user.role || '').toLowerCase();
+            return userRole === 'pembimbing' || userRole === 'mentor';
+          });
+          
+          console.log("Berhasil memfilter pembimbing dari DB:", filteredTeachers);
+          setListTeachers(filteredTeachers);
         }
       } else {
-        console.error("Gagal memuat pembimbing:", resData.message);
+        console.error("Gagal memuat data user:", resData.message);
       }
     } catch (error) {
-      console.error("Terjadi kesalahan jaringan saat mengambil daftar pembimbing:", error);
+      console.error("Terjadi kesalahan jaringan:", error);
       
-      // Fallback Data Dummy Lokal (Hanya berjalan jika API Backend Anda benar-benar offline/eror)
+      // Fallback lokal jika API mendadak putus koneksi
       setListTeachers([
-        { id: 1, name: "Dr. Siswanto, M.Pd" },
-        { id: 2, name: "Budi Utomo, S.T" }
+        { id: 2, name: "Roni Haryanto (Mentor)" },
+        { id: 4, name: "Hironimus Haryanto (Pembimbing)" }
       ]);
     }
   };
