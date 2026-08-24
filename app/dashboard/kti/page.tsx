@@ -310,17 +310,19 @@ const fetchTeachersList = async () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Pilih Guru Pembimbing</label>
-                <select 
-                  required
-                  className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                  value={registerData.teacher_id}
-                  onChange={(e) => setRegisterData({...registerData, teacher_id: e.target.value})}
-                >
-                  <option value="">-- Pilih Pembimbing --</option>
-                  {listTeachers.map((teacher: any) => (
-                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                  ))}
-                </select>
+              <select 
+  required
+  className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+  value={registerData.teacher_id}
+  onChange={(e) => setRegisterData({...registerData, teacher_id: e.target.value})}
+>
+  <option value="">-- Pilih Pembimbing --</option>
+  {listTeachers.map((teacher: any) => (
+    <option key={teacher.id} value={teacher.id}>
+      {teacher.name} ({teacher.role})
+    </option>
+  ))}
+</select>
               </div>
 
               <div>
