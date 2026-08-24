@@ -475,27 +475,87 @@ export default function KtiDashboardPage() {
               {/* INTERFACE TAMPILAN GURU/MENTOR */}
               {isRegistered && isMentorRole && (
                 <div className="space-y-6">
-                  {!selectedStudent ? (
+                  
+                  {/* PANEL UTAMA: RINGKASAN INFORMASI GURU PEMBIMBING */}
+                  <div className="bg-indigo-900 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                      <h3 className="font-bold text-slate-900 mb-3">Daftar Siswa Bimbingan Aktif Anda</h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-800 text-indigo-200 px-2.5 py-1 rounded-md">
+                        Status Akun: Pembimbing
+                      </span>
+                      <h2 className="text-xl font-black mt-2">Daftar Karya Tulis Ilmiah (KTI) Siswa</h2>
+                      <p className="text-xs text-indigo-200 mt-1">
+                        Manajemen evaluasi berkas, ulasan, serta persetujuan (ACC) lembar kerja siswa bimbingan Anda.
+                      </p>
+                    </div>
+                    <div className="bg-white/10 px-5 py-3 rounded-xl border border-white/10 text-center min-w-[140px]">
+                      <p className="text-xs text-indigo-200 font-semibold uppercase tracking-wider">Total Bimbingan</p>
+                      <p className="text-3xl font-black mt-0.5">{Array.isArray(dataKti) ? dataKti.length : 0} Siswa</p>
+                    </div>
+                  </div>
+
+                  {!selectedStudent ? (
+                    <div className="space-y-4">
+                      {/* BARU: MENAMPILKAN TULISAN LIST NAMA SISWA YANG SEDANG DIBIMBING */}
+                      <div className="bg-white p-4 rounded-xl border shadow-sm">
+                        <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Siswa yang Sedang Dibimbing:</p>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {Array.isArray(dataKti) && dataKti.length > 0 ? (
+                            dataKti.map((item: any) => (
+                              <span key={item.id} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border flex items-center gap-1.5">
+                                👤 {item.student?.name || "Siswa tanpa nama"}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Belum ada siswa bimbingan yang terdaftar.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide text-slate-500 pt-2">
+                        Silakan Pilih Dokumen Berkas Kerja Siswa:
+                      </h3>
+                      
+                      {/* GRID UTAMA LIST KARTU DETAIL BIMBINGAN SISWA */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {Array.isArray(dataKti) && dataKti.map((item: any) => (
                           <div key={item.id} className="p-5 border rounded-xl bg-white shadow-sm hover:border-indigo-300 transition flex flex-col justify-between">
                             <div>
-                              <h4 className="font-bold text-base text-slate-900">{item.student?.name}</h4>
-                              <p className="text-xs text-slate-400 mt-1 line-clamp-2">Judul: {item.title}</p>
+                              <div className="flex justify-between items-start gap-2">
+                                <h4 className="font-bold text-base text-slate-900 flex items-center gap-1.5">
+                                  <span>👨‍🎓</span> {item.student?.name}
+                                </h4>
+                                <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
+                                  Aktif Terdaftar
+                                </span>
+                              </div>
+                              
+                              {/* BARU: TULISAN JUDUL KTI YANG SEDANG DIBIMBING */}
+                              <div className="mt-3 pt-3 border-t border-dashed border-slate-100">
+                                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Judul KTI yang Dibimbing:</p>
+                                <p className="text-sm font-semibold text-slate-700 mt-1 leading-relaxed line-clamp-3 bg-slate-50 p-2 rounded-lg border">
+                                  "{item.title}"
+                                </p>
+                              </div>
+                              {item.academic_year && (
+                                <p className="text-[10px] text-slate-400 mt-2">Tahun Ajaran KTI: {item.academic_year}</p>
+                              )}
                             </div>
-                            <button onClick={() => setSelectedStudent(item)} className="w-full text-center bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl mt-4">
-                              Buka Lembar Bimbingan →
+                            
+                            <button onClick={() => setSelectedStudent(item)} className="w-full text-center bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl mt-4 transition shadow-sm">
+                              Buka Lembar Bimbingan Per Bab →
                             </button>
                           </div>
                         ))}
-                        {(!dataKti || dataKti.length === 0) && <p className="text-sm text-slate-400 italic">Belum ada siswa terdaftar bimbingan.</p>}
+                        {(!dataKti || dataKti.length === 0) && (
+                          <p className="text-sm text-slate-400 italic bg-white p-6 rounded-xl border text-center col-span-2">
+                            Belum ada siswa terdaftar dalam bimbingan Anda saat ini.
+                          </p>
+                        )}
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <button onClick={() => setSelectedStudent(null)} className="text-sm text-indigo-600 font-bold hover:underline mb-2">
+                      <button onClick={() => setSelectedStudent(null)} className="text-sm text-indigo-600 font-bold hover:underline mb-2 flex items-center gap-1">
                         ← Kembali ke Daftar Siswa
                       </button>
                       <div className="bg-white p-4 rounded-xl border shadow-sm">
