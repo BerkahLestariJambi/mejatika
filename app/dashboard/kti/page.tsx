@@ -115,10 +115,10 @@ export default function KtiDashboardPage() {
     }
   };
 
-const fetchTeachersList = async () => {
+  const fetchTeachersList = async () => {
     try {
-      // Ambil seluruh data user dari master endpoint
-      const response = await fetch(`${API_URL}/users`, { 
+      // PERBAIKAN: Mengarah ke endpoint khusus tabel baru 'teachers'
+      const response = await fetch(`${API_URL}/teachers-list`, { 
         method: 'GET',
         headers: getAuthHeader()
       });
@@ -126,29 +126,21 @@ const fetchTeachersList = async () => {
       const resData = await response.json();
       
       if (response.ok) {
-        // Ekstrak array dari struktur response (mengantisipasi jika dibungkus objek .data)
-        const allUsers = resData.data || resData.users || (Array.isArray(resData) ? resData : []);
-        
-        if (Array.isArray(allUsers)) {
-          // FILTER DI FRONTEND: Ambil hanya user yang rolenya 'pembimbing' atau 'mentor'
-          const filteredTeachers = allUsers.filter((user: any) => {
-            const userRole = String(user.role || '').toLowerCase();
-            return userRole === 'pembimbing' || userRole === 'mentor';
-          });
-          
-          console.log("Berhasil memfilter pembimbing dari DB:", filteredTeachers);
-          setListTeachers(filteredTeachers);
+        const data = resData.data || resData;
+        if (Array.isArray(data)) {
+          console.log("Berhasil memuat pembimbing dari tabel khusus teachers:", data);
+          setListTeachers(data);
         }
       } else {
-        console.error("Gagal memuat data user:", resData.message);
+        console.error("Gagal memuat data pembimbing:", resData.message);
       }
     } catch (error) {
       console.error("Terjadi kesalahan jaringan:", error);
       
       // Fallback lokal jika API mendadak putus koneksi
       setListTeachers([
-        { id: 2, name: "Roni Haryanto (Mentor)" },
-        { id: 4, name: "Hironimus Haryanto (Pembimbing)" }
+        { id: 2, name: "Roni Haryanto", status: "active" },
+        { id: 4, name: "Hironimus Haryanto", status: "active" }
       ]);
     }
   };
@@ -310,19 +302,19 @@ const fetchTeachersList = async () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Pilih Guru Pembimbing</label>
-              <select 
-  required
-  className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-  value={registerData.teacher_id}
-  onChange={(e) => setRegisterData({...registerData, teacher_id: e.target.value})}
->
-  <option value="">-- Pilih Pembimbing --</option>
-  {listTeachers.map((teacher: any) => (
-    <option key={teacher.id} value={teacher.id}>
-      {teacher.name} ({teacher.role})
-    </option>
-  ))}
-</select>
+                <select 
+                  required
+                  className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                  value={registerData.teacher_id}
+                  onChange={(e) => setRegisterData({...registerData, teacher_id: e.target.value})}
+                >
+                  <option value="">-- Pilih Pembimbing --</option>
+                  {listTeachers.map((teacher: any) => (
+                    <option key={teacher.id} value={teacher.id}>
+                      {teacher.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
