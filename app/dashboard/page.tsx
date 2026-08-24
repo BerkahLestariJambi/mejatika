@@ -18,7 +18,7 @@ export default function StudentDashboard() {
   const [activeMenu, setActiveMenu] = useState("dashboard")
   const [registrations, setRegistrations] = useState<any[]>([])
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
-  const [myCertificates, setMyCertificates] = useState<any[]>([]) // Ambil langsung dari tabel certificates
+  const [myCertificates, setMyCertificates] = useState<any[]>([]) 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [registeringId, setRegisteringId] = useState<number | null>(null)
@@ -50,7 +50,7 @@ export default function StudentDashboard() {
         fetch(`${API_URL}/registrations`, { headers: { "Authorization": `Bearer ${token}` } }),
         fetch(`${API_URL}/me`, { headers: { "Authorization": `Bearer ${token}` } }),
         fetch(`${API_URL}/courses`, { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch(`${API_URL}/my-certificates`, { headers: { "Authorization": `Bearer ${token}` } }) // Langsung ke tabel certificates
+        fetch(`${API_URL}/my-certificates`, { headers: { "Authorization": `Bearer ${token}` } })
       ])
       
       const dataReg = await resReg.json()
@@ -134,7 +134,7 @@ export default function StudentDashboard() {
     return Math.round((completedSteps / totalSteps) * 100)
   }
 
-  // --- LOGIKA DOWNLOAD SERTIFIKAT (SINKRON DENGAN ADMIN) ---
+  // --- LOGIKA DOWNLOAD SERTIFIKAT ---
   const handleDownloadCertificate = async (certId: number, certNumber: string) => {
     const token = localStorage.getItem("token")
     
@@ -234,7 +234,10 @@ export default function StudentDashboard() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ course_id: courseId })
       })
-      if (res.ok) await fetchData()
+      if (res.ok) {
+        Swal.fire({ icon: 'success', title: 'Berhasil Mendaftar', text: 'Selamat belajar!', timer: 1500, showConfirmButton: false })
+        await fetchData()
+      }
     } catch (err) { alert("Gagal mendaftar") } finally { setRegisteringId(null) }
   }
 
@@ -311,7 +314,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* --- MENU KATALOG --- */}
+        {/* --- MENU KATALOG (SUDAH DIUBAH TIDAK WAJIB UPLOAD BUKTI) --- */}
         {activeMenu === "courses" && (
           <div className="space-y-8 animate-in fade-in duration-500">
             <h2 className="text-3xl font-bold text-slate-800">Katalog Kursus</h2>
@@ -327,21 +330,19 @@ export default function StudentDashboard() {
                     </div>
                     <CardContent className="p-10 flex-1 flex flex-col">
                       <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
+                      
+                      {/* Kondisi 1: Jika sudah sukses / aktif, bisa langsung buka modul */}
                       {(status === 'success' || status === 'aktif') ? (
                         <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
-                      ) : status === 'pending' ? (
-                        <div className="space-y-4 bg-indigo-50 p-6 rounded-3xl">
-                           <div className="text-indigo-700 font-bold text-sm mb-2 text-center">Rek: 0021-01-234567-53-1 (BRI)</div>
-                           <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-indigo-200 rounded-2xl bg-white cursor-pointer hover:bg-indigo-100 transition-colors">
-                             {selectedProof ? <span className="text-xs font-bold text-emerald-600 truncate px-4">{selectedProof.name}</span> : <UploadCloud className="text-indigo-300" size={24} />}
-                             <input type="file" className="hidden" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
-                           </label>
-                           <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
-                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Bayar"}
-                           </Button>
-                        </div>
                       ) : (
-                        <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
+                        /* Kondisi 2: Jika belum daftar atau status pending, tombolnya adalah "Daftar Sekarang" agar bypass upload bukti */
+                        <Button 
+                          onClick={() => handleEnroll(course.id)} 
+                          disabled={registeringId === course.id} 
+                          className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold"
+                        >
+                          {registeringId === course.id ? <Loader2 className="animate-spin" /> : "Daftar Sekarang"}
+                        </Button>
                       )}
                     </CardContent>
                   </Card>
@@ -458,7 +459,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* --- MENU SERTIFIKAT (LOGIKA BARU DARI TABEL) --- */}
+        {/* --- MENU SERTIFIKAT --- */}
         {activeMenu === "certificates" && (
           <div className="space-y-10 animate-in fade-in duration-500">
             <div>
