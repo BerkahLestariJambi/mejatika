@@ -338,7 +338,7 @@ export default function KtiDashboardPage() {
                 </div>
               )}
 
-              {/* INTERFACE TAMPILAN GURU / MENTOR (LIVE PREVIEW) */}
+              {/* INTERFACE TAMPILAN GURU / MENTOR */}
               {isRegistered && isMentorRole && (
                 <div className="space-y-4">
                   {!selectedStudent ? (
@@ -364,11 +364,6 @@ export default function KtiDashboardPage() {
                         {[1, 2, 3, 4, 5].map((num) => {
                           const ch = selectedStudent.chapters?.find((c: any) => c.chapter_number === num);
                           const rawFilePath = ch?.file_path ? `https://backend.mejatika.com/storage/${ch.file_path}` : null;
-                          
-                          const isPdf = rawFilePath?.toLowerCase().endsWith('.pdf');
-                          const livePreviewUrl = isPdf 
-                            ? rawFilePath 
-                            : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(rawFilePath || '')}`;
 
                           return (
                             <div key={num} className="p-5 border rounded-xl bg-white flex flex-col gap-4 shadow-sm">
@@ -403,20 +398,36 @@ export default function KtiDashboardPage() {
                                 </div>
                               </div>
 
+                              {/* --- MODUL LIVE PREVIEW ANTI-BLOKIR DENGAN EMBED ENGINE --- */}
                               {rawFilePath && (
                                 <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-slate-50">
                                   <div className="bg-slate-100 px-4 py-2.5 border-b flex items-center justify-between">
                                     <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide flex items-center gap-1.5">
-                                      🖥️ Live Preview Dokumen Berkas Aktif (Bab {num})
+                                      {"🖥️ Live Preview Dokumen Berkas Aktif (Bab " + num + ")"}
                                     </span>
-                                    <a href={rawFilePath} target="_blank" rel="noreferrer" className="text-[10px] bg-white border font-bold px-2.5 py-1 rounded shadow-sm text-indigo-600 hover:bg-slate-50">
-                                      ↗️ Buka Tab Baru
-                                    </a>
+                                    <div className="flex items-center gap-2">
+                                      <a 
+                                        href={`https://docs.google.com/gview?url=${encodeURIComponent(rawFilePath)}&embedded=true`} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2.5 py-1 rounded border shadow-sm hover:bg-indigo-100 transition"
+                                      >
+                                        🗔 Alternatif Fullscreen
+                                      </a>
+                                      <a 
+                                        href={rawFilePath} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        className="text-[10px] bg-white border font-bold px-2.5 py-1 rounded shadow-sm text-slate-600 hover:bg-slate-50"
+                                      >
+                                        ↗️ Buka Asli
+                                      </a>
+                                    </div>
                                   </div>
                                   
                                   <div className="w-full h-[550px] bg-white">
                                     <iframe 
-                                      src={livePreviewUrl} 
+                                      src={`https://docs.google.com/gview?url=${encodeURIComponent(rawFilePath)}&embedded=true`} 
                                       className="w-full h-full border-none" 
                                       title={`Live Preview Bab ${num}`}
                                       allowFullScreen
