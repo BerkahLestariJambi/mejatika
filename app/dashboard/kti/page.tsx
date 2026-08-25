@@ -67,7 +67,7 @@ export default function KtiDashboardPage() {
   const [reviewData, setReviewData] = useState({ status: "approved", teacher_feedback: "", feedback_file: null });
   const [reviewing, setReviewing] = useState(false);
 
-useEffect(() => {
+  useEffect(() => {
     fetchDashboardData();
     fetchCurrentUser(); // <-- Memanggil fungsi pengambil data dari tabel users
   }, []);
@@ -93,7 +93,9 @@ useEffect(() => {
       
       if (response.ok) {
         // Mengambil kolom 'name' dari objek tabel users yang dikirim backend
-        setUserName(resData.name || resData.data?.name);
+        if (resData.name || resData.data?.name) {
+          setUserName(resData.name || resData.data?.name);
+        }
       } else {
         // Fallback cadangan: Jika API bermasalah, coba intip apakah namanya tersimpan di localStorage saat login
         const backupName = localStorage.getItem('user_name') || localStorage.getItem('name');
@@ -107,62 +109,73 @@ useEffect(() => {
     }
   };
 
- const fetchDashboardData = async () => {
-  setLoading(true);
-  const headers = getAuthHeader();
-  try {
-    let response = await fetch(`${API_URL}/student/kti/dashboard`, {
-      method: 'GET',
-      headers: headers
-    });
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    const headers = getAuthHeader();
+    try {
+      let response = await fetch(`${API_URL}/student/kti/dashboard`, {
+        method: 'GET',
+        headers: headers
+      });
 
-    let resData = await response.json();
-    
-    if (!response.ok) {
-      const isNotStudent = response.status === 403 || (resData.message && !resData.message.includes("belum terdaftar"));
+      let resData = await response.json();
       
-      if (isNotStudent || response.status === 404) {
-        const mentorResponse = await fetch(`${API_URL}/mentor/kti/dashboard`, {
-          method: 'GET',
-          headers: headers
-        });
+      if (!response.ok) {
+        const isNotStudent = response.status === 403 || (resData.message && !resData.message.includes("belum terdaftar"));
         
-        if (mentorResponse.ok) {
-          const mentorData = await mentorResponse.json();
-          const roleDetected = mentorData.role_detected?.toLowerCase() || 'mentor';
-          setRole(roleDetected);
-          setDataKti(mentorData.data);
+        if (isNotStudent || response.status === 404) {
+          const mentorResponse = await fetch(`${API_URL}/mentor/kti/dashboard`, {
+            method: 'GET',
+            headers: headers
+          });
           
-          // Ambil nama mentor dari data atau token (sesuaikan dengan struktur respons API Mentor Anda)
-          setUserName(mentorData.users?.name || mentorData.mentor_name || "Guru Pembimbing");
-          setIsRegistered(true);
-          return;
+          if (mentorResponse.ok) {
+            const mentorData = await mentorResponse.json();
+            const roleDetected = mentorData.role_detected?.toLowerCase() || 'mentor';
+            setRole(roleDetected);
+            setDataKti(mentorData.data);
+            
+            // Ambil nama mentor dari data atau token (sesuaikan dengan struktur respons API Mentor Anda)
+            const namaMentor = mentorData.user?.name || mentorData.data?.user?.name || mentorData.mentor_name;
+            if (namaMentor) {
+              setUserName(namaMentor);
+            }
+            setIsRegistered(true);
+            return;
+          }
         }
-      }
 
-      if (resData.message && resData.message.includes("belum terdaftar")) {
-        setIsRegistered(false);
-        setRole("siswakti"); 
-        setUserName(resData.user?.name || "Siswa Baru"); // Set nama siswa meskipun belum daftar KTI
-        fetchTeachersList();
+        if (resData.message && resData.message.includes("belum terdaftar")) {
+          setIsRegistered(false);
+          setRole("siswakti"); 
+          
+          const namaSiswaBaru = resData.user?.name || resData.data?.user?.name || localStorage.getItem('user_name') || localStorage.getItem('name');
+          setUserName(namaSiswaBaru || "Siswa Baru"); // Set nama siswa meskipun belum daftar KTI
+          fetchTeachersList();
+        } else {
+          alert(resData.message || "Gagal memuat data dashboard KTI.");
+        }
       } else {
-        alert(resData.message || "Gagal memuat data dashboard KTI.");
+        const roleDetected = resData.role_detected?.toLowerCase() || 'siswa';
+        setRole(roleDetected);
+        setDataKti(resData.data);
+        
+        // Ambil nama siswa dari data objek KTI atau user profile relasi data yang sukses load
+        const namaSiswaAktif = resData.data?.student?.name || resData.data?.user?.name || resData.user?.name;
+        if (namaSiswaAktif) {
+          setUserName(namaSiswaAktif);
+        } else {
+          const namaLokal = localStorage.getItem('user_name') || localStorage.getItem('name');
+          if (namaLokal) setUserName(namaLokal);
+        }
+        setIsRegistered(true);
       }
-    } else {
-      const roleDetected = resData.role_detected?.toLowerCase() || 'siswa';
-      setRole(roleDetected);
-      setDataKti(resData.data);
-      
-      // Ambil nama siswa dari data objek KTI atau user profile
-    //  setUserName(resData.data?.student?.name || resData.users?.name || "Siswa Mejatika");
-      setIsRegistered(true);
+    } catch (error) {
+      alert("Terjadi kesalahan jaringan saat memuat data.");
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    alert("Terjadi kesalahan jaringan saat memuat data.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const fetchTeachersList = async () => {
     try {
@@ -313,19 +326,19 @@ useEffect(() => {
           </button>
         </div>
 
- {/* Profil Akun Ringkas */}
-<div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
-  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">
-    Pengguna Aktif
-  </p>
-  <p className="text-sm font-bold text-white truncate" title={userName || "Memuat..."}>
-    👤 {userName || "Memuat nama..."}
-  </p>
-  <p className="text-[11px] font-medium text-indigo-400 capitalize mt-0.5 flex items-center gap-1">
-    <span>✨</span> 
-    {role === "siswakti" || role === "peserta" ? "Siswa KTI" : role || "Pengguna"}
-  </p>
-</div>
+        {/* Profil Akun Ringkas */}
+        <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">
+            Pengguna Aktif
+          </p>
+          <p className="text-sm font-bold text-white truncate" title={userName || "Memuat..."}>
+            👤 {userName || "Memuat nama..."}
+          </p>
+          <p className="text-[11px] font-medium text-indigo-400 capitalize mt-0.5 flex items-center gap-1">
+            <span>✨</span> 
+            {role === "siswakti" || role === "peserta" ? "Siswa KTI" : role || "Pengguna"}
+          </p>
+        </div>
 
         {/* Menu Navigasi */}
         <nav className="flex-1 p-4 space-y-1">
@@ -654,7 +667,7 @@ useEffect(() => {
                                 </div>
                               </div>
 
-                         {/* --- INTEGRASI LIVE PREVIEW FILE GURU PEMBIMBING --- */}
+                              {/* --- INTEGRASI LIVE PREVIEW FILE GURU PEMBIMBING --- */}
                               {fileUrl && (
                                 <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
                                   <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between">
