@@ -41,7 +41,7 @@ export default function KtiDashboardPage() {
   const [role, setRole] = useState<string | null>(null); // 'siswa', 'siswakti', 'mentor', atau 'pembimbing'
   const [dataKti, setDataKti] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null); 
-  const [userName, setUserName] = useState<string | null>(null);
+  const [name, setUserName] = useState<string | null>(null);
   // State Deteksi Pendaftaran
   const [isRegistered, setIsRegistered] = useState(true);
   const [listTeachers, setListTeachers] = useState<any[]>([]);
