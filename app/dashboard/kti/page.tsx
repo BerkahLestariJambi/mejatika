@@ -67,14 +67,44 @@ export default function KtiDashboardPage() {
   const [reviewData, setReviewData] = useState({ status: "approved", teacher_feedback: "", feedback_file: null });
   const [reviewing, setReviewing] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     fetchDashboardData();
+    fetchCurrentUser(); // <-- Memanggil fungsi pengambil data dari tabel users
   }, []);
 
-  // Ambil token dari localStorage
+  // 3. Ambil token dari localStorage
   const getAuthHeader = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    return { 'Authorization': `Bearer ${token}` };
+    return { 
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json' // Ditambahkan agar format request konsisten
+    };
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      // Sesuaikan URL endpoint ini dengan route auth backend Laravel Anda (misal: /api/user atau /api/me)
+      const response = await fetch(`${API_URL}/user`, { 
+        method: 'GET',
+        headers: getAuthHeader()
+      });
+      
+      const resData = await response.json();
+      
+      if (response.ok) {
+        // Mengambil kolom 'name' dari objek tabel users yang dikirim backend
+        setUserName(resData.name || resData.data?.name);
+      } else {
+        // Fallback cadangan: Jika API bermasalah, coba intip apakah namanya tersimpan di localStorage saat login
+        const backupName = localStorage.getItem('user_name') || localStorage.getItem('name');
+        if (backupName) setUserName(backupName);
+      }
+    } catch (error) {
+      console.error("Gagal mengambil nama dari tabel users:", error);
+      // Fallback cadangan kedua jika jaringan terputus
+      const backupName = localStorage.getItem('user_name') || localStorage.getItem('name');
+      if (backupName) setUserName(backupName);
+    }
   };
 
  const fetchDashboardData = async () => {
@@ -124,7 +154,7 @@ export default function KtiDashboardPage() {
       setDataKti(resData.data);
       
       // Ambil nama siswa dari data objek KTI atau user profile
-      setUserName(resData.data?.student?.name || resData.users?.name || "Siswa Mejatika");
+    //  setUserName(resData.data?.student?.name || resData.users?.name || "Siswa Mejatika");
       setIsRegistered(true);
     }
   } catch (error) {
