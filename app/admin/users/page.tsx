@@ -191,7 +191,7 @@ export default function UsersPage() {
                     <SelectItem value="kontributor">Kontributor</SelectItem>
                     <SelectItem value="peserta">Peserta</SelectItem>
                 <SelectItem value="pembimbing">Pembimbing</SelectItem>
-                    <SelectItem value="siswikti">Peserta KTI</SelectItem>
+                    <SelectItem value="siswakti">Peserta KTI</SelectItem>
                 
                   </SelectContent>
                 </Select>
