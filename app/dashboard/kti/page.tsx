@@ -41,7 +41,7 @@ export default function KtiDashboardPage() {
   const [role, setRole] = useState<string | null>(null); // 'siswa', 'siswakti', 'mentor', atau 'pembimbing'
   const [dataKti, setDataKti] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null); 
-  
+  const [userName, setUserName] = useState<string | null>(null);
   // State Deteksi Pendaftaran
   const [isRegistered, setIsRegistered] = useState(true);
   const [listTeachers, setListTeachers] = useState<any[]>([]);
@@ -77,58 +77,62 @@ export default function KtiDashboardPage() {
     return { 'Authorization': `Bearer ${token}` };
   };
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    const headers = getAuthHeader();
-    try {
-      // 1. Coba akses sebagai rute siswa terlebih dahulu
-      let response = await fetch(`${API_URL}/student/kti/dashboard`, {
-        method: 'GET',
-        headers: headers
-      });
+ const fetchDashboardData = async () => {
+  setLoading(true);
+  const headers = getAuthHeader();
+  try {
+    let response = await fetch(`${API_URL}/student/kti/dashboard`, {
+      method: 'GET',
+      headers: headers
+    });
 
-      let resData = await response.json();
+    let resData = await response.json();
+    
+    if (!response.ok) {
+      const isNotStudent = response.status === 403 || (resData.message && !resData.message.includes("belum terdaftar"));
       
-      // 2. Jika gagal/bukan siswa (misal karena user adalah Mentor), coba akses rute mentor
-      if (!response.ok) {
-        const isNotStudent = response.status === 403 || (resData.message && !resData.message.includes("belum terdaftar"));
+      if (isNotStudent || response.status === 404) {
+        const mentorResponse = await fetch(`${API_URL}/mentor/kti/dashboard`, {
+          method: 'GET',
+          headers: headers
+        });
         
-        if (isNotStudent || response.status === 404) {
-          const mentorResponse = await fetch(`${API_URL}/mentor/kti/dashboard`, {
-            method: 'GET',
-            headers: headers
-          });
+        if (mentorResponse.ok) {
+          const mentorData = await mentorResponse.json();
+          const roleDetected = mentorData.role_detected?.toLowerCase() || 'mentor';
+          setRole(roleDetected);
+          setDataKti(mentorData.data);
           
-          if (mentorResponse.ok) {
-            const mentorData = await mentorResponse.json();
-            const roleDetected = mentorData.role_detected?.toLowerCase() || 'mentor';
-            setRole(roleDetected);
-            setDataKti(mentorData.data);
-            setIsRegistered(true);
-            return;
-          }
+          // Ambil nama mentor dari data atau token (sesuaikan dengan struktur respons API Mentor Anda)
+          setUserName(mentorData.user?.name || mentorData.mentor_name || "Guru Pembimbing");
+          setIsRegistered(true);
+          return;
         }
-
-        // 3. Jika setelah dicoba ke rute mentor tetap gagal, baru validasi apakah ini siswa baru
-        if (resData.message && resData.message.includes("belum terdaftar")) {
-          setIsRegistered(false);
-          setRole("siswakti"); 
-          fetchTeachersList();
-        } else {
-          alert(resData.message || "Gagal memuat data dashboard KTI.");
-        }
-      } else {
-        const roleDetected = resData.role_detected?.toLowerCase() || 'siswa';
-        setRole(roleDetected);
-        setDataKti(resData.data);
-        setIsRegistered(true);
       }
-    } catch (error) {
-      alert("Terjadi kesalahan jaringan saat memuat data.");
-    } finally {
-      setLoading(false);
+
+      if (resData.message && resData.message.includes("belum terdaftar")) {
+        setIsRegistered(false);
+        setRole("siswakti"); 
+        setUserName(resData.user?.name || "Siswa Baru"); // Set nama siswa meskipun belum daftar KTI
+        fetchTeachersList();
+      } else {
+        alert(resData.message || "Gagal memuat data dashboard KTI.");
+      }
+    } else {
+      const roleDetected = resData.role_detected?.toLowerCase() || 'siswa';
+      setRole(roleDetected);
+      setDataKti(resData.data);
+      
+      // Ambil nama siswa dari data objek KTI atau user profile
+      setUserName(resData.data?.student?.name || resData.user?.name || "Siswa Mejatika");
+      setIsRegistered(true);
     }
-  };
+  } catch (error) {
+    alert("Terjadi kesalahan jaringan saat memuat data.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchTeachersList = async () => {
     try {
@@ -279,11 +283,14 @@ export default function KtiDashboardPage() {
           </button>
         </div>
 
-        {/* Profil Akun Ringkas */}
-        <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Peran Anda</p>
-          <p className="text-sm font-semibold text-slate-200 capitalize">✨ {users.name || "Pengguna"}</p>
-        </div>
+   {/* Profil Akun Ringkas */}
+<div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
+  <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Pengguna Aktif</p>
+  <p className="text-sm font-bold text-white truncate">👤 {userName || "Memuat nama..."}</p>
+  <p className="text-[11px] font-medium text-indigo-400 capitalize mt-0.5 flex items-center gap-1">
+    <span>✨</span> {role || "Pengguna"}
+  </p>
+</div>
 
         {/* Menu Navigasi */}
         <nav className="flex-1 p-4 space-y-1">
