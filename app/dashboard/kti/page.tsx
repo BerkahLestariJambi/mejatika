@@ -156,7 +156,7 @@ export default function KtiDashboardPage() {
       }
     } catch (error) {
       alert("Terjadi kesalahan jaringan saat memuat data.");
-    } resolve: finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -338,7 +338,7 @@ export default function KtiDashboardPage() {
                 </div>
               )}
 
-              {/* INTERFACE TAMPILAN GURU / MENTOR (LIVE PREVIEW DIRECT) */}
+              {/* INTERFACE TAMPILAN GURU / MENTOR (LIVE PREVIEW) */}
               {isRegistered && isMentorRole && (
                 <div className="space-y-4">
                   {!selectedStudent ? (
@@ -365,10 +365,7 @@ export default function KtiDashboardPage() {
                           const ch = selectedStudent.chapters?.find((c: any) => c.chapter_number === num);
                           const rawFilePath = ch?.file_path ? `https://backend.mejatika.com/storage/${ch.file_path}` : null;
                           
-                          // Deteksi format ekstensi file untuk memilih viewer engine yang tepat
                           const isPdf = rawFilePath?.toLowerCase().endsWith('.pdf');
-
-                          // URL Generator Live Preview Instan Tanpa Blokir Keamanan Browser
                           const livePreviewUrl = isPdf 
                             ? rawFilePath 
                             : `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(rawFilePath || '')}`;
@@ -406,7 +403,6 @@ export default function KtiDashboardPage() {
                                 </div>
                               </div>
 
-                              {/* --- MODUL LIVE PREVIEW SEKARANG TERBUKA OTOMATIS BERDASARKAN FORMAT FILE --- */}
                               {rawFilePath && (
                                 <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-slate-50">
                                   <div className="bg-slate-100 px-4 py-2.5 border-b flex items-center justify-between">
@@ -418,7 +414,6 @@ export default function KtiDashboardPage() {
                                     </a>
                                   </div>
                                   
-                                  {/* Kontainer iframe langsung memuat konten dokumen */}
                                   <div className="w-full h-[550px] bg-white">
                                     <iframe 
                                       src={livePreviewUrl} 
