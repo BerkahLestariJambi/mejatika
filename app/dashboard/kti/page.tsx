@@ -104,7 +104,7 @@ export default function KtiDashboardPage() {
           setDataKti(mentorData.data);
           
           // Ambil nama mentor dari data atau token (sesuaikan dengan struktur respons API Mentor Anda)
-          setUserName(mentorData.user?.name || mentorData.mentor_name || "Guru Pembimbing");
+          setUserName(mentorData.users?.name || mentorData.mentor_name || "Guru Pembimbing");
           setIsRegistered(true);
           return;
         }
@@ -124,7 +124,7 @@ export default function KtiDashboardPage() {
       setDataKti(resData.data);
       
       // Ambil nama siswa dari data objek KTI atau user profile
-      setUserName(resData.data?.student?.name || resData.user?.name || "Siswa Mejatika");
+      setUserName(resData.data?.student?.name || resData.users?.name || "Siswa Mejatika");
       setIsRegistered(true);
     }
   } catch (error) {
