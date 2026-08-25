@@ -51,15 +51,31 @@ function LoginForm() {
       // Role Mentor, Kontributor, atau Pembimbing KTI
       case "pembimbing": // <--- TAMBAHAN ROLE BARU
       case "kontributor":
-      case "mentor":
+     // case "mentor":
         router.push("/dashboard/kti") 
         break
       
       // Role Pelajar, Peserta, atau Siswa KTI khusus
       case "siswakti": // <--- TAMBAHAN ROLE BARU
-      case "pelajar": 
-      case "peserta":
+     // case "pelajar": 
+    //  case "peserta":
         router.push("/dashboard/kti")
+        break
+
+
+      // Role Pelajar, Peserta, atau Siswa KTI khusus
+    //  case "siswakti": // <--- TAMBAHAN ROLE BARU
+      case "pelajar": 
+    case "peserta":
+        router.push("/dashboard")
+        break
+
+
+      // Role Pelajar, Peserta, atau Siswa KTI khusus
+     // case "siswakti": // <--- TAMBAHAN ROLE BARU
+     case "mentor": 
+    //  case "peserta":
+        router.push("/dashboard/mentor")
         break
         
       default:
