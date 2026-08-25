@@ -83,7 +83,16 @@ export default function KtiDashboardPage() {
 
   const fetchCurrentUser = async () => {
     try {
-      // Sesuaikan URL endpoint ini dengan route auth backend Laravel Anda (misal: /api/user atau /api/me)
+      // 1. Ambil nama langsung dari objek user lokal sebagai respon pertama (Anti-delay)
+      const localUserStr = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
+      if (localUserStr) {
+        const localUser = JSON.parse(localUserStr);
+        if (localUser && localUser.name) {
+          setUserName(localUser.name);
+        }
+      }
+
+      // 2. Tetap jalankan sinkronisasi data terbaru dari database
       const response = await fetch(`${API_URL}/user`, { 
         method: 'GET',
         headers: getAuthHeader()
@@ -92,20 +101,11 @@ export default function KtiDashboardPage() {
       const resData = await response.json();
       
       if (response.ok) {
-        // Mengambil kolom 'name' dari objek tabel users yang dikirim backend
-        if (resData.name || resData.data?.name) {
-          setUserName(resData.name || resData.data?.name);
-        }
-      } else {
-        // Fallback cadangan: Jika API bermasalah, coba intip apakah namanya tersimpan di localStorage saat login
-        const backupName = localStorage.getItem('user_name') || localStorage.getItem('name');
-        if (backupName) setUserName(backupName);
+        const apiName = resData.name || resData.data?.name || resData.user?.name;
+        if (apiName) setUserName(apiName);
       }
     } catch (error) {
       console.error("Gagal mengambil nama dari tabel users:", error);
-      // Fallback cadangan kedua jika jaringan terputus
-      const backupName = localStorage.getItem('user_name') || localStorage.getItem('name');
-      if (backupName) setUserName(backupName);
     }
   };
 
@@ -135,11 +135,10 @@ export default function KtiDashboardPage() {
             setRole(roleDetected);
             setDataKti(mentorData.data);
             
-            // Ambil nama mentor dari data atau token (sesuaikan dengan struktur respons API Mentor Anda)
+            // Integrasi parsing nama mentor
             const namaMentor = mentorData.user?.name || mentorData.data?.user?.name || mentorData.mentor_name;
-            if (namaMentor) {
-              setUserName(namaMentor);
-            }
+            if (namaMentor) setUserName(namaMentor);
+            
             setIsRegistered(true);
             return;
           }
@@ -149,8 +148,9 @@ export default function KtiDashboardPage() {
           setIsRegistered(false);
           setRole("siswakti"); 
           
-          const namaSiswaBaru = resData.user?.name || resData.data?.user?.name || localStorage.getItem('user_name') || localStorage.getItem('name');
-          setUserName(namaSiswaBaru || "Siswa Baru"); // Set nama siswa meskipun belum daftar KTI
+          const namaSiswaBaru = resData.user?.name || resData.data?.user?.name;
+          if (namaSiswaBaru) setUserName(namaSiswaBaru);
+          
           fetchTeachersList();
         } else {
           alert(resData.message || "Gagal memuat data dashboard KTI.");
@@ -160,14 +160,10 @@ export default function KtiDashboardPage() {
         setRole(roleDetected);
         setDataKti(resData.data);
         
-        // Ambil nama siswa dari data objek KTI atau user profile relasi data yang sukses load
+        // Integrasi parsing nama siswa aktif
         const namaSiswaAktif = resData.data?.student?.name || resData.data?.user?.name || resData.user?.name;
-        if (namaSiswaAktif) {
-          setUserName(namaSiswaAktif);
-        } else {
-          const namaLokal = localStorage.getItem('user_name') || localStorage.getItem('name');
-          if (namaLokal) setUserName(namaLokal);
-        }
+        if (namaSiswaAktif) setUserName(namaSiswaAktif);
+        
         setIsRegistered(true);
       }
     } catch (error) {
@@ -201,8 +197,9 @@ export default function KtiDashboardPage() {
   const handleLogout = () => {
     if (confirm("Apakah Anda yakin ingin keluar dari akun ini?")) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       alert("Anda telah berhasil logout.");
-      window.location.href = "/login"; // Sesuaikan rute halaman login Anda
+      window.location.href = "/login";
     }
   };
 
@@ -326,19 +323,13 @@ export default function KtiDashboardPage() {
           </button>
         </div>
 
-     {/* Profil Akun Ringkas */}
+        {/* Profil Akun Ringkas */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
           <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">
             Pengguna Aktif
           </p>
           <p className="text-sm font-bold text-white truncate" title={userName || "Pengguna"}>
-            👤 {
-              userName && userName !== "Memuat nama..." 
-                ? userName 
-                : (typeof window !== 'undefined' 
-                    ? (localStorage.getItem('user_name') || localStorage.getItem('name') || "Siswa Mejatika") 
-                    : "Siswa Mejatika")
-            }
+            👤 {userName || "Pengguna Mejatika"}
           </p>
           <p className="text-[11px] font-medium text-indigo-400 capitalize mt-0.5 flex items-center gap-1">
             <span>✨</span> 
@@ -382,7 +373,6 @@ export default function KtiDashboardPage() {
         {/* TOP NAVBAR (MOBILE & GLOBAL ACTIONS) */}
         <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4">
-            {/* Tombol pemicu sidebar khusus tampilan mobile */}
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
@@ -395,7 +385,6 @@ export default function KtiDashboardPage() {
             </div>
           </div>
           
-          {/* Aksi cepat logout di pojok atas */}
           <button 
             onClick={handleLogout} 
             className="text-xs font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-xl transition"
@@ -408,7 +397,6 @@ export default function KtiDashboardPage() {
         <main className="flex-1 p-6 max-w-6xl w-full mx-auto">
           
           {activeMenu === "dashboard" ? (
-            /* PANEL UTAMA: RINGKASAN DASHBOARD KTI */
             <div className="space-y-6">
               
               {/* KONDISI BELUM REGISTRASI JUDUL (KHUSUS SISWA BARU) */}
@@ -536,8 +524,6 @@ export default function KtiDashboardPage() {
               {/* INTERFACE TAMPILAN GURU/MENTOR */}
               {isRegistered && isMentorRole && (
                 <div className="space-y-6">
-                  
-                  {/* PANEL UTAMA: RINGKASAN INFORMASI GURU PEMBIMBING */}
                   <div className="bg-indigo-900 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-800 text-indigo-200 px-2.5 py-1 rounded-md">
@@ -556,7 +542,6 @@ export default function KtiDashboardPage() {
 
                   {!selectedStudent ? (
                     <div className="space-y-4">
-                      {/* BARU: MENAMPILKAN TULISAN LIST NAMA SISWA YANG SEDANG DIBIMBING */}
                       <div className="bg-white p-4 rounded-xl border shadow-sm">
                         <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Siswa yang Sedang Dibimbing:</p>
                         <div className="flex flex-wrap gap-2 mt-2">
@@ -576,7 +561,6 @@ export default function KtiDashboardPage() {
                         Silakan Pilih Dokumen Berkas Kerja Siswa:
                       </h3>
                       
-                      {/* GRID UTAMA LIST KARTU DETAIL BIMBINGAN SISWA */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {Array.isArray(dataKti) && dataKti.map((item: any) => (
                           <div key={item.id} className="p-5 border rounded-xl bg-white shadow-sm hover:border-indigo-300 transition flex flex-col justify-between">
@@ -590,7 +574,6 @@ export default function KtiDashboardPage() {
                                 </span>
                               </div>
                               
-                              {/* BARU: TULISAN JUDUL KTI YANG SEDANG DIBIMBING */}
                               <div className="mt-3 pt-3 border-t border-dashed border-slate-100">
                                 <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Judul KTI yang Dibimbing:</p>
                                 <p className="text-sm font-semibold text-slate-700 mt-1 leading-relaxed line-clamp-3 bg-slate-50 p-2 rounded-lg border">
@@ -673,7 +656,6 @@ export default function KtiDashboardPage() {
                                 </div>
                               </div>
 
-                              {/* --- INTEGRASI LIVE PREVIEW FILE GURU PEMBIMBING --- */}
                               {fileUrl && (
                                 <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
                                   <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between">
@@ -702,7 +684,6 @@ export default function KtiDashboardPage() {
                                         title={`Preview PDF Bab ${num}`}
                                       />
                                     ) : (
-                                      /* Fallback UI interaktif jika Google Docs Viewer diblokir oleh kebijakan server/CORS */
                                       <div className="w-full h-full flex flex-col justify-center items-center p-6 text-center bg-slate-50">
                                         <span className="text-4xl mb-2 animate-bounce">📄</span>
                                         <p className="text-xs font-bold text-slate-700">Dokumen Berformat Microsoft Word (.docx)</p>
@@ -743,7 +724,6 @@ export default function KtiDashboardPage() {
               
             </div>
           ) : (
-            /* PANEL CADANGAN: PUSAT BIMBINGAN */
             <div className="bg-white p-6 rounded-2xl border shadow-sm text-center">
               <span className="text-3xl">📚</span>
               <h2 className="text-lg font-bold text-slate-900 mt-2">Pusat Arsip Bimbingan KTI</h2>
