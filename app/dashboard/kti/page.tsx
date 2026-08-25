@@ -272,7 +272,7 @@ export default function KtiDashboardPage() {
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black tracking-wider text-indigo-400">MEJATIKA</h2>
-            <p className="text-xs text-slate-400 font-medium">Karya Tulis Ilmiah Hub</p>
+            <p className="text-xs text-slate-400 font-medium">Karya Tulis Ilmiah SMAS Seminari Pius XII Kisol</p>
           </div>
           <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-white lg:hidden text-xl font-bold">
             ✕
@@ -282,7 +282,7 @@ export default function KtiDashboardPage() {
         {/* Profil Akun Ringkas */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
           <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Peran Anda</p>
-          <p className="text-sm font-semibold text-slate-200 capitalize">✨ {role || "Pengguna"}</p>
+          <p className="text-sm font-semibold text-slate-200 capitalize">✨ {name || "Pengguna"}</p>
         </div>
 
         {/* Menu Navigasi */}
@@ -330,7 +330,7 @@ export default function KtiDashboardPage() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-slate-900">Pusat Bimbingan KTI Per Bab</h1>
-              <p className="text-xs text-slate-500 hidden sm:block">Akses Sistem Informasi Karya Tulis Ilmiah Eksklusif Mejatika</p>
+              <p className="text-xs text-slate-500 hidden sm:block">Akses Sistem Informasi Karya Tulis Ilmiah Eksklusif Mejatika Sanpio</p>
             </div>
           </div>
           
