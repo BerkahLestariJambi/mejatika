@@ -282,7 +282,7 @@ export default function KtiDashboardPage() {
         {/* Profil Akun Ringkas */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
           <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">Peran Anda</p>
-          <p className="text-sm font-semibold text-slate-200 capitalize">✨ {name || "Pengguna"}</p>
+          <p className="text-sm font-semibold text-slate-200 capitalize">✨ {users.name || "Pengguna"}</p>
         </div>
 
         {/* Menu Navigasi */}
