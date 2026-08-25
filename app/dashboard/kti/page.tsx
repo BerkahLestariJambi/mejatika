@@ -326,13 +326,19 @@ export default function KtiDashboardPage() {
           </button>
         </div>
 
-        {/* Profil Akun Ringkas */}
+     {/* Profil Akun Ringkas */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
           <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">
             Pengguna Aktif
           </p>
-          <p className="text-sm font-bold text-white truncate" title={userName || "Memuat..."}>
-            👤 {userName || "Memuat nama..."}
+          <p className="text-sm font-bold text-white truncate" title={userName || "Pengguna"}>
+            👤 {
+              userName && userName !== "Memuat nama..." 
+                ? userName 
+                : (typeof window !== 'undefined' 
+                    ? (localStorage.getItem('user_name') || localStorage.getItem('name') || "Siswa Mejatika") 
+                    : "Siswa Mejatika")
+            }
           </p>
           <p className="text-[11px] font-medium text-indigo-400 capitalize mt-0.5 flex items-center gap-1">
             <span>✨</span> 
