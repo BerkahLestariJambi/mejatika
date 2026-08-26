@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import Swal from "sweetalert2"
 // Menggunakan konstanta API sesuai instruksi Anda
-const API_URL = "https://backend.mejatika.com/api";
+const API_URL = "https://backend.mejatika.com/api"
 
 // --- HELPER FUNCTIONS ---
 function getChapterName(num: number) {
