@@ -28,9 +28,15 @@ function FilePreviewer({ fileUrl }: { fileUrl: string }) {
   const [error, setError] = useState<string | null>(null)
   const [numPages, setNumPages] = useState<number | null>(null)
   const [scale, setScale] = useState<number>(0.9)
+  const [isClient, setIsClient] = useState(false)
+
+  // Memastikan komponen hanya dirender di sisi client (menghindari error SSR Next.js)
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
-    if (!fileUrl) return
+    if (!isClient || !fileUrl) return
     const extension = fileUrl.split('.').pop()?.toLowerCase()
     
     if (extension === 'pdf') {
@@ -43,7 +49,7 @@ function FilePreviewer({ fileUrl }: { fileUrl: string }) {
       setFileType('unknown')
       setLoading(false)
     }
-  }, [fileUrl])
+  }, [fileUrl, isClient])
 
   const fetchDocx = async () => {
     try {
@@ -65,6 +71,8 @@ function FilePreviewer({ fileUrl }: { fileUrl: string }) {
       setLoading(false)
     }
   }
+
+  if (!isClient) return null
 
   return (
     <div className="w-full bg-slate-50 p-2 text-slate-900">
@@ -102,7 +110,7 @@ function FilePreviewer({ fileUrl }: { fileUrl: string }) {
               onLoadSuccess={({ numPages }) => { setNumPages(numPages); setLoading(false); }}
               loading=""
             >
-              {Array.from(new Array(numPages), (_, i) => (
+              {Array.from(new Array(numPages || 0), (_, i) => (
                 <div key={i} className="shadow bg-white rounded p-1 mb-1">
                   <Page pageNumber={i + 1} scale={scale} renderTextLayer={false} renderAnnotationLayer={false} />
                 </div>
@@ -281,9 +289,9 @@ export default function KtiDashboardPage() {
         text: 'Terjadi kesalahan jaringan saat memuat data.',
         confirmButtonColor: '#4f46e5'
       });
-    } .finally(() => {
+    } finally {
       setLoading(false);
-    });
+    }
   };
 
   const fetchTeachersList = async () => {
