@@ -354,7 +354,7 @@ export default function KtiDashboardPage() {
             onClick={() => { setActiveMenu("dashboard"); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeMenu === 'dashboard' ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"}`}
           >
-            <span>🏠</span> Dashboard KARYA TULIS ILMIAH
+            <span>🏠</span> Dashboard KTI
           </button>
           
           <button 
