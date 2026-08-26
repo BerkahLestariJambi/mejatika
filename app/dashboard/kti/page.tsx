@@ -308,11 +308,9 @@ export default function KtiDashboardPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
-        <p className="text-slate-600 animate-pulse font-medium">Memuat Fitur Bimbingan</p>
+        <p className="text-slate-600 animate-pulse font-medium">Memuat Fitur Bimbingan KARYA TULIS ILMIAH...</p>
       </div>
-       <div className="flex justify-center items-center min-h-screen bg-slate-50">
-        <p className="text-slate-600 animate-pulse font-medium">KARYA TULIS ILMIAH...</p>
-      </div>
+      
     );
   }
 
