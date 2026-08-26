@@ -195,7 +195,7 @@ export default function KtiDashboardPage() {
     }
   };
 
-  const fetchTeachersList = async () => {
+const fetchTeachersList = async () => {
     try {
       const response = await fetch(`${API_URL}/teachers-list`, { 
         method: 'GET',
@@ -208,10 +208,8 @@ export default function KtiDashboardPage() {
       }
     } catch (error) {
       console.error("Terjadi kesalahan jaringan pembimbing:", error);
-      setListTeachers([
-        { id: 2, name: "Roni Haryanto", status: "active" },
-        { id: 4, name: "Hironimus Haryanto", status: "active" }
-      ]);
+      // Mengosongkan list pembimbing alih-alih menampilkan data tiruan id 2 dan 4
+      setListTeachers([]);
     }
   };
 
