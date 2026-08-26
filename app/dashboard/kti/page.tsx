@@ -415,62 +415,102 @@ const fetchTeachersList = async () => {
     }
   };
 
-  // ============================================================
-  // PREVIEW DOCX LANGSUNG DI DALAM HALAMAN
-  // ============================================================
-  const renderDocxPreview = async (fileUrl: string, chapterNumber: number) => {
-    const container = docxPreviewRefs.current[chapterNumber];
+ const renderDocxPreview = async (
+  fileUrl: string,
+  chapterNumber: number
+) => {
+  const container = docxPreviewRefs.current[chapterNumber];
 
-    if (!container) return;
+  if (!container) return;
 
-    setDocxLoading(true);
-    setDocxError(null);
+  setDocxLoading(true);
+  setDocxError(null);
 
-    try {
-      container.innerHTML = "";
+  try {
+    // Bersihkan preview sebelumnya
+    container.innerHTML = "";
 
-      const response = await fetch(fileUrl, {
-        method: "GET",
-        headers: {
-          "Accept": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    // ============================================================
+    // PENTING:
+    // Jangan fetch langsung ke backend dari browser.
+    // Gunakan API proxy Next.js agar tidak terkena CORS.
+    // ============================================================
+    const proxyUrl =
+      `/api/docx-preview?url=${encodeURIComponent(fileUrl)}`;
+
+    const response = await fetch(proxyUrl, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      let errorMessage =
+        `Gagal mengambil dokumen. HTTP ${response.status}`;
+
+      try {
+        const errorData = await response.json();
+
+        if (errorData?.error) {
+          errorMessage = errorData.error;
         }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Gagal mengambil dokumen. HTTP ${response.status}`);
+      } catch {
+        // Response bukan JSON
       }
 
-      const blob = await response.blob();
+      throw new Error(errorMessage);
+    }
 
-      if (!blob.size) {
-        throw new Error("File DOCX kosong atau tidak dapat dibaca.");
-      }
+    const blob = await response.blob();
 
-      await renderAsync(blob, container, undefined, {
+    if (!blob.size) {
+      throw new Error(
+        "File DOCX kosong atau tidak dapat dibaca."
+      );
+    }
+
+    // ============================================================
+    // RENDER DOCX
+    // ============================================================
+    await renderAsync(
+      blob,
+      container,
+      undefined,
+      {
         className: "docx-preview",
         inWrapper: true,
+
         ignoreWidth: false,
         ignoreHeight: false,
         ignoreFonts: false,
+
         breakPages: true,
+
         useBase64URL: true,
+
         renderHeaders: true,
         renderFooters: true,
         renderFootnotes: true,
         renderEndnotes: true,
+
         debug: false,
-      });
-    } catch (error) {
-      console.error("Gagal melakukan preview DOCX:", error);
-      setDocxError(
-        error instanceof Error
-          ? error.message
-          : "Dokumen DOCX tidak dapat ditampilkan."
-      );
-    } finally {
-      setDocxLoading(false);
-    }
-  };
+      }
+    );
+
+  } catch (error) {
+    console.error(
+      "Gagal melakukan preview DOCX:",
+      error
+    );
+
+    setDocxError(
+      error instanceof Error
+        ? error.message
+        : "Dokumen DOCX tidak dapat ditampilkan."
+    );
+  } finally {
+    setDocxLoading(false);
+  }
+};
 
   if (loading) {
     return (
