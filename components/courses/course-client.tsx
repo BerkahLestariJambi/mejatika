@@ -49,6 +49,11 @@ export function CourseClient({ initialData }: { initialData: any[] }) {
           <Card key={course.id} className="rounded-[2.5rem] overflow-hidden border-none shadow-lg bg-white">
             <CardContent className="p-6">
               <div className="relative h-48 bg-zinc-100 rounded-[2rem] overflow-hidden mb-6">
+                 <img 
+                        src={course.thumbnail_url || "/placeholder.svg"} 
+                        alt={course.title} 
+                        className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      />
                 <img src={course.thumbnail || "/placeholder.svg"} className="object-cover w-full h-full" alt="" />
                 <Badge className="absolute top-4 right-4 bg-black/50 backdrop-blur-md">{course.category?.name}</Badge>
               </div>
