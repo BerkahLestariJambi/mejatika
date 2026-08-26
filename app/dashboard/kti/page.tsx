@@ -293,7 +293,7 @@ export default function KtiDashboardPage() {
     }
   };
 
-  // --- HANDLER SISWA: Unggah Berkas KTI ---
+// --- HANDLER SISWA: Unggah Berkas KTI ---
   const handleUploadKti = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!uploadData.file) {
@@ -306,17 +306,26 @@ export default function KtiDashboardPage() {
     }
 
     setUploading(true);
+    
+    // 1. Buat objek FormData baru
     const formData = new FormData();
     formData.append('chapter_number', uploadData.chapter_number);
     formData.append('file', uploadData.file);
     formData.append('student_note', uploadData.student_note);
 
     try {
+      // 2. Ambil token saja, JANGAN paksa 'Content-Type': 'application/json'
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
       const response = await fetch(`${API_URL}/student/kti/chapter/upload`, {
         method: 'POST',
-        headers: getAuthHeader(),
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // Catatan: Biarkan browser menentukan Content-Type secara otomatis untuk FormData!
+        },
         body: formData
       });
+      
       const resData = await response.json();
       if (response.ok) {
         Swal.fire({
@@ -328,6 +337,7 @@ export default function KtiDashboardPage() {
         setUploadData({ chapter_number: "1", file: null, student_note: "" });
         fetchDashboardData();
       } else {
+        // Menampilkan pesan error spesifik dari backend jika ada (seperti detail validasi)
         Swal.fire({
           icon: 'error',
           title: 'Gagal Mengunggah',
