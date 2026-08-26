@@ -13,6 +13,7 @@ import {
   Send, UserCircle2, Menu, X, Star, RefreshCw
 } from "lucide-react"
 import Swal from "sweetalert2"
+
 // Menggunakan konstanta API sesuai instruksi Anda
 const API_URL = "https://backend.mejatika.com/api"
 
@@ -164,7 +165,12 @@ export default function KtiDashboardPage() {
           
           fetchTeachersList();
         } else {
-          alert(resData.message || "Gagal memuat data dashboard KTI.");
+          Swal.fire({
+            icon: 'error',
+            title: 'Gagal Memuat Data',
+            text: resData.message || "Gagal memuat data dashboard KTI.",
+            confirmButtonColor: '#4f46e5'
+          });
         }
       } else {
         const roleDetected = resData.role_detected?.toLowerCase() || 'siswa';
@@ -178,7 +184,12 @@ export default function KtiDashboardPage() {
         setIsRegistered(true);
       }
     } catch (error) {
-      alert("Terjadi kesalahan jaringan saat memuat data.");
+      Swal.fire({
+        icon: 'error',
+        title: 'Kesalahan Jaringan',
+        text: 'Terjadi kesalahan jaringan saat memuat data.',
+        confirmButtonColor: '#4f46e5'
+      });
     } finally {
       setLoading(false);
     }
@@ -206,19 +217,43 @@ export default function KtiDashboardPage() {
 
   // --- HANDLER OUT: Keluar dari Aplikasi ---
   const handleLogout = () => {
-    if (confirm("Apakah Anda yakin ingin keluar dari akun ini?")) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      alert("Anda telah berhasil logout.");
-      window.location.href = "/login";
-    }
+    Swal.fire({
+      title: 'Apakah Anda yakin?',
+      text: "Anda akan keluar dari akun bimbingan ini!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc2626',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Ya, Keluar!',
+      cancelButtonText: 'Batal'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil Logout',
+          text: 'Anda telah berhasil keluar.',
+          showConfirmButton: false,
+          timer: 1500
+        }).then(() => {
+          window.location.href = "/login";
+        });
+      }
+    });
   };
 
   // --- HANDLER SISWA: Kirim Pendaftaran KTI Baru ---
   const handleRegisterKti = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerData.title || !registerData.teacher_id) {
-      return alert("Judul KTI dan Guru Pembimbing wajib diisi!");
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Data Belum Lengkap',
+        text: 'Judul KTI dan Guru Pembimbing wajib diisi!',
+        confirmButtonColor: '#4f46e5'
+      });
     }
 
     setRegistering(true);
@@ -230,14 +265,29 @@ export default function KtiDashboardPage() {
       });
       const resData = await response.json();
       if (response.ok) {
-        alert("Pendaftaran Judul KTI Berhasil!");
+        Swal.fire({
+          icon: 'success',
+          title: 'Registrasi Berhasil!',
+          text: 'Pendaftaran Judul KTI Berhasil dikirim!',
+          confirmButtonColor: '#4f46e5'
+        });
         setIsRegistered(true);
         fetchDashboardData(); 
       } else {
-        alert(resData.message || "Gagal melakukan pendaftaran.");
+        Swal.fire({
+          icon: 'error',
+          title: 'Registrasi Gagal',
+          text: resData.message || "Gagal melakukan pendaftaran.",
+          confirmButtonColor: '#4f46e5'
+        });
       }
     } catch (error) {
-      alert("Terjadi kesalahan jaringan saat mendaftar.");
+      Swal.fire({
+        icon: 'error',
+        title: 'Kesalahan Sistem',
+        text: 'Terjadi kesalahan jaringan saat mendaftar.',
+        confirmButtonColor: '#4f46e5'
+      });
     } finally {
       setRegistering(false);
     }
@@ -246,7 +296,14 @@ export default function KtiDashboardPage() {
   // --- HANDLER SISWA: Unggah Berkas KTI ---
   const handleUploadKti = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadData.file) return alert("Silakan pilih file PDF/Docx terlebih dahulu.");
+    if (!uploadData.file) {
+      return Swal.fire({
+        icon: 'warning',
+        title: 'Berkas Kosong',
+        text: 'Silakan pilih file PDF/Docx terlebih dahulu.',
+        confirmButtonColor: '#4f46e5'
+      });
+    }
 
     setUploading(true);
     const formData = new FormData();
@@ -262,14 +319,29 @@ export default function KtiDashboardPage() {
       });
       const resData = await response.json();
       if (response.ok) {
-        alert("Bab KTI berhasil diunggah!");
+        Swal.fire({
+          icon: 'success',
+          title: 'Berhasil Diunggah',
+          text: 'Bab KTI berhasil diunggah!',
+          confirmButtonColor: '#4f46e5'
+        });
         setUploadData({ chapter_number: "1", file: null, student_note: "" });
         fetchDashboardData();
       } else {
-        alert(resData.message || "Gagal mengunggah file KTI.");
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal Mengunggah',
+          text: resData.message || "Gagal mengunggah file KTI.",
+          confirmButtonColor: '#4f46e5'
+        });
       }
     } catch (error) {
-      alert("Terjadi kesalahan jaringan saat mengunggah file.");
+      Swal.fire({
+        icon: 'error',
+        title: 'Kesalahan Jaringan',
+        text: 'Terjadi kesalahan jaringan saat mengunggah file.',
+        confirmButtonColor: '#4f46e5'
+      });
     } finally {
       setUploading(false);
     }
@@ -291,15 +363,30 @@ export default function KtiDashboardPage() {
       });
       const resData = await response.json();
       if (response.ok) {
-        alert("Ulasan bimbingan berhasil dikirim ke siswa!");
+        Swal.fire({
+          icon: 'success',
+          title: 'Ulasan Dikirim',
+          text: 'Ulasan bimbingan berhasil dikirim ke siswa!',
+          confirmButtonColor: '#4f46e5'
+        });
         setReviewData({ status: "approved", teacher_feedback: "", feedback_file: null });
         setSelectedStudent(null);
         fetchDashboardData();
       } else {
-        alert(resData.message || "Gagal mengirim ulasan bimbingan.");
+        Swal.fire({
+          icon: 'error',
+          title: 'Gagal Mengirim',
+          text: resData.message || "Gagal mengirim ulasan bimbingan.",
+          confirmButtonColor: '#4f46e5'
+        });
       }
     } catch (error) {
-      alert("Terjadi kesalahan jaringan saat mengirim ulasan.");
+      Swal.fire({
+        icon: 'error',
+        title: 'Kesalahan Sistem',
+        text: 'Terjadi kesalahan jaringan saat mengirim ulasan.',
+        confirmButtonColor: '#4f46e5'
+      });
     } finally {
       setReviewing(false);
     }
@@ -310,7 +397,6 @@ export default function KtiDashboardPage() {
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
         <p className="text-slate-600 animate-pulse font-medium">Memuat Fitur Bimbingan KARYA TULIS ILMIAH...</p>
       </div>
-      
     );
   }
 
