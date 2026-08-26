@@ -354,7 +354,7 @@ export default function KtiDashboardPage() {
             onClick={() => { setActiveMenu("dashboard"); setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeMenu === 'dashboard' ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"}`}
           >
-            <span>🏠</span> Dashboard KTI
+            <span>🏠</span> Dashboard KARYA TULIS ILMIAH
           </button>
           
           <button 
@@ -413,12 +413,12 @@ export default function KtiDashboardPage() {
               {/* KONDISI BELUM REGISTRASI JUDUL (KHUSUS SISWA BARU) */}
               {!isRegistered && isStudentRole && (
                 <div className="max-w-xl mx-auto border border-amber-200 bg-amber-50/40 p-8 rounded-3xl shadow-sm">
-                  <h2 className="text-xl font-black text-slate-900 mb-1 uppercase italic">Registrasi Judul KTI Baru</h2>
+                  <h2 className="text-xl font-black text-slate-900 mb-1 uppercase italic">Registrasi Judul KARYA TULIS ILMIAH Baru</h2>
                   <p className="text-xs text-slate-500 mb-6">Anda belum terdaftar dalam sistem bimbingan. Selesaikan form di bawah ini untuk memulai akses bimbingan.</p>
                   
                   <form onSubmit={handleRegisterKti} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Judul Lengkap KTI</label>
+                      <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Judul Lengkap KARYA TULIS ILMIAH</label>
                       <input 
                         type="text" required
                         className="w-full text-sm p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
@@ -476,7 +476,7 @@ export default function KtiDashboardPage() {
                       </div>
                     </div>
 
-                    <h3 className="font-bold text-slate-900 pt-2">Progress Status 5 Bab KTI</h3>
+                    <h3 className="font-bold text-slate-900 pt-2">Progress Status 5 Bab KARYA TULIS ILMIAH</h3>
                     {[1, 2, 3, 4, 5].map((num) => {
                       const ch = dataKti?.chapters?.find((c: any) => c.chapter_number === num);
                       return (
@@ -504,7 +504,7 @@ export default function KtiDashboardPage() {
                   </div>
 
                   <div className="bg-white p-6 rounded-xl border shadow-sm h-fit space-y-4">
-                    <h3 className="font-bold text-slate-900 border-b pb-2">Unggah Dokumen Kerja KTI</h3>
+                    <h3 className="font-bold text-slate-900 border-b pb-2">Unggah Dokumen Kerja KARYA TULIS ILMIAH</h3>
                     <form onSubmit={handleUploadKti} className="space-y-4">
                       <div>
                         <label className="block text-xs font-semibold mb-1">Target Pengumpulan Bab</label>
@@ -586,7 +586,7 @@ export default function KtiDashboardPage() {
                               </div>
                               
                               <div className="mt-3 pt-3 border-t border-dashed border-slate-100">
-                                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Judul KTI yang Dibimbing:</p>
+                                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Judul KARYA TULIS ILMIAH yang Dibimbing:</p>
                                 <p className="text-sm font-semibold text-slate-700 mt-1 leading-relaxed line-clamp-3 bg-slate-50 p-2 rounded-lg border">
                                   "{item.title}"
                                 </p>
@@ -737,7 +737,7 @@ export default function KtiDashboardPage() {
           ) : (
             <div className="bg-white p-6 rounded-2xl border shadow-sm text-center">
               <span className="text-3xl">📚</span>
-              <h2 className="text-lg font-bold text-slate-900 mt-2">Pusat Arsip Bimbingan KTI</h2>
+              <h2 className="text-lg font-bold text-slate-900 mt-2">Pusat Arsip Bimbingan KARYA TULIS ILMIAH</h2>
               <p className="text-xs text-slate-500 mt-1">Gunakan tab menu utama navigasi di sebelah kiri untuk mengelola aktivitas bimbingan penuh.</p>
             </div>
           )}
