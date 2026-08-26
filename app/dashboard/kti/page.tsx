@@ -355,21 +355,28 @@ const fetchTeachersList = async () => {
     }
   };
 
-  // --- HANDLER MENTOR: Kirim Hasil Review ---
-  const handleReviewKti = async (e: React.FormEvent, chapterId: number) => {
+ const handleReviewKti = async (e: React.FormEvent, chapterId: number) => {
     e.preventDefault();
     setReviewing(true);
+    
+    // MEMPERBAIKI KESALAHAN INPUT: Mengambil data langsung dari state reviewData
     const formData = new FormData();
-    formData.append('status', reviewData.status);
+    formData.append('status', reviewData.status || 'approved'); // Jika kosong, default ke approved
     formData.append('teacher_feedback', reviewData.teacher_feedback);
 
+    // Jika backend Anda juga meminta '_method: POST/PUT' atau data pendukung, pastikan terkirim
     try {
       const response = await fetch(`${API_URL}/mentor/kti/chapter/${chapterId}/review`, {
         method: 'POST',
-        headers: getAuthHeader(),
+        headers: { 
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`
+          // JANGAN gunakan 'Content-Type': 'application/json' di sini karena kita mengirim FormData
+        },
         body: formData
       });
+      
       const resData = await response.json();
+      
       if (response.ok) {
         Swal.fire({
           icon: 'success',
@@ -377,14 +384,16 @@ const fetchTeachersList = async () => {
           text: 'Ulasan bimbingan berhasil dikirim ke siswa!',
           confirmButtonColor: '#4f46e5'
         });
+        // Reset form setelah sukses
         setReviewData({ status: "approved", teacher_feedback: "", feedback_file: null });
         setSelectedStudent(null);
         fetchDashboardData();
       } else {
+        // Menampilkan pesan error asli dari backend jika gagal validation
         Swal.fire({
           icon: 'error',
           title: 'Gagal Mengirim',
-          text: resData.message || "Gagal mengirim ulasan bimbingan.",
+          text: resData.message || JSON.stringify(resData.errors) || "Gagal mengirim ulasan bimbingan.",
           confirmButtonColor: '#4f46e5'
         });
       }
