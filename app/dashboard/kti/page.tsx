@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { renderAsync } from "docx-preview"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
@@ -79,6 +80,12 @@ export default function KtiDashboardPage() {
   const [reviewData, setReviewData] = useState({ status: "approved", teacher_feedback: "", feedback_file: null });
   const [reviewing, setReviewing] = useState(false);
 
+  // State untuk preview dokumen DOCX
+  const [docxLoading, setDocxLoading] = useState(false);
+  const [docxError, setDocxError] = useState<string | null>(null);
+  const docxPreviewRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  
   useEffect(() => {
     fetchDashboardData();
     fetchCurrentUser(); // <-- Memanggil fungsi pengambil data dari tabel users
@@ -409,6 +416,70 @@ const fetchTeachersList = async () => {
     }
   };
 
+    // ============================================================
+  // PREVIEW DOCX LANGSUNG DI DALAM HALAMAN
+  // ============================================================
+  const renderDocxPreview = async (fileUrl: string, chapterNumber: number) => {
+    const container = docxPreviewRefs.current[chapterNumber];
+
+    if (!container) return;
+
+    setDocxLoading(true);
+    setDocxError(null);
+
+    try {
+      // Bersihkan preview sebelumnya
+      container.innerHTML = "";
+
+      const response = await fetch(fileUrl, {
+        method: "GET",
+        headers: {
+          "Accept": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gagal mengambil dokumen. HTTP ${response.status}`);
+      }
+
+      const blob = await response.blob();
+
+      if (!blob.size) {
+        throw new Error("File DOCX kosong atau tidak dapat dibaca.");
+      }
+
+      await renderAsync(blob, container, undefined, {
+        className: "docx-preview",
+        inWrapper: true,
+        ignoreWidth: false,
+        ignoreHeight: false,
+        ignoreFonts: false,
+        breakPages: true,
+        useBase64URL: true,
+        renderHeaders: true,
+        renderFooters: true,
+        renderFootnotes: true,
+        renderEndnotes: true,
+        debug: false,
+      });
+
+    } catch (error) {
+      console.error("Gagal melakukan preview DOCX:", error);
+
+      setDocxError(
+        error instanceof Error
+          ? error.message
+          : "Dokumen DOCX tidak dapat ditampilkan."
+      );
+    } finally {
+      setDocxLoading(false);
+    }
+  };
+
+
+
+
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
@@ -771,63 +842,151 @@ const fetchTeachersList = async () => {
                                 </div>
                               </div>
 
-                              {fileUrl && (
-                                <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
-                                  <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between">
-                                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
-                                      🖥️ Live Preview Dokumen Bab {num}
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                      <a 
-                                        href={fileUrl} 
-                                        target="_blank" 
-                                        rel="noreferrer" 
-                                        className="text-[10px] bg-white text-indigo-600 hover:bg-indigo-50 font-bold px-2 py-1 rounded border shadow-sm transition"
-                                      >
-                                        ↗️ Buka di Tab Baru
-                                      </a>
-                                      <span className="text-[10px] text-slate-400 font-medium">
-                                        {isPdf ? "Format: PDF Native" : "Format: Word File"}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="w-full h-[450px] bg-white">
-                                    {isPdf ? (
-                                      <iframe 
-                                        src={fileUrl} 
-                                        className="w-full h-full" 
-                                        title={`Preview PDF Bab ${num}`}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex flex-col justify-center items-center p-6 text-center bg-slate-50">
-                                        <span className="text-4xl mb-2 animate-bounce">📄</span>
-                                        <p className="text-xs font-bold text-slate-700">Dokumen Berformat Microsoft Word (.docx)</p>
-                                        <p className="text-[11px] text-slate-400 max-w-sm mt-1 mb-4 leading-relaxed">
-                                          Kebijakan keamanan sistem membatasi pratinjau langsung ekstensi Word di dalam frame halaman ini.
-                                        </p>
-                                        <div className="flex flex-col sm:flex-row gap-2">
-                                          <a 
-                                            href={fileUrl} 
-                                            target="_blank" 
-                                            rel="noreferrer"
-                                            className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm"
-                                          >
-                                            Unduh / Lihat File Asli
-                                          </a>
-                                          <a 
-                                            href={`https://docs.google.com/gview?url=${encodeURIComponent(fileUrl)}&embedded=true`}
-                                            target="_blank" 
-                                            rel="noreferrer"
-                                            className="bg-white hover:bg-slate-100 text-slate-700 border text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm"
-                                          >
-                                            Coba Paksa Buka di Google Web
-                                          </a>
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
+                    {fileUrl && (
+  <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
+
+    {/* HEADER PREVIEW */}
+    <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+          🖥️ Live Preview Dokumen Bab {num}
+        </span>
+
+        {isPdf ? (
+          <span className="text-[9px] bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded font-bold">
+            PDF
+          </span>
+        ) : (
+          <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded font-bold">
+            DOCX
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 shrink-0">
+
+        {/* BUKA FILE ASLI */}
+        <a
+          href={fileUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-[10px] bg-white text-indigo-600 hover:bg-indigo-50 font-bold px-2 py-1 rounded border shadow-sm transition"
+        >
+          ↗️ Buka Tab Baru
+        </a>
+
+        {!isPdf && (
+          <button
+            type="button"
+            onClick={() => renderDocxPreview(fileUrl, num)}
+            className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded border shadow-sm transition"
+          >
+            🔄 Muat Ulang
+          </button>
+        )}
+      </div>
+    </div>
+
+    {/* AREA PREVIEW */}
+    <div className="w-full bg-slate-200">
+
+      {/* ========================= */}
+      {/* PREVIEW PDF */}
+      {/* ========================= */}
+      {isPdf ? (
+        <div className="w-full h-[700px] bg-white">
+          <iframe
+            src={`${fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
+            className="w-full h-full border-0"
+            title={`Preview PDF Bab ${num}`}
+            loading="lazy"
+          />
+        </div>
+      ) : (
+
+        /* ========================= */
+        /* PREVIEW DOCX */
+        /* ========================= */
+        <div className="relative">
+
+          {/* LOADING */}
+          {docxLoading && (
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/90 min-h-[500px]">
+              <div className="text-center">
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-3" />
+
+                <p className="text-sm font-bold text-slate-700">
+                  Memuat dokumen Word...
+                </p>
+
+                <p className="text-xs text-slate-400 mt-1">
+                  Sedang menyiapkan halaman dokumen untuk preview.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ERROR */}
+          {docxError && (
+            <div className="min-h-[450px] flex items-center justify-center bg-slate-50 p-6">
+              <div className="max-w-md text-center">
+
+                <div className="text-5xl mb-3">
+                  ⚠️
+                </div>
+
+                <h4 className="font-bold text-slate-800 text-sm">
+                  Preview DOCX gagal dimuat
+                </h4>
+
+                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                  {docxError}
+                </p>
+
+                <div className="flex justify-center gap-2 mt-4">
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDocxError(null);
+                      renderDocxPreview(fileUrl, num);
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
+                  >
+                    🔄 Coba Lagi
+                  </button>
+
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-white hover:bg-slate-100 text-slate-700 border text-xs font-bold px-4 py-2 rounded-xl transition"
+                  >
+                    📄 Buka File
+                  </a>
+
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CONTAINER DOCX */}
+          <div
+            ref={(element) => {
+              docxPreviewRefs.current[num] = element;
+            }}
+            className={`docx-preview-container bg-slate-200 min-h-[500px] p-4 overflow-auto ${
+              docxError ? "hidden" : ""
+            }`}
+          />
+
+        </div>
+      )}
+
+    </div>
+
+  </div>
+)}
                             </div>
                           );
                         })}
