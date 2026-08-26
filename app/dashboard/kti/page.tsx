@@ -1,6 +1,6 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from "react"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
@@ -12,7 +12,7 @@ import {
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
   Send, UserCircle2, Menu, X, Star, RefreshCw
 } from "lucide-react"
-import Swal from 'sweetalert2'
+import Swal from "sweetalert2"
 // Menggunakan konstanta API sesuai instruksi Anda
 const API_URL = "https://backend.mejatika.com/api";
 
