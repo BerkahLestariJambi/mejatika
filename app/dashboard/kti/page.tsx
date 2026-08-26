@@ -12,7 +12,6 @@ import {
   Send, UserCircle2, Menu, X, Star, RefreshCw, ZoomIn, ZoomOut, AlertTriangle
 } from "lucide-react"
 import Swal from "sweetalert2"
-import { renderAsync } from 'docx-preview'
 import { Document, Page, pdfjs } from 'react-pdf'
 
 // Konfigurasi Worker untuk react-pdf agar berjalan lancar di Next.js
@@ -54,9 +53,13 @@ function FilePreviewer({ fileUrl }: { fileUrl: string }) {
   const fetchDocx = async () => {
     try {
       setLoading(true)
+      // Import secara dinamis hanya di client-side untuk menghindari error `DOMMatrix` di Node.js build
+      const { renderAsync } = await import('docx-preview')
+      
       const response = await fetch(fileUrl)
       if (!response.ok) throw new Error('Gagal mengunduh file berkas DOCX.')
       const blob = await response.blob()
+      
       if (docxContainerRef.current) {
         docxContainerRef.current.innerHTML = ''
         await renderAsync(blob, docxContainerRef.current, undefined, {
