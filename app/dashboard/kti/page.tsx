@@ -1,11 +1,10 @@
 "use client"
 
 //import { useState, useEffect } from "react"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { renderAsync } from "docx-preview"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
@@ -14,6 +13,7 @@ import {
   Send, UserCircle2, Menu, X, Star, RefreshCw
 } from "lucide-react"
 import Swal from "sweetalert2"
+import { renderAsync } from "docx-preview"
 
 // Menggunakan konstanta API sesuai instruksi Anda
 const API_URL = "https://backend.mejatika.com/api"
@@ -80,12 +80,11 @@ export default function KtiDashboardPage() {
   const [reviewData, setReviewData] = useState({ status: "approved", teacher_feedback: "", feedback_file: null });
   const [reviewing, setReviewing] = useState(false);
 
-  // State untuk preview dokumen DOCX
+  // State dan ref untuk preview DOCX langsung di halaman
   const [docxLoading, setDocxLoading] = useState(false);
   const [docxError, setDocxError] = useState<string | null>(null);
   const docxPreviewRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  
   useEffect(() => {
     fetchDashboardData();
     fetchCurrentUser(); // <-- Memanggil fungsi pengambil data dari tabel users
@@ -416,7 +415,7 @@ const fetchTeachersList = async () => {
     }
   };
 
-    // ============================================================
+  // ============================================================
   // PREVIEW DOCX LANGSUNG DI DALAM HALAMAN
   // ============================================================
   const renderDocxPreview = async (fileUrl: string, chapterNumber: number) => {
@@ -428,7 +427,6 @@ const fetchTeachersList = async () => {
     setDocxError(null);
 
     try {
-      // Bersihkan preview sebelumnya
       container.innerHTML = "";
 
       const response = await fetch(fileUrl, {
@@ -462,10 +460,8 @@ const fetchTeachersList = async () => {
         renderEndnotes: true,
         debug: false,
       });
-
     } catch (error) {
       console.error("Gagal melakukan preview DOCX:", error);
-
       setDocxError(
         error instanceof Error
           ? error.message
@@ -476,10 +472,6 @@ const fetchTeachersList = async () => {
     }
   };
 
-
-
-
-  
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
@@ -842,151 +834,112 @@ const fetchTeachersList = async () => {
                                 </div>
                               </div>
 
-                    {fileUrl && (
-  <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
+                              {fileUrl && (
+                                <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
+                                  <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
+                                        🖥️ Live Preview Dokumen Bab {num}
+                                      </span>
+                                      <span className={`text-[9px] px-2 py-0.5 rounded font-bold border ${isPdf ? "bg-red-50 text-red-600 border-red-200" : "bg-blue-50 text-blue-600 border-blue-200"}`}>
+                                        {isPdf ? "PDF" : "DOCX"}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      <a 
+                                        href={fileUrl} 
+                                        target="_blank" 
+                                        rel="noreferrer" 
+                                        className="text-[10px] bg-white text-indigo-600 hover:bg-indigo-50 font-bold px-2 py-1 rounded border shadow-sm transition"
+                                      >
+                                        ↗️ Buka di Tab Baru
+                                      </a>
+                                      {!isPdf && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setDocxError(null);
+                                            renderDocxPreview(fileUrl, num);
+                                          }}
+                                          className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded border shadow-sm transition"
+                                        >
+                                          🔄 Muat Ulang
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
 
-    {/* HEADER PREVIEW */}
-    <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2 min-w-0">
-        <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
-          🖥️ Live Preview Dokumen Bab {num}
-        </span>
+                                  <div className="w-full bg-slate-200">
+                                    {isPdf ? (
+                                      <div className="w-full h-[700px] bg-white">
+                                        <iframe 
+                                          src={`${fileUrl}#toolbar=1&navpanes=0&scrollbar=1`} 
+                                          className="w-full h-full border-0" 
+                                          title={`Preview PDF Bab ${num}`}
+                                          loading="lazy"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="relative">
+                                        {docxLoading && (
+                                          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/90 min-h-[500px]">
+                                            <div className="text-center">
+                                              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-3" />
+                                              <p className="text-sm font-bold text-slate-700">Memuat dokumen Word...</p>
+                                              <p className="text-xs text-slate-400 mt-1">Sedang menyiapkan halaman dokumen untuk preview.</p>
+                                            </div>
+                                          </div>
+                                        )}
 
-        {isPdf ? (
-          <span className="text-[9px] bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded font-bold">
-            PDF
-          </span>
-        ) : (
-          <span className="text-[9px] bg-blue-50 text-blue-600 border border-blue-200 px-2 py-0.5 rounded font-bold">
-            DOCX
-          </span>
-        )}
-      </div>
+                                        {docxError && (
+                                          <div className="min-h-[450px] flex items-center justify-center bg-slate-50 p-6">
+                                            <div className="max-w-md text-center">
+                                              <div className="text-5xl mb-3">⚠️</div>
+                                              <h4 className="font-bold text-slate-800 text-sm">Preview DOCX gagal dimuat</h4>
+                                              <p className="text-xs text-slate-500 mt-2 leading-relaxed">{docxError}</p>
+                                              <div className="flex justify-center gap-2 mt-4">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setDocxError(null);
+                                                    renderDocxPreview(fileUrl, num);
+                                                  }}
+                                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
+                                                >
+                                                  🔄 Coba Lagi
+                                                </button>
+                                                <a
+                                                  href={fileUrl}
+                                                  target="_blank"
+                                                  rel="noreferrer"
+                                                  className="bg-white hover:bg-slate-100 text-slate-700 border text-xs font-bold px-4 py-2 rounded-xl transition"
+                                                >
+                                                  📄 Buka File
+                                                </a>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
 
-      <div className="flex items-center gap-2 shrink-0">
-
-        {/* BUKA FILE ASLI */}
-        <a
-          href={fileUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="text-[10px] bg-white text-indigo-600 hover:bg-indigo-50 font-bold px-2 py-1 rounded border shadow-sm transition"
-        >
-          ↗️ Buka Tab Baru
-        </a>
-
-        {!isPdf && (
-          <button
-            type="button"
-            onClick={() => renderDocxPreview(fileUrl, num)}
-            className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded border shadow-sm transition"
-          >
-            🔄 Muat Ulang
-          </button>
-        )}
-      </div>
-    </div>
-
-    {/* AREA PREVIEW */}
-    <div className="w-full bg-slate-200">
-
-      {/* ========================= */}
-      {/* PREVIEW PDF */}
-      {/* ========================= */}
-      {isPdf ? (
-        <div className="w-full h-[700px] bg-white">
-          <iframe
-            src={`${fileUrl}#toolbar=1&navpanes=0&scrollbar=1`}
-            className="w-full h-full border-0"
-            title={`Preview PDF Bab ${num}`}
-            loading="lazy"
-          />
-        </div>
-      ) : (
-
-        /* ========================= */
-        /* PREVIEW DOCX */
-        /* ========================= */
-        <div className="relative">
-
-          {/* LOADING */}
-          {docxLoading && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/90 min-h-[500px]">
-              <div className="text-center">
-                <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-3" />
-
-                <p className="text-sm font-bold text-slate-700">
-                  Memuat dokumen Word...
-                </p>
-
-                <p className="text-xs text-slate-400 mt-1">
-                  Sedang menyiapkan halaman dokumen untuk preview.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* ERROR */}
-          {docxError && (
-            <div className="min-h-[450px] flex items-center justify-center bg-slate-50 p-6">
-              <div className="max-w-md text-center">
-
-                <div className="text-5xl mb-3">
-                  ⚠️
-                </div>
-
-                <h4 className="font-bold text-slate-800 text-sm">
-                  Preview DOCX gagal dimuat
-                </h4>
-
-                <p className="text-xs text-slate-500 mt-2 leading-relaxed">
-                  {docxError}
-                </p>
-
-                <div className="flex justify-center gap-2 mt-4">
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setDocxError(null);
-                      renderDocxPreview(fileUrl, num);
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
-                  >
-                    🔄 Coba Lagi
-                  </button>
-
-                  <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="bg-white hover:bg-slate-100 text-slate-700 border text-xs font-bold px-4 py-2 rounded-xl transition"
-                  >
-                    📄 Buka File
-                  </a>
-
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* CONTAINER DOCX */}
-          <div
-            ref={(element) => {
-              docxPreviewRefs.current[num] = element;
-            }}
-            className={`docx-preview-container bg-slate-200 min-h-[500px] p-4 overflow-auto ${
-              docxError ? "hidden" : ""
-            }`}
-          />
-
-        </div>
-      )}
-
-    </div>
-
-  </div>
-)}
+                                        <div
+                                          ref={(element) => {
+                                            docxPreviewRefs.current[num] = element;
+                                            if (element && !element.dataset.rendered) {
+                                              element.dataset.rendered = "loading";
+                                              renderDocxPreview(fileUrl, num).then(() => {
+                                                element.dataset.rendered = "true";
+                                              }).catch(() => {
+                                                element.dataset.rendered = "error";
+                                              });
+                                            }
+                                          }}
+                                          className={`docx-preview-container bg-slate-200 min-h-[500px] p-4 overflow-auto ${docxError ? "hidden" : ""}`}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
