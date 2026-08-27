@@ -192,6 +192,7 @@ export default function UsersPage() {
                     <SelectItem value="peserta">Peserta</SelectItem>
                 <SelectItem value="pembimbing">Pembimbing</SelectItem>
                     <SelectItem value="siswakti">Peserta KTI</SelectItem>
+                    <SelectItem value="mentor">Mentor</SelectItem>
                     <SelectItem value="Pelajar">Penulis Artikel</SelectItem>
                 
                   </SelectContent>
