@@ -122,12 +122,18 @@ export default function StudioHybridPresenter() {
     }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
-  // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB[cite: 3]
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      import("pdfjs-dist").then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-      }).catch(err => console.error("Gagal memuat PDF worker:", err));
+useEffect(() => {
+  if (typeof window !== "undefined") {
+    import("pdfjs-dist")
+      .then((pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc =
+          "/pdf.worker.min.mjs";
+      })
+      .catch((err) =>
+        console.error("Gagal memuat PDF worker:", err)
+      );
+  }
+}, []);
 
       slideCanvasCache.current = document.createElement("canvas");
       screenVideoRef.current = document.createElement("video");
