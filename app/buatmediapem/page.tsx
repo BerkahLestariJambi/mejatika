@@ -1,15 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import dynamic from "next/dynamic";
-
-// JALUR IMPOR CSS TERBARU
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
-
-// Set worker eksternal menggunakan CDN resmi terverifikasi
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface RecordingHistory {
   id: string;
@@ -49,26 +40,27 @@ const STORE_NAME = "recordings";
 const DB_VERSION = 1;
 const BACKEND_URL = "https://backend.mejatika.com/api/upload";
 
-// ==========================================
-// 1. KOMPONEN UTAMA (LOGIKA & UI STUDIO)
-// ==========================================
-function StudioHybridPresenterContent() {
+export default function StudioHybridPresenter() {
   const [recording, setRecording] = useState(false);
   const [recordingsList, setRecordingsList] = useState<RecordingHistory[]>([]);
   const [sourceMode, setSourceMode] = useState<'pdf' | 'screen' | 'pdf-animation'>('pdf');
   const [activeTheme, setActiveTheme] = useState<StudioTheme>(STUDIO_THEMES[0]);
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
 
-  // Kamera State
+  // ==========================================
+  // STATE KAMERA BARU & FITUR DETEKSI DROIDCAM
+  // ==========================================
   const [isCamOn, setIsCamOn] = useState<boolean>(false);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
   const streamRef = useRef<MediaStream | null>(null);
 
-  // PDF File States
-  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [currentSlide, setCurrentSlide] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
+  const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const slideCanvasCache = useRef<HTMLCanvasElement | null>(null);
+  const slideAnimId = useRef<number | null>(null);
 
   const [animatedSlides, setAnimatedSlides] = useState<ExtractedSlideData[]>([
     {
@@ -97,6 +89,7 @@ function StudioHybridPresenterContent() {
   const [isDraggingCam, setIsDraggingCam] = useState(false);
 
   const dragStartRef = useRef({ x: 0, y: 0 });
+
   const mainCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const whiteboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -115,13 +108,19 @@ function StudioHybridPresenterContent() {
     if (sourceMode === 'pdf-animation') { triggerTextAnimation(); }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
-  // Memuat Riwayat Rekaman via DB Lokal
   useEffect(() => {
     if (typeof window !== "undefined") {
+      import("pdfjs-dist").then((pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+      }).catch(err => console.error("Gagal memuat PDF worker:", err));
+
+      slideCanvasCache.current = document.createElement("canvas");
       screenVideoRef.current = document.createElement("video");
       screenVideoRef.current.autoplay = true;
       screenVideoRef.current.playsInline = true;
       screenVideoRef.current.muted = true;
+      
+      pdfCanvasRef.current = document.createElement("canvas");
 
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = (event: any) => {
@@ -144,7 +143,9 @@ function StudioHybridPresenterContent() {
     }
   }, []);
 
-  // PERBAIKAN UTAMA: Manajemen Kamera & Deteksi DroidCam Lebih Akurat
+  // ==========================================
+  // LOGIKA BARU: MENANGANI STREAM MULTI-KAMERA & DROIDCAM
+  // ==========================================
   const startCameraStream = async (deviceId?: string) => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -165,17 +166,16 @@ function StudioHybridPresenterContent() {
         webcamVideoRef.current.play().catch(() => {});
       }
 
-      // Ambil daftar ulang perangkat setelah izin kamera diberikan browser
+      // Ambil daftar ulang hardware setelah browser diberi izin akses kamera oleh user
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoInputs = devices.filter((device) => device.kind === "videoinput");
       setVideoDevices(videoInputs);
 
-      // Otomatis pilih DroidCam jika tersedia di dalam list hardware
+      // Otomatis pilih kamera yang memiliki nama "droidcam"
       if (!deviceId && videoInputs.length > 0) {
         const droidCam = videoInputs.find((d) => d.label.toLowerCase().includes("droidcam"));
         if (droidCam) {
           setSelectedDeviceId(droidCam.deviceId);
-          // Jika inisialisasi awal menemukan DroidCam, muat ulang stream khusus device tersebut
           if (droidCam.deviceId !== videoInputs[0].deviceId) {
             startCameraStream(droidCam.deviceId);
           }
@@ -184,13 +184,13 @@ function StudioHybridPresenterContent() {
         }
       }
     } catch (err) {
-      console.error("Gagal memuat kamera:", err);
+      console.error("Gagal mendapatkan akses kamera:", err);
       setIsCamOn(false);
     }
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined" && navigator && navigator.mediaDevices) {
+    if (typeof window !== "undefined" && navigator.mediaDevices?.getUserMedia) {
       startCameraStream();
     }
     return () => {
@@ -216,6 +216,49 @@ function StudioHybridPresenterContent() {
     }
   };
 
+  useEffect(() => {
+    if (!pdfDoc || sourceMode !== 'pdf') return;
+
+    pdfDoc.getPage(currentSlide).then((page: any) => {
+      const hiddenPdfCanvas = pdfCanvasRef.current;
+      const cacheCanvas = slideCanvasCache.current;
+      if (!hiddenPdfCanvas || !cacheCanvas) return;
+
+      const pdfCtx = hiddenPdfCanvas.getContext("2d");
+      const cacheCtx = cacheCanvas.getContext("2d");
+      if (!pdfCtx || !cacheCtx) return;
+
+      const viewport = page.getViewport({ scale: 1.5 });
+      hiddenPdfCanvas.width = viewport.width;
+      hiddenPdfCanvas.height = viewport.height;
+      cacheCanvas.width = viewport.width;
+      cacheCanvas.height = viewport.height;
+
+      page.render({ canvasContext: cacheCtx, viewport }).promise.then(() => {
+        if (slideAnimId.current) cancelAnimationFrame(slideAnimId.current);
+        
+        let opacity = 0;
+        const animateSlide = () => {
+          opacity += 0.08;
+          if (opacity > 1) opacity = 1;
+
+          pdfCtx.clearRect(0, 0, hiddenPdfCanvas.width, hiddenPdfCanvas.height);
+          pdfCtx.globalAlpha = opacity;
+          pdfCtx.drawImage(cacheCanvas, 0, 0);
+
+          if (opacity < 1) {
+            slideAnimId.current = requestAnimationFrame(animateSlide);
+          }
+        };
+        animateSlide();
+      });
+    });
+
+    return () => {
+      if (slideAnimId.current) cancelAnimationFrame(slideAnimId.current);
+    };
+  }, [pdfDoc, currentSlide, sourceMode]);
+
   const startShareScreen = async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -227,7 +270,7 @@ function StudioHybridPresenterContent() {
       setIsSharing(true);
       setSourceMode('screen');
       stream.getVideoTracks()[0].onended = () => stopShareScreen();
-    } catch (err) { console.error("Screen Share Error:", err); }
+    } catch (err) { console.error("Gagal share screen:", err); }
   };
 
   const stopShareScreen = () => {
@@ -258,7 +301,6 @@ function StudioHybridPresenterContent() {
     };
   };
 
-  // Rendering Inti Studio 
   useEffect(() => {
     const mainCanvas = mainCanvasRef.current;
     if (!mainCanvas) return;
@@ -269,14 +311,10 @@ function StudioHybridPresenterContent() {
       if (!ctx || !mainCanvas) return;
       ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
 
-      if (sourceMode === 'pdf' && pdfFile) {
+      if (sourceMode === 'pdf' && pdfCanvasRef.current && pdfDoc) {
         ctx.fillStyle = "#1e293b";
         ctx.fillRect(0, 0, 1280, 720);
-        
-        const internalPdfCanvas = document.querySelector(".react-pdf__Page__canvas") as HTMLCanvasElement;
-        if (internalPdfCanvas) {
-          ctx.drawImage(internalPdfCanvas, 0, 0, 1280, 720);
-        }
+        ctx.drawImage(pdfCanvasRef.current, 0, 0, 1280, 720);
       } else if (sourceMode === 'screen' && isSharing && screenVideoRef.current) {
         ctx.drawImage(screenVideoRef.current, 0, 0, 1280, 720);
       } else if (sourceMode === 'pdf-animation') {
@@ -361,7 +399,7 @@ function StudioHybridPresenterContent() {
 
     renderStudioFrame();
     return () => cancelAnimationFrame(loopId);
-  }, [sourceMode, pdfFile, isSharing, showWhiteboard, isCamOn, animatedSlides, textSlideIndex, activeTheme]);
+  }, [sourceMode, pdfDoc, isSharing, showWhiteboard, isCamOn, animatedSlides, textSlideIndex, activeTheme]);
 
   const saveToIndexedDB = (id: string, blob: Blob, timestamp: string) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -372,7 +410,7 @@ function StudioHybridPresenterContent() {
   };
 
   const deleteRecording = (id: string) => {
-    if (!confirm("Hapus hasil rekaman?")) return;
+    if (!confirm("Apakah Anda yakin ingin menghapus hasil rekaman ini?")) return;
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onsuccess = (event: any) => {
       const db = event.target.result;
@@ -391,7 +429,11 @@ function StudioHybridPresenterContent() {
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         const file = new File([videoItem.blob], `Rekaman_${videoItem.timestamp.replace(/:/g, "-")}.mp4`, { type: "video/mp4" });
-        await navigator.share({ files: [file] });
+        await navigator.share({
+          title: "Hasil Rekaman Kelas Studio",
+          text: `Halo, berikut hasil rekaman materi kelas jam: ${videoItem.timestamp}`,
+          files: [file],
+        });
       } catch (err) { console.log(err); }
     }
   };
@@ -409,28 +451,58 @@ function StudioHybridPresenterContent() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPdfFile(file);
-    setCurrentSlide(1);
-    setSourceMode('pdf');
-  };
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setTotalPages(numPages);
+    try {
+      const pdfjs = await import("pdfjs-dist");
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      
+      setPdfDoc(pdf);
+      setTotalPages(pdf.numPages);
+      setCurrentSlide(1);
+
+      const extractedSlides: ExtractedSlideData[] = [];
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const lines: string[] = textContent.items
+          .map((item: any) => item.str.trim())
+          .filter((str: string) => str.length > 0);
+
+        if (lines.length > 0) {
+          const title = lines[0] || `Halaman ${i}`;
+          const subtitle = lines[1] && lines[1].length < 60 ? lines[1] : `Dokumen: ${file.name}`;
+          const rawBullets = lines.slice(subtitle === lines[1] ? 2 : 1, 8);
+          const bullets = rawBullets.map((b) => (b.startsWith("•") || b.match(/^\d+\./) ? b : `• ${b}`));
+
+          extractedSlides.push({
+            title: title.length > 45 ? title.substring(0, 45) + "..." : title,
+            subtitle,
+            bullets: bullets.length > 0 ? bullets : ["(Tidak ada sub-teks terdeteksi)"]
+          });
+        }
+      }
+
+      if (extractedSlides.length > 0) {
+        setAnimatedSlides(extractedSlides);
+        setTextSlideIndex(0);
+      }
+      setSourceMode('pdf');
+    } catch (err) { console.error(err); }
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDrawing(true);
-    const canvas = whiteboardCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const rect = canvas.getBoundingClientRect();
+    const ctx = whiteboardCanvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    const rect = whiteboardCanvasRef.current!.getBoundingClientRect();
     ctx.beginPath();
     ctx.moveTo(
-      (e.clientX - rect.left) * (canvas.width / rect.width),
-      (e.clientY - rect.top) * (canvas.height / rect.height)
+      (e.clientX - rect.left) * (whiteboardCanvasRef.current!.width / rect.width),
+      (e.clientY - rect.top) * (whiteboardCanvasRef.current!.height / rect.height)
     );
   };
 
@@ -445,17 +517,26 @@ function StudioHybridPresenterContent() {
     } else {
       ctx.globalCompositeOperation = "source-over"; ctx.strokeStyle = penColor; ctx.lineWidth = penWidth; ctx.lineCap = "round";
     }
-    ctx.lineTo(
-      (e.clientX - rect.left) * (canvas.width / rect.width),
-      (e.clientY - rect.top) * (canvas.height / rect.height)
-    );
+    ctx.lineTo((e.clientX - rect.left) * (canvas.width / rect.width), (e.clientY - rect.top) * (canvas.height / rect.height));
     ctx.stroke();
   };
 
   const handleMouseDown = (type: "wb" | "cam", e: React.MouseEvent) => {
-    e.stopPropagation(); dragStartRef.current = { x: e.clientX, y: e.clientY };
+    e.stopPropagation();
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
     if (type === "wb") setIsDraggingWb(true);
     if (type === "cam") setIsDraggingCam(true);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!frameContainerRef.current || (!isDraggingWb && !isDraggingCam)) return;
+    const rect = frameContainerRef.current.getBoundingClientRect();
+    const deltaX = (e.clientX - dragStartRef.current.x) * (1280 / rect.width);
+    const deltaY = (e.clientY - dragStartRef.current.y) * (720 / rect.height);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+
+    if (isDraggingWb) setWbPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - p.w, p.x + deltaX)), y: Math.max(0, Math.min(720 - p.h, p.y + deltaY)) }));
+    if (isDraggingCam) setCamPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - 260, p.x + deltaX)), y: Math.max(0, Math.min(720 - 195, p.y + deltaY)) }));
   };
 
   const startRecording = async () => {
@@ -470,7 +551,7 @@ function StudioHybridPresenterContent() {
       mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mediaRecorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "video/mp4" });
-        const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const recordId = `rec-${Date.now()}`;
         saveToIndexedDB(recordId, blob, ts);
         setRecordingsList((prev) => [{ id: recordId, blob, url: URL.createObjectURL(blob), timestamp: ts, uploadStatus: "idle" }, ...prev]);
@@ -480,28 +561,11 @@ function StudioHybridPresenterContent() {
   };
 
   return (
-    <main onMouseMove={(e) => {
-      if (!frameContainerRef.current || (!isDraggingWb && !isDraggingCam)) return;
-      const rect = frameContainerRef.current.getBoundingClientRect();
-      const deltaX = (e.clientX - dragStartRef.current.x) * (1280 / rect.width);
-      const deltaY = (e.clientY - dragStartRef.current.y) * (720 / rect.height);
-      dragStartRef.current = { x: e.clientX, y: e.clientY };
-      if (isDraggingWb) setWbPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - p.w, p.x + deltaX)), y: Math.max(0, Math.min(720 - p.h, p.y + deltaY)) }));
-      if (isDraggingCam) setCamPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - 260, p.x + deltaX)), y: Math.max(0, Math.min(720 - 195, p.y + deltaY)) }));
-    }} onMouseUp={() => { setIsDraggingWb(false); setIsDraggingCam(false); }} className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center select-none overflow-x-hidden font-sans w-full">
-      
-      <div className="absolute opacity-0 pointer-events-none overflow-hidden h-0 w-0">
-        {pdfFile && (
-          <Document file={pdfFile} onLoadSuccess={onDocumentLoadSuccess}>
-            <Page pageNumber={currentSlide} width={1280} renderTextLayer={false} renderAnnotationLayer={false} />
-          </Document>
-        )}
-      </div>
-
+    <main onMouseMove={handleMouseMove} onMouseUp={() => { setIsDraggingWb(false); setIsDraggingCam(false); }} className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center select-none overflow-x-hidden font-sans w-full">
       <header className="w-full max-w-7xl flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <h1 className="text-2xl font-extrabold text-blue-400">Studio Presentasi Hybrid Pro</h1>
-          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan kustomisasi latar belakang dan multi-kamera.</p>
+          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan pengaturan margin aman 120px & kustomisasi tema visual[cite: 3].</p>
         </div>
       </header>
 
@@ -509,7 +573,7 @@ function StudioHybridPresenterContent() {
         <div ref={frameContainerRef} className="relative w-full aspect-video bg-slate-950 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl flex items-center justify-center">
           <canvas ref={mainCanvasRef} width={1280} height={720} className="w-full h-full object-contain pointer-events-none" />
 
-          {sourceMode === 'pdf' && pdfFile && (
+          {sourceMode === 'pdf' && pdfDoc && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
               <button onClick={() => setCurrentSlide((p) => Math.max(1, p - 1))} disabled={currentSlide === 1} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
               <span className="text-[11px] font-mono font-semibold text-blue-400">{currentSlide} / {totalPages}</span>
@@ -580,6 +644,9 @@ function StudioHybridPresenterContent() {
                   </div>
                 )}
 
+                {/* ==========================================
+                    UI PENGATURAN DAN SELECTOR KAMERA (DROIDCAM)
+                   ========================================== */}
                 <div className="flex flex-col gap-2 border-b border-slate-800 pb-3 bg-slate-950 p-2 rounded-xl border border-slate-800">
                   <label className="text-[9px] text-slate-400 font-bold uppercase px-0.5">📹 Sumber Kamera Pengajar:</label>
                   <select 
@@ -664,16 +731,4 @@ function StudioHybridPresenterContent() {
       </div>
     </main>
   );
-}
-
-// ==========================================
-// 2. EXPORT DYNAMIC TANPA SSR (UNTUK VERCEL)
-// ==========================================
-const StudioHybridPresenter = dynamic(
-  () => Promise.resolve(StudioHybridPresenterContent),
-  { ssr: false }
-);
-
-export default function Page() {
-  return <StudioHybridPresenter />;
 }
