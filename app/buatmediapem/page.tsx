@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Webcam from "react-webcam"; // Menggunakan react-webcam seperti contoh kode absensi
 
 interface RecordingHistory {
   id: string;
@@ -17,6 +16,7 @@ interface ExtractedSlideData {
   bullets: string[];
 }
 
+// Fitur Tema Latar Belakang Presentasi untuk Mode Animasi Teks
 interface StudioTheme {
   id: string;
   name: string;
@@ -26,7 +26,7 @@ interface StudioTheme {
   textColor: string;
   subtitleColor: string;
   bulletColor: string;
-  customImage?: HTMLImageElement | null;
+  customImage?: HTMLImageElement | null; // Untuk menyimpan element gambar yang di-upload
 }
 
 const STUDIO_THEMES: StudioTheme[] = [
@@ -44,18 +44,19 @@ const BACKEND_URL = "https://backend.mejatika.com/api/upload";
 export default function StudioHybridPresenter() {
   const [recording, setRecording] = useState(false);
   const [recordingsList, setRecordingsList] = useState<RecordingHistory[]>([]);
+
+  // Pilihan Mode Sumber Materi: 'pdf', 'screen', atau 'pdf-animation'
   const [sourceMode, setSourceMode] = useState<'pdf' | 'screen' | 'pdf-animation'>('pdf');
+  
+  // State Tema Studio Aktif
   const [activeTheme, setActiveTheme] = useState<StudioTheme>(STUDIO_THEMES[0]);
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
 
-  // ==========================================
-  // STATE KAMERA & SELEKTOR DROIDCAM (MENGGUNAKAN WEBCAM REF)
-  // ==========================================
-  const [isCamOn, setIsCamOn] = useState<boolean>(true);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  const webcamRef = useRef<Webcam>(null);
+  // State Kamera Utama
+  const [isCamOn, setIsCamOn] = useState<boolean>(false);
+  const streamRef = useRef<MediaStream | null>(null);
 
+  // State MODE PDF Asli & Animasi Cache
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [currentSlide, setCurrentSlide] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -63,6 +64,7 @@ export default function StudioHybridPresenter() {
   const slideCanvasCache = useRef<HTMLCanvasElement | null>(null);
   const slideAnimId = useRef<number | null>(null);
 
+  // State MODE PDF ANIMASI (Ekstrak Teks Otomatis)
   const [animatedSlides, setAnimatedSlides] = useState<ExtractedSlideData[]>([
     {
       title: "Silakan Unggah PDF Anda",
@@ -73,17 +75,22 @@ export default function StudioHybridPresenter() {
   const [textSlideIndex, setTextSlideIndex] = useState<number>(0);
   const textAnimProgress = useRef<number>(0);
 
+  // State MODE SHARE SCREEN
   const [isSharing, setIsSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
 
+  // State Papan Tulis Digital
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [penColor] = useState("#ef4444");
   const [penWidth] = useState(4);
   const [isEraser, setIsEraser] = useState(false);
+
+  // State Toolbar
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
 
+  // Posisi Elemen Melayang
   const [wbPos, setWbPos] = useState({ x: 50, y: 120, w: 560, h: 360 });
   const [isDraggingWb, setIsDraggingWb] = useState(false);
   const [camPos, setCamPos] = useState({ x: 980, y: 500 });
@@ -91,8 +98,10 @@ export default function StudioHybridPresenter() {
 
   const dragStartRef = useRef({ x: 0, y: 0 });
 
+  // Refs Canvas Rekaman & Media
   const mainCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const whiteboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
   const frameContainerRef = useRef<HTMLDivElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -102,13 +111,18 @@ export default function StudioHybridPresenter() {
   useEffect(() => { wbPosRef.current = wbPos; }, [wbPos]);
   useEffect(() => { camPosRef.current = camPos; }, [camPos]);
 
-  const triggerTextAnimation = () => { textAnimProgress.current = 0; };
+  // Trigger Animasi Setiap Kali Slide Teks Berpindah
+  const triggerTextAnimation = () => {
+    textAnimProgress.current = 0;
+  };
 
   useEffect(() => {
-    if (sourceMode === 'pdf-animation') { triggerTextAnimation(); }
+    if (sourceMode === 'pdf-animation') {
+      triggerTextAnimation();
+    }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
-  // --- INITIAL LOAD & DETEKSI DEVICE KAMERA ---
+  // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB
   useEffect(() => {
     if (typeof window !== "undefined") {
       import("pdfjs-dist").then((pdfjs) => {
@@ -122,20 +136,6 @@ export default function StudioHybridPresenter() {
       screenVideoRef.current.muted = true;
       
       pdfCanvasRef.current = document.createElement("canvas");
-
-      // Mengambil daftar hardware kamera yang tersedia
-      navigator.mediaDevices.enumerateDevices().then((devices) => {
-        const videoInputs = devices.filter((device) => device.kind === "videoinput");
-        setVideoDevices(videoInputs);
-        
-        // Otomatis lock ke DroidCam jika ditemukan di sistem
-        const droidCam = videoInputs.find((d) => d.label.toLowerCase().includes("droidcam"));
-        if (droidCam) {
-          setSelectedDeviceId(droidCam.deviceId);
-        } else if (videoInputs.length > 0) {
-          setSelectedDeviceId(videoInputs[0].deviceId);
-        }
-      });
 
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = (event: any) => {
@@ -158,18 +158,43 @@ export default function StudioHybridPresenter() {
     }
   }, []);
 
-  // Konfigurasi Video constraints dinamis berdasarkan Dropdown
-  const videoConstraints = {
-    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
-    width: 1280,
-    height: 720,
+  // ==========================================
+  // WEBCAM STREAM LOGIC
+  // ==========================================
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+      navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: true })
+        .then((stream) => {
+          streamRef.current = stream;
+          setIsCamOn(true);
+        })
+        .catch((err) => console.error("Akses kamera ditolak:", err));
+    }
+    return () => {
+      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isCamOn && streamRef.current && webcamVideoRef.current) {
+      webcamVideoRef.current.srcObject = streamRef.current;
+      webcamVideoRef.current.play().catch(() => {});
+    }
+  }, [isCamOn]);
+
+  const toggleCamera = () => {
+    if (streamRef.current) {
+      const videoTrack = streamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsCamOn(videoTrack.enabled);
+      }
+    }
   };
 
-  const handleDeviceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedDeviceId(e.target.value);
-    setIsCamOn(true);
-  };
-
+  // ==========================================
+  // LOGIC RENDER FILE PDF ASLI (DENGAN ANIMASI FADE)
+  // ==========================================
   useEffect(() => {
     if (!pdfDoc || sourceMode !== 'pdf') return;
 
@@ -213,6 +238,9 @@ export default function StudioHybridPresenter() {
     };
   }, [pdfDoc, currentSlide, sourceMode]);
 
+  // ==========================================
+  // LOGIC SHARE SCREEN (UNTUK POWERPOINT)
+  // ==========================================
   const startShareScreen = async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
@@ -223,8 +251,11 @@ export default function StudioHybridPresenter() {
       if (screenVideoRef.current) screenVideoRef.current.srcObject = stream;
       setIsSharing(true);
       setSourceMode('screen');
+
       stream.getVideoTracks()[0].onended = () => stopShareScreen();
-    } catch (err) { console.error("Gagal share screen:", err); }
+    } catch (err) {
+      console.error("Gagal share screen:", err);
+    }
   };
 
   const stopShareScreen = () => {
@@ -235,6 +266,9 @@ export default function StudioHybridPresenter() {
     setIsSharing(false);
   };
 
+  // ==========================================
+  // HANDLER UNTUK UPLOAD GAMBAR LATAR BELAKANG KUSTOM
+  // ==========================================
   const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -246,7 +280,7 @@ export default function StudioHybridPresenter() {
       setActiveTheme({
         id: "custom-image",
         name: "Gambar Kustom",
-        accentColor: "#3b82f6",
+        accentColor: "#3b82f6", 
         textColor: "#ffffff",
         subtitleColor: "#cbd5e1",
         bulletColor: "#f1f5f9",
@@ -255,7 +289,9 @@ export default function StudioHybridPresenter() {
     };
   };
 
-  // --- RENDERING LOOP KE CANVAS UTAMA ---
+  // ==========================================
+  // LOOP UTAMA UNTUK MERENDER CANVAS STUDIO (1280x720)
+  // ==========================================
   useEffect(() => {
     const mainCanvas = mainCanvasRef.current;
     if (!mainCanvas) return;
@@ -283,22 +319,27 @@ export default function StudioHybridPresenter() {
           gradient.addColorStop(1, activeTheme.bgGradientEnd);
           ctx.fillStyle = gradient;
           ctx.fillRect(0, 0, 1280, 720);
+
           ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
           ctx.beginPath(); ctx.arc(100, 100, 250, 0, Math.PI * 2); ctx.fill();
         }
 
-        if (textAnimProgress.current < 1) { textAnimProgress.current += 0.02; }
+        if (textAnimProgress.current < 1) {
+          textAnimProgress.current += 0.02;
+        }
         const progress = textAnimProgress.current;
         const currentData = animatedSlides[textSlideIndex];
 
         if (currentData) {
           const safePaddingX = 120; 
-          const maxTextWidth = 1040;
+          const maxTextWidth = 1040; 
 
           ctx.save();
           ctx.globalAlpha = Math.min(1, progress * 1.5);
+          
           ctx.fillStyle = activeTheme.accentColor;
           ctx.fillRect(safePaddingX, 155, 120 * Math.min(1, progress * 2), 6);
+          
           ctx.font = "bold 44px sans-serif";
           ctx.fillStyle = activeTheme.textColor;
           ctx.textAlign = "left";
@@ -322,6 +363,7 @@ export default function StudioHybridPresenter() {
               ctx.globalAlpha = Math.min(1, (progress - triggerDelay) * 3);
               ctx.font = "24px sans-serif";
               ctx.fillStyle = activeTheme.bulletColor;
+              
               const bulletX = (safePaddingX + 30) + (1 - Math.min(1, (progress - triggerDelay) * 3)) * 15;
               const maxChar = 75;
               const displayText = bullet.length > maxChar ? bullet.substring(0, maxChar) + "..." : bullet;
@@ -345,9 +387,8 @@ export default function StudioHybridPresenter() {
         ctx.drawImage(whiteboardCanvasRef.current, wbPosRef.current.x, wbPosRef.current.y, wbPosRef.current.w, wbPosRef.current.h);
       }
 
-      // INTEGRASI MENGGUNAKAN WEBCAM REF VIDEO ELEMENT UNTUK CANVAS DRAWING
-      if (webcamRef.current?.video && isCamOn && webcamRef.current.video.readyState === 4) {
-        ctx.drawImage(webcamRef.current.video, camPosRef.current.x, camPosRef.current.y, 260, 195);
+      if (webcamVideoRef.current && isCamOn) {
+        ctx.drawImage(webcamVideoRef.current, camPosRef.current.x, camPosRef.current.y, 260, 195);
       }
 
       loopId = requestAnimationFrame(renderStudioFrame);
@@ -370,7 +411,8 @@ export default function StudioHybridPresenter() {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onsuccess = (event: any) => {
       const db = event.target.result;
-      const store = db.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME);
+      const transaction = db.transaction(STORE_NAME, "readwrite");
+      const store = transaction.objectStore(STORE_NAME);
       store.delete(id).onsuccess = () => {
         setRecordingsList((prev) => {
           const matched = prev.find(item => item.id === id);
@@ -384,13 +426,21 @@ export default function StudioHybridPresenter() {
   const shareRecording = async (videoItem: RecordingHistory) => {
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        const file = new File([videoItem.blob], `Rekaman_${videoItem.timestamp.replace(/:/g, "-")}.mp4`, { type: "video/mp4" });
+        const cleanTimestamp = videoItem.timestamp.replace(/:/g, "-");
+        const file = new File([videoItem.blob], `Rekaman_${cleanTimestamp}.mp4`, { type: "video/mp4" });
         await navigator.share({
           title: "Hasil Rekaman Kelas Studio",
           text: `Halo, berikut hasil rekaman materi kelas jam: ${videoItem.timestamp}`,
           files: [file],
         });
-      } catch (err) { console.log(err); }
+      } catch (err) {
+        console.log("Berbagi dibatalkan atau tidak didukung berkas video:", err);
+      }
+    } else {
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        navigator.clipboard.writeText(videoItem.url);
+        alert("Browser Anda tidak mendukung Web Share langsung. Tautan internal video telah disalin ke clipboard!");
+      }
     }
   };
 
@@ -446,8 +496,11 @@ export default function StudioHybridPresenter() {
         setAnimatedSlides(extractedSlides);
         setTextSlideIndex(0);
       }
+
       setSourceMode('pdf');
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error("Gagal memproses dokumen PDF:", err);
+    }
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -468,12 +521,19 @@ export default function StudioHybridPresenter() {
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+
     if (isEraser) {
-      ctx.globalCompositeOperation = "destination-out"; ctx.lineWidth = penWidth * 5;
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineWidth = penWidth * 5;
     } else {
-      ctx.globalCompositeOperation = "source-over"; ctx.strokeStyle = penColor; ctx.lineWidth = penWidth; ctx.lineCap = "round";
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = penColor;
+      ctx.lineWidth = penWidth;
+      ctx.lineCap = "round";
     }
-    ctx.lineTo((e.clientX - rect.left) * (canvas.width / rect.width), (e.clientY - rect.top) * (canvas.height / rect.height));
+    ctx.lineTo(x, y);
     ctx.stroke();
   };
 
@@ -491,17 +551,22 @@ export default function StudioHybridPresenter() {
     const deltaY = (e.clientY - dragStartRef.current.y) * (720 / rect.height);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
 
-    if (isDraggingWb) setWbPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - p.w, p.x + deltaX)), y: Math.max(0, Math.min(720 - p.h, p.y + deltaY)) }));
-    if (isDraggingCam) setCamPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - 260, p.x + deltaX)), y: Math.max(0, Math.min(720 - 195, p.y + deltaY)) }));
+    if (isDraggingWb) {
+      setWbPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - p.w, p.x + deltaX)), y: Math.max(0, Math.min(720 - p.h, p.y + deltaY)) }));
+    }
+    if (isDraggingCam) {
+      setCamPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - 260, p.x + deltaX)), y: Math.max(0, Math.min(720 - 195, p.y + deltaY)) }));
+    }
   };
 
   const startRecording = async () => {
     try {
-      chunksRef.current = []; const mainCanvas = mainCanvasRef.current; if (!mainCanvas) return;
+      chunksRef.current = [];
+      const mainCanvas = mainCanvasRef.current;
+      if (!mainCanvas) return;
+
       const canvasStream = mainCanvas.captureStream(30);
-      
-      // Ambil audio dari React Webcam Stream internal
-      const audioTrack = (webcamRef.current?.video?.srcObject as MediaStream)?.getAudioTracks()[0];
+      const audioTrack = (webcamVideoRef.current?.srcObject as MediaStream)?.getAudioTracks()[0];
       if (audioTrack) canvasStream.addTrack(audioTrack);
 
       const mediaRecorder = new MediaRecorder(canvasStream, { mimeType: "video/webm" });
@@ -514,23 +579,27 @@ export default function StudioHybridPresenter() {
         saveToIndexedDB(recordId, blob, ts);
         setRecordingsList((prev) => [{ id: recordId, blob, url: URL.createObjectURL(blob), timestamp: ts, uploadStatus: "idle" }, ...prev]);
       };
-      mediaRecorder.start(); setRecording(true);
+      mediaRecorder.start();
+      setRecording(true);
     } catch (err) { console.error(err); }
   };
 
   return (
     <main onMouseMove={handleMouseMove} onMouseUp={() => { setIsDraggingWb(false); setIsDraggingCam(false); }} className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center select-none overflow-x-hidden font-sans w-full">
+      
       <header className="w-full max-w-7xl flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <h1 className="text-2xl font-extrabold text-blue-400">Studio Presentasi Hybrid Pro</h1>
-          <p className="text-xs text-slate-400 mt-1">Sistem manajemen menggunakan modul `react-webcam` terintegrasi dengan kustomisasi multi-hardware.</p>
+          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan pengaturan margin aman 120px & kustomisasi tema visual.</p>
         </div>
       </header>
 
       <div className="w-full max-w-7xl flex flex-col gap-4">
         <div ref={frameContainerRef} className="relative w-full aspect-video bg-slate-950 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl flex items-center justify-center">
+          
           <canvas ref={mainCanvasRef} width={1280} height={720} className="w-full h-full object-contain pointer-events-none" />
 
+          {/* NAVIGASI CONTROL SLIDE PDF ASLI */}
           {sourceMode === 'pdf' && pdfDoc && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
               <button onClick={() => setCurrentSlide((p) => Math.max(1, p - 1))} disabled={currentSlide === 1} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
@@ -539,6 +608,7 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
+          {/* NAVIGASI CONTROL SLIDE PDF EKSTRAK ANIMASI */}
           {sourceMode === 'pdf-animation' && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
               <button onClick={() => setTextSlideIndex(p => Math.max(0, p - 1))} disabled={textSlideIndex === 0} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
@@ -548,13 +618,16 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
+          {/* TOOLBAR PANEL KONTROL KANAN */}
           <div className="absolute right-0 top-0 bottom-0 z-40 transition-transform duration-300 flex items-center h-full" style={{ transform: isToolbarVisible ? "translateX(0)" : "translateX(calc(100% - 14px))" }}>
             <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className="bg-slate-800 border-2 border-r-0 border-slate-600 w-7 h-20 rounded-l-xl flex items-center justify-center text-xs text-blue-400 font-bold">{isToolbarVisible ? "▶" : "◀"}</button>
 
             <div className="bg-slate-900/95 border-l border-slate-700 backdrop-blur rounded-l-2xl flex flex-col w-64 h-full shadow-2xl text-xs overflow-hidden">
               <div className="p-3 bg-slate-950/60 border-b border-slate-800 text-[11px] font-bold text-slate-300 text-center uppercase tracking-wider">⚙️ Panel Kontrol Studio</div>
+              
               <div className="p-3 flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar">
                 
+                {/* PILIHAN TAB SUMBER MATERI */}
                 <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-800 flex flex-col gap-2">
                   <span className="text-[9px] text-slate-400 font-bold uppercase px-1">Pilih Sumber Materi:</span>
                   <div className="grid grid-cols-3 gap-1">
@@ -582,12 +655,20 @@ export default function StudioHybridPresenter() {
                   </div>
                 </div>
 
+                {/* PANEL PILIHAN TEMA STUDIO + UPLOAD BACKGROUND GAMBAR */}
                 {sourceMode === 'pdf-animation' && (
                   <div className="bg-slate-950 p-2 rounded-xl border border-indigo-500/30 flex flex-col gap-2">
                     <span className="text-[9px] text-indigo-400 font-bold uppercase px-0.5">🎨 Tema Latar Presentasi:</span>
+                    
+                    {/* Grid Pilihan Tema Gradasi Bawaan */}
                     <div className="grid grid-cols-2 gap-1">
                       {STUDIO_THEMES.map((theme) => (
-                        <button key={theme.id} onClick={() => setActiveTheme(theme)} style={{ borderColor: activeTheme.id === theme.id ? theme.accentColor : "transparent" }} className={`p-1.5 rounded border text-[10px] font-semibold text-left transition-all bg-slate-900 hover:bg-slate-800 ${activeTheme.id === theme.id ? 'text-white border-2' : 'text-slate-400'}`}>
+                        <button
+                          key={theme.id}
+                          onClick={() => setActiveTheme(theme)}
+                          style={{ borderColor: activeTheme.id === theme.id ? theme.accentColor : "transparent" }}
+                          className={`p-1.5 rounded border text-[10px] font-semibold text-left transition-all bg-slate-900 hover:bg-slate-800 ${activeTheme.id === theme.id ? 'text-white border-2' : 'text-slate-400'}`}
+                        >
                           <div className="flex items-center gap-1.5">
                             <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: `linear-gradient(135deg, ${theme.bgGradientStart}, ${theme.bgGradientEnd})` }} />
                             <span className="truncate">{theme.name}</span>
@@ -595,34 +676,53 @@ export default function StudioHybridPresenter() {
                         </button>
                       ))}
                     </div>
+
+                    {/* Input Upload Gambar Latar Belakang Kustom */}
                     <div className="border-t border-slate-800 pt-2 flex flex-col gap-1">
                       <span className="text-[9px] text-slate-400 font-semibold">🖼️ Unggah Gambar Latar:</span>
-                      <input type="file" accept="image/*" onChange={handleBgImageUpload} className="text-[9px] text-slate-400 cursor-pointer w-full" />
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleBgImageUpload} 
+                        className="text-[9px] text-slate-400 cursor-pointer w-full" 
+                      />
+                      
+                      {/* Tombol pintas pilih kembali gambar kustom jika sudah pernah di-upload */}
+                      {customBgUrl && (
+                        <button 
+                          onClick={() => {
+                            const img = new Image();
+                            img.src = customBgUrl;
+                            img.onload = () => {
+                              setActiveTheme({
+                                id: "custom-image",
+                                name: "Gambar Kustom",
+                                accentColor: "#3b82f6",
+                                textColor: "#ffffff",
+                                subtitleColor: "#cbd5e1",
+                                bulletColor: "#f1f5f9",
+                                customImage: img
+                              });
+                            };
+                          }}
+                          className={`w-full py-1 rounded text-[9px] text-center font-bold border transition-all ${activeTheme.id === 'custom-image' ? 'bg-indigo-600 text-white border-indigo-400' : 'bg-slate-900 text-slate-400 border-slate-800 hover:bg-slate-800'}`}
+                        >
+                          Gunakan Gambar Kustom Anda
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* DROPDOWN PEMILIHAN PERANGKAT KAMERA */}
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-3 bg-slate-950 p-2 rounded-xl border border-slate-800">
-                  <label className="text-[9px] text-slate-400 font-bold uppercase px-0.5">📹 Sumber Kamera Pengajar:</label>
-                  <select 
-                    value={selectedDeviceId} 
-                    onChange={handleDeviceChange}
-                    className="w-full bg-slate-900 text-slate-300 text-[10px] p-2 rounded border border-slate-700 outline-none cursor-pointer focus:border-blue-500"
-                  >
-                    {videoDevices.map((device) => (
-                      <option key={device.deviceId} value={device.deviceId}>
-                        {device.label || `Kamera ${device.deviceId.substring(0, 5)}`}
-                      </option>
-                    ))}
-                    {videoDevices.length === 0 && <option value="">Mencari perangkat...</option>}
-                  </select>
-                  
-                  <button onClick={() => setIsCamOn(!isCamOn)} className={`w-full mt-1 py-1.5 rounded text-[10px] font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}>
-                    {isCamOn ? "Kamera Aktif (LIVE)" : "Nyalakan Kamera"}
+                {/* MEDIA KAMERA */}
+                <div className="flex flex-col gap-1 border-b border-slate-800 pb-3">
+                  <label className="text-[9px] text-slate-400 font-bold uppercase mb-1">Kamera Pengajar:</label>
+                  <button onClick={toggleCamera} className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}>
+                    {isCamOn ? "📹 Kamera Utama: LIVE" : "🚫 Kamera Utama: OFF"}
                   </button>
                 </div>
 
+                {/* PAPAN TULIS INTERAKTIF */}
                 <button onClick={() => setShowWhiteboard(!showWhiteboard)} className={`py-2 px-2 rounded-lg font-semibold border text-[11px] flex items-center justify-center gap-1.5 ${showWhiteboard ? "bg-amber-600 border-amber-400 text-white" : "bg-slate-800 border-slate-700 text-slate-300"}`}>
                   {showWhiteboard ? "Papan Tulis: AKTIF" : "✏️ Buka Papan Tulis"}
                 </button>
@@ -637,27 +737,40 @@ export default function StudioHybridPresenter() {
                   </div>
                 )}
 
+                {/* LIST VIDEO REKAMAN */}
                 <div className="flex flex-col gap-2 flex-1">
                   <div className="text-[10px] text-green-400 font-bold uppercase border-b border-slate-800 pb-1">🎬 Hasil Rekaman Lokal</div>
                   {recordingsList.map((video) => (
                     <div key={video.id} className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex flex-col gap-1.5">
                       <div className="flex justify-between items-center">
                         <span className="text-[9px] text-slate-400 font-mono">Jam: {video.timestamp}</span>
-                        <button onClick={() => deleteRecording(video.id)} className="text-[10px] text-red-400 hover:text-red-500 font-bold px-1 rounded">🗑️ Hapus</button>
+                        <button onClick={() => deleteRecording(video.id)} className="text-[10px] text-red-400 hover:text-red-500 font-bold px-1 rounded">
+                          🗑️ Hapus
+                        </button>
                       </div>
+                      
                       <video src={video.url} controls className="w-full aspect-video rounded bg-black" />
+                      
                       <div className="grid grid-cols-2 gap-1.5 mt-0.5">
-                        <button onClick={() => uploadVideoToBackend(video)} className="py-1 bg-blue-600 hover:bg-blue-500 rounded font-bold text-[9px] text-white">☁️ Server</button>
-                        <button onClick={() => shareRecording(video)} className="py-1 bg-emerald-600 hover:bg-emerald-500 rounded font-bold text-[9px] text-white flex items-center justify-center gap-1">🔗 Bagikan</button>
+                        <button onClick={() => uploadVideoToBackend(video)} className="py-1 bg-blue-600 hover:bg-blue-500 rounded font-bold text-[9px] text-white">
+                          ☁️ Server
+                        </button>
+                        <button onClick={() => shareRecording(video)} className="py-1 bg-emerald-600 hover:bg-emerald-500 rounded font-bold text-[9px] text-white flex items-center justify-center gap-1">
+                          🔗 Bagikan
+                        </button>
                       </div>
                     </div>
                   ))}
+                  {recordingsList.length === 0 && (
+                    <span className="text-[10px] text-slate-600 text-center italic mt-2 block">Belum ada hasil rekaman.</span>
+                  )}
                 </div>
 
               </div>
             </div>
           </div>
 
+          {/* OVERLAY WHITEBOARD MELAYANG */}
           {showWhiteboard && (
             <div style={{ left: `${(wbPos.x / 1280) * 100}%`, top: `${(wbPos.y / 720) * 100}%`, width: `${(wbPos.w / 1280) * 100}%`, height: `${(wbPos.h / 720) * 100}%` }} className="absolute z-10 border-2 border-amber-500 bg-slate-900/90 rounded-xl overflow-hidden flex flex-col shadow-2xl">
               <div onMouseDown={(e) => handleMouseDown("wb", e)} className="bg-amber-600/30 border-b border-amber-500/40 px-3 py-1 cursor-move text-[11px] text-amber-300 font-semibold">✋ Geser Papan Tulis</div>
@@ -665,29 +778,27 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
-          {/* ELEMENT INTEGRASI REACT-WEBCAM (HIDDEN DI LUAR AREA PANDANG NAMUN DIDRAW DI CANVAS UTAMA) */}
+          {/* OVERLAY BOX KAMERA MELAYANG */}
           <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: "20.3%", height: "27.1%" }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-lg overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
             {isCamOn ? (
               <div className="w-full h-full relative">
-                <Webcam
-                  ref={webcamRef}
-                  audio={true}
-                  muted={true}
-                  screenshotFormat="image/jpeg"
-                  videoConstraints={videoConstraints}
-                  className="w-full h-full object-cover pointer-events-none"
-                />
+                <video ref={webcamVideoRef} className="w-full h-full object-cover pointer-events-none" autoPlay playsInline muted />
+                <span className="absolute bottom-1 left-1 bg-slate-900/80 px-1.5 py-0.5 text-[8px] text-sky-400 font-bold rounded">🎙️ PREVIEW</span>
               </div>
             ) : (
-              <div className="text-center p-2 text-slate-500 text-[10px]">📷 Kamera Off</div>
+              <div className="text-center p-2 text-slate-500 text-[10px] flex flex-col items-center gap-1">
+                <span>📷</span>
+                <span>Kamera Off</span>
+              </div>
             )}
           </div>
 
+          {/* TOMBOL UTAMA REKAMAN */}
           <div className="absolute top-4 left-4 z-30">
             {!recording ? (
-              <button onClick={startRecording} className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl text-xs shadow-md">🔴 Mulai Rekam Kelas</button>
+              <button onClick={startRecording} className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition hover:bg-red-500 shadow-md">🔴 Mulai Rekam Kelas</button>
             ) : (
-              <button onClick={() => { mediaRecorderRef.current?.stop(); setRecording(false); }} className="px-4 py-2 bg-slate-900 text-red-400 border border-red-500 font-bold rounded-xl text-xs">⏹ Selesai</button>
+              <button onClick={() => { mediaRecorderRef.current?.stop(); setRecording(false); }} className="px-4 py-2 bg-slate-900 text-red-400 border border-red-500 font-bold rounded-xl text-xs transition hover:bg-slate-800">⏹ Selesai</button>
             )}
           </div>
 
