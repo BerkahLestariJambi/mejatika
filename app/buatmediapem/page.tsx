@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Webcam from "react-webcam"; // Menggunakan react-webcam seperti contoh kode absensi
 
 interface RecordingHistory {
   id: string;
@@ -48,12 +49,12 @@ export default function StudioHybridPresenter() {
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
 
   // ==========================================
-  // STATE KAMERA BARU & FITUR DETEKSI DROIDCAM
+  // STATE KAMERA & SELEKTOR DROIDCAM (MENGGUNAKAN WEBCAM REF)
   // ==========================================
-  const [isCamOn, setIsCamOn] = useState<boolean>(false);
+  const [isCamOn, setIsCamOn] = useState<boolean>(true);
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>("");
-  const streamRef = useRef<MediaStream | null>(null);
+  const webcamRef = useRef<Webcam>(null);
 
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [currentSlide, setCurrentSlide] = useState<number>(1);
@@ -92,7 +93,6 @@ export default function StudioHybridPresenter() {
 
   const mainCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const whiteboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
   const frameContainerRef = useRef<HTMLDivElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -108,6 +108,7 @@ export default function StudioHybridPresenter() {
     if (sourceMode === 'pdf-animation') { triggerTextAnimation(); }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
+  // --- INITIAL LOAD & DETEKSI DEVICE KAMERA ---
   useEffect(() => {
     if (typeof window !== "undefined") {
       import("pdfjs-dist").then((pdfjs) => {
@@ -121,6 +122,20 @@ export default function StudioHybridPresenter() {
       screenVideoRef.current.muted = true;
       
       pdfCanvasRef.current = document.createElement("canvas");
+
+      // Mengambil daftar hardware kamera yang tersedia
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        const videoInputs = devices.filter((device) => device.kind === "videoinput");
+        setVideoDevices(videoInputs);
+        
+        // Otomatis lock ke DroidCam jika ditemukan di sistem
+        const droidCam = videoInputs.find((d) => d.label.toLowerCase().includes("droidcam"));
+        if (droidCam) {
+          setSelectedDeviceId(droidCam.deviceId);
+        } else if (videoInputs.length > 0) {
+          setSelectedDeviceId(videoInputs[0].deviceId);
+        }
+      });
 
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       request.onupgradeneeded = (event: any) => {
@@ -143,77 +158,16 @@ export default function StudioHybridPresenter() {
     }
   }, []);
 
-  // ==========================================
-  // LOGIKA BARU: MENANGANI STREAM MULTI-KAMERA & DROIDCAM
-  // ==========================================
-  const startCameraStream = async (deviceId?: string) => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-    }
-
-    try {
-      const constraints: MediaStreamConstraints = {
-        video: deviceId ? { deviceId: { exact: deviceId }, width: 1280, height: 720 } : { width: 1280, height: 720 },
-        audio: true
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      setIsCamOn(true);
-
-      if (webcamVideoRef.current) {
-        webcamVideoRef.current.srcObject = stream;
-        webcamVideoRef.current.play().catch(() => {});
-      }
-
-      // Ambil daftar ulang hardware setelah browser diberi izin akses kamera oleh user
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const videoInputs = devices.filter((device) => device.kind === "videoinput");
-      setVideoDevices(videoInputs);
-
-      // Otomatis pilih kamera yang memiliki nama "droidcam"
-      if (!deviceId && videoInputs.length > 0) {
-        const droidCam = videoInputs.find((d) => d.label.toLowerCase().includes("droidcam"));
-        if (droidCam) {
-          setSelectedDeviceId(droidCam.deviceId);
-          if (droidCam.deviceId !== videoInputs[0].deviceId) {
-            startCameraStream(droidCam.deviceId);
-          }
-        } else {
-          setSelectedDeviceId(videoInputs[0].deviceId);
-        }
-      }
-    } catch (err) {
-      console.error("Gagal mendapatkan akses kamera:", err);
-      setIsCamOn(false);
-    }
+  // Konfigurasi Video constraints dinamis berdasarkan Dropdown
+  const videoConstraints = {
+    deviceId: selectedDeviceId ? { exact: selectedDeviceId } : undefined,
+    width: 1280,
+    height: 720,
   };
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && navigator.mediaDevices?.getUserMedia) {
-      startCameraStream();
-    }
-    return () => {
-      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
 
   const handleDeviceChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newDeviceId = e.target.value;
-    setSelectedDeviceId(newDeviceId);
-    startCameraStream(newDeviceId);
-  };
-
-  const toggleCamera = () => {
-    if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsCamOn(videoTrack.enabled);
-      }
-    } else if (!isCamOn) {
-      startCameraStream(selectedDeviceId);
-    }
+    setSelectedDeviceId(e.target.value);
+    setIsCamOn(true);
   };
 
   useEffect(() => {
@@ -301,6 +255,7 @@ export default function StudioHybridPresenter() {
     };
   };
 
+  // --- RENDERING LOOP KE CANVAS UTAMA ---
   useEffect(() => {
     const mainCanvas = mainCanvasRef.current;
     if (!mainCanvas) return;
@@ -390,8 +345,9 @@ export default function StudioHybridPresenter() {
         ctx.drawImage(whiteboardCanvasRef.current, wbPosRef.current.x, wbPosRef.current.y, wbPosRef.current.w, wbPosRef.current.h);
       }
 
-      if (webcamVideoRef.current && isCamOn) {
-        ctx.drawImage(webcamVideoRef.current, camPosRef.current.x, camPosRef.current.y, 260, 195);
+      // INTEGRASI MENGGUNAKAN WEBCAM REF VIDEO ELEMENT UNTUK CANVAS DRAWING
+      if (webcamRef.current?.video && isCamOn && webcamRef.current.video.readyState === 4) {
+        ctx.drawImage(webcamRef.current.video, camPosRef.current.x, camPosRef.current.y, 260, 195);
       }
 
       loopId = requestAnimationFrame(renderStudioFrame);
@@ -543,7 +499,9 @@ export default function StudioHybridPresenter() {
     try {
       chunksRef.current = []; const mainCanvas = mainCanvasRef.current; if (!mainCanvas) return;
       const canvasStream = mainCanvas.captureStream(30);
-      const audioTrack = (webcamVideoRef.current?.srcObject as MediaStream)?.getAudioTracks()[0];
+      
+      // Ambil audio dari React Webcam Stream internal
+      const audioTrack = (webcamRef.current?.video?.srcObject as MediaStream)?.getAudioTracks()[0];
       if (audioTrack) canvasStream.addTrack(audioTrack);
 
       const mediaRecorder = new MediaRecorder(canvasStream, { mimeType: "video/webm" });
@@ -565,7 +523,7 @@ export default function StudioHybridPresenter() {
       <header className="w-full max-w-7xl flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <h1 className="text-2xl font-extrabold text-blue-400">Studio Presentasi Hybrid Pro</h1>
-          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan pengaturan margin aman 120px & kustomisasi tema visual[cite: 3].</p>
+          <p className="text-xs text-slate-400 mt-1">Sistem manajemen menggunakan modul `react-webcam` terintegrasi dengan kustomisasi multi-hardware.</p>
         </div>
       </header>
 
@@ -644,9 +602,7 @@ export default function StudioHybridPresenter() {
                   </div>
                 )}
 
-                {/* ==========================================
-                    UI PENGATURAN DAN SELECTOR KAMERA (DROIDCAM)
-                   ========================================== */}
+                {/* DROPDOWN PEMILIHAN PERANGKAT KAMERA */}
                 <div className="flex flex-col gap-2 border-b border-slate-800 pb-3 bg-slate-950 p-2 rounded-xl border border-slate-800">
                   <label className="text-[9px] text-slate-400 font-bold uppercase px-0.5">📹 Sumber Kamera Pengajar:</label>
                   <select 
@@ -662,7 +618,7 @@ export default function StudioHybridPresenter() {
                     {videoDevices.length === 0 && <option value="">Mencari perangkat...</option>}
                   </select>
                   
-                  <button onClick={toggleCamera} className={`w-full mt-1 py-1.5 rounded text-[10px] font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}>
+                  <button onClick={() => setIsCamOn(!isCamOn)} className={`w-full mt-1 py-1.5 rounded text-[10px] font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}>
                     {isCamOn ? "Kamera Aktif (LIVE)" : "Nyalakan Kamera"}
                   </button>
                 </div>
@@ -709,10 +665,18 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
+          {/* ELEMENT INTEGRASI REACT-WEBCAM (HIDDEN DI LUAR AREA PANDANG NAMUN DIDRAW DI CANVAS UTAMA) */}
           <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: "20.3%", height: "27.1%" }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-lg overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
             {isCamOn ? (
               <div className="w-full h-full relative">
-                <video ref={webcamVideoRef} className="w-full h-full object-cover pointer-events-none" autoPlay playsInline muted />
+                <Webcam
+                  ref={webcamRef}
+                  audio={true}
+                  muted={true}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={videoConstraints}
+                  className="w-full h-full object-cover pointer-events-none"
+                />
               </div>
             ) : (
               <div className="text-center p-2 text-slate-500 text-[10px]">📷 Kamera Off</div>
