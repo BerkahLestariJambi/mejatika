@@ -125,9 +125,10 @@ export default function StudioHybridPresenter() {
   // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB
   useEffect(() => {
     if (typeof window !== "undefined") {
-      import("pdfjs-dist").then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-      }).catch(err => console.error("Gagal memuat PDF worker:", err));
+     import("pdfjs-dist").then((pdfjs) => {
+  // Tambahkan https: secara eksplisit agar tidak terkena blocked mixed-content
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+}).catch(err => console.error("Gagal memuat PDF worker:", err));
 
       slideCanvasCache.current = document.createElement("canvas");
       screenVideoRef.current = document.createElement("video");
