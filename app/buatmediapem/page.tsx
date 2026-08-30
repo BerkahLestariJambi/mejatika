@@ -123,17 +123,20 @@ export default function StudioHybridPresenter() {
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
 useEffect(() => {
+  // 1. Logika inisialisasi react-pdf hanya di Client-Side
   if (typeof window !== "undefined") {
-    import("pdfjs-dist")
-      .then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc =
-          "/pdf.worker.min.mjs";
-      })
-      .catch((err) =>
-        console.error("Gagal memuat PDF worker:", err)
-      );
+    import("react-pdf").then(({ pdfjs }) => {
+      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+      console.log("PDF Worker dari react-pdf berhasil dikonfigurasi!");
+    }).catch((err) => {
+      console.error("Gagal memuat react-pdf secara dinamis:", err);
+    });
+
+    // 2. Logika pembuatan Canvas Cache (jika masih dipakai dari kode lamamu)[cite: 3]
+    slideCanvasCache.current = document.createElement("canvas");
+    pdfCanvasRef.current = document.createElement("canvas");
   }
-}, []);
+}, []); // <-- Ini adalah baris 165 yang eror di log kamu!
 
       slideCanvasCache.current = document.createElement("canvas");
       screenVideoRef.current = document.createElement("video");
