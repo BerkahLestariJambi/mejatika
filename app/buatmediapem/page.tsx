@@ -16,7 +16,7 @@ interface ExtractedSlideData {
   bullets: string[];
 }
 
-// Fitur Tema Latar Belakang Presentasi untuk Mode Animasi Teks
+// Fitur Tema Latar Belakang Presentasi untuk Mode Animasi Teks[cite: 3]
 interface StudioTheme {
   id: string;
   name: string;
@@ -45,18 +45,18 @@ export default function StudioHybridPresenter() {
   const [recording, setRecording] = useState(false);
   const [recordingsList, setRecordingsList] = useState<RecordingHistory[]>([]);
 
-  // Pilihan Mode Sumber Materi: 'pdf', 'screen', atau 'pdf-animation'
+  // Pilihan Mode Sumber Materi: 'pdf', 'screen', atau 'pdf-animation'[cite: 3]
   const [sourceMode, setSourceMode] = useState<'pdf' | 'screen' | 'pdf-animation'>('pdf');
   
-  // State Tema Studio Aktif
+  // State Tema Studio Aktif[cite: 3]
   const [activeTheme, setActiveTheme] = useState<StudioTheme>(STUDIO_THEMES[0]);
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
 
-  // State Kamera Utama
+  // State Kamera Utama[cite: 3]
   const [isCamOn, setIsCamOn] = useState<boolean>(false);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // State MODE PDF Asli & Animasi Cache
+  // State MODE PDF Asli & Animasi Cache[cite: 3]
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [currentSlide, setCurrentSlide] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -64,7 +64,7 @@ export default function StudioHybridPresenter() {
   const slideCanvasCache = useRef<HTMLCanvasElement | null>(null);
   const slideAnimId = useRef<number | null>(null);
 
-  // State MODE PDF ANIMASI (Ekstrak Teks Otomatis)
+  // State MODE PDF ANIMASI (Ekstrak Teks Otomatis)[cite: 3]
   const [animatedSlides, setAnimatedSlides] = useState<ExtractedSlideData[]>([
     {
       title: "Silakan Unggah PDF Anda",
@@ -75,22 +75,22 @@ export default function StudioHybridPresenter() {
   const [textSlideIndex, setTextSlideIndex] = useState<number>(0);
   const textAnimProgress = useRef<number>(0);
 
-  // State MODE SHARE SCREEN
+  // State MODE SHARE SCREEN[cite: 3]
   const [isSharing, setIsSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // State Papan Tulis Digital
+  // State Papan Tulis Digital[cite: 3]
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [penColor] = useState("#ef4444");
   const [penWidth] = useState(4);
   const [isEraser, setIsEraser] = useState(false);
 
-  // State Toolbar
+  // State Toolbar[cite: 3]
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
 
-  // Posisi Elemen Melayang
+  // Posisi Elemen Melayang[cite: 3]
   const [wbPos, setWbPos] = useState({ x: 50, y: 120, w: 560, h: 360 });
   const [isDraggingWb, setIsDraggingWb] = useState(false);
   const [camPos, setCamPos] = useState({ x: 980, y: 500 });
@@ -98,7 +98,7 @@ export default function StudioHybridPresenter() {
 
   const dragStartRef = useRef({ x: 0, y: 0 });
 
-  // Refs Canvas Rekaman & Media
+  // Refs Canvas Rekaman & Media[cite: 3]
   const mainCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const whiteboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -111,7 +111,7 @@ export default function StudioHybridPresenter() {
   useEffect(() => { wbPosRef.current = wbPos; }, [wbPos]);
   useEffect(() => { camPosRef.current = camPos; }, [camPos]);
 
-  // Trigger Animasi Setiap Kali Slide Teks Berpindah
+  // Trigger Animasi Setiap Kali Slide Teks Berpindah[cite: 3]
   const triggerTextAnimation = () => {
     textAnimProgress.current = 0;
   };
@@ -122,13 +122,12 @@ export default function StudioHybridPresenter() {
     }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
-  // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB
+  // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB[cite: 3]
   useEffect(() => {
     if (typeof window !== "undefined") {
-     import("pdfjs-dist").then((pdfjs) => {
-  // Tambahkan https: secara eksplisit agar tidak terkena blocked mixed-content
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-}).catch(err => console.error("Gagal memuat PDF worker:", err));
+      import("pdfjs-dist").then((pdfjs) => {
+        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+      }).catch(err => console.error("Gagal memuat PDF worker:", err));
 
       slideCanvasCache.current = document.createElement("canvas");
       screenVideoRef.current = document.createElement("video");
@@ -160,7 +159,7 @@ export default function StudioHybridPresenter() {
   }, []);
 
   // ==========================================
-  // WEBCAM STREAM LOGIC
+  // WEBCAM STREAM LOGIC[cite: 3]
   // ==========================================
   useEffect(() => {
     if (typeof window !== "undefined" && navigator.mediaDevices?.getUserMedia) {
@@ -194,7 +193,7 @@ export default function StudioHybridPresenter() {
   };
 
   // ==========================================
-  // LOGIC RENDER FILE PDF ASLI (DENGAN ANIMASI FADE)
+  // LOGIC RENDER FILE PDF ASLI (DENGAN ANIMASI FADE)[cite: 3]
   // ==========================================
   useEffect(() => {
     if (!pdfDoc || sourceMode !== 'pdf') return;
@@ -240,7 +239,7 @@ export default function StudioHybridPresenter() {
   }, [pdfDoc, currentSlide, sourceMode]);
 
   // ==========================================
-  // LOGIC SHARE SCREEN (UNTUK POWERPOINT)
+  // LOGIC SHARE SCREEN (UNTUK POWERPOINT)[cite: 3]
   // ==========================================
   const startShareScreen = async () => {
     try {
@@ -281,7 +280,7 @@ export default function StudioHybridPresenter() {
       setActiveTheme({
         id: "custom-image",
         name: "Gambar Kustom",
-        accentColor: "#3b82f6", 
+        accentColor: "#3b82f6", // Warna default untuk tema kustom
         textColor: "#ffffff",
         subtitleColor: "#cbd5e1",
         bulletColor: "#f1f5f9",
@@ -291,7 +290,7 @@ export default function StudioHybridPresenter() {
   };
 
   // ==========================================
-  // LOOP UTAMA UNTUK MERENDER CANVAS STUDIO (1280x720)
+  // LOOP UTAMA UNTUK MERENDER CANVAS STUDIO (1280x720)[cite: 3]
   // ==========================================
   useEffect(() => {
     const mainCanvas = mainCanvasRef.current;
@@ -310,11 +309,15 @@ export default function StudioHybridPresenter() {
       } else if (sourceMode === 'screen' && isSharing && screenVideoRef.current) {
         ctx.drawImage(screenVideoRef.current, 0, 0, 1280, 720);
       } else if (sourceMode === 'pdf-animation') {
+        // PERBAIKAN: Deteksi render menggunakan Gambar Kustom atau Warna Gradient biasa
         if (activeTheme.id === "custom-image" && activeTheme.customImage) {
           ctx.drawImage(activeTheme.customImage, 0, 0, 1280, 720);
+          
+          // Tambahkan layer gelap tipis transparan (overlay) agar teks tetap mudah dibaca
           ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
           ctx.fillRect(0, 0, 1280, 720);
         } else if (activeTheme.bgGradientStart && activeTheme.bgGradientEnd) {
+          // Render Background Gradasi Bawaan[cite: 3]
           const gradient = ctx.createLinearGradient(0, 0, 1280, 720);
           gradient.addColorStop(0, activeTheme.bgGradientStart);
           gradient.addColorStop(1, activeTheme.bgGradientEnd);
@@ -325,6 +328,7 @@ export default function StudioHybridPresenter() {
           ctx.beginPath(); ctx.arc(100, 100, 250, 0, Math.PI * 2); ctx.fill();
         }
 
+        // RENDER CORE ANIMASI TEKS YANG DIEKSTRAK[cite: 3]
         if (textAnimProgress.current < 1) {
           textAnimProgress.current += 0.02;
         }
@@ -332,12 +336,15 @@ export default function StudioHybridPresenter() {
         const currentData = animatedSlides[textSlideIndex];
 
         if (currentData) {
+          // Safe Zone Padding (Batas Aman) Kiri & Kanan 120px[cite: 3]
           const safePaddingX = 120; 
-          const maxTextWidth = 1040; 
+          const maxTextWidth = 1040; // 1280 - (120 * 2) agar teks otomatis wrap / tidak kepotong[cite: 3]
 
+          // 1. Animasi Judul Slide Teks
           ctx.save();
           ctx.globalAlpha = Math.min(1, progress * 1.5);
           
+          // Garis aksen bawah judul[cite: 3]
           ctx.fillStyle = activeTheme.accentColor;
           ctx.fillRect(safePaddingX, 155, 120 * Math.min(1, progress * 2), 6);
           
@@ -348,6 +355,7 @@ export default function StudioHybridPresenter() {
           ctx.fillText(currentData.title, safePaddingX, titleY, maxTextWidth);
           ctx.restore();
 
+          // 2. Animasi Subtitle
           if (progress > 0.2) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, (progress - 0.2) * 2);
@@ -357,6 +365,7 @@ export default function StudioHybridPresenter() {
             ctx.restore();
           }
 
+          // 3. Animasi Poin Bullets Teks dari PDF[cite: 3]
           currentData.bullets.forEach((bullet, index) => {
             const triggerDelay = 0.3 + index * 0.12;
             if (progress > triggerDelay) {
@@ -365,7 +374,10 @@ export default function StudioHybridPresenter() {
               ctx.font = "24px sans-serif";
               ctx.fillStyle = activeTheme.bulletColor;
               
+              // Jarak teks bullet masuk lebih dalam (+30px dari safe zone)[cite: 3]
               const bulletX = (safePaddingX + 30) + (1 - Math.min(1, (progress - triggerDelay) * 3)) * 15;
+              
+              // Batasi teks panjang secara aman agar tidak mepet kanan frame[cite: 3]
               const maxChar = 75;
               const displayText = bullet.length > maxChar ? bullet.substring(0, maxChar) + "..." : bullet;
               ctx.fillText(displayText, bulletX, 280 + index * 55, maxTextWidth - 30);
@@ -591,7 +603,7 @@ export default function StudioHybridPresenter() {
       <header className="w-full max-w-7xl flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <h1 className="text-2xl font-extrabold text-blue-400">Studio Presentasi Hybrid Pro</h1>
-          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan pengaturan margin aman 120px & kustomisasi tema visual.</p>
+          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan pengaturan margin aman 120px & kustomisasi tema visual[cite: 3].</p>
         </div>
       </header>
 
@@ -600,7 +612,7 @@ export default function StudioHybridPresenter() {
           
           <canvas ref={mainCanvasRef} width={1280} height={720} className="w-full h-full object-contain pointer-events-none" />
 
-          {/* NAVIGASI CONTROL SLIDE PDF ASLI */}
+          {/* NAVIGASI CONTROL SLIDE PDF ASLI[cite: 3] */}
           {sourceMode === 'pdf' && pdfDoc && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
               <button onClick={() => setCurrentSlide((p) => Math.max(1, p - 1))} disabled={currentSlide === 1} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
@@ -609,7 +621,7 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
-          {/* NAVIGASI CONTROL SLIDE PDF EKSTRAK ANIMASI */}
+          {/* NAVIGASI CONTROL SLIDE PDF EKSTRAK ANIMASI[cite: 3] */}
           {sourceMode === 'pdf-animation' && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
               <button onClick={() => setTextSlideIndex(p => Math.max(0, p - 1))} disabled={textSlideIndex === 0} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
@@ -619,7 +631,7 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
-          {/* TOOLBAR PANEL KONTROL KANAN */}
+          {/* TOOLBAR PANEL KONTROL KANAN[cite: 3] */}
           <div className="absolute right-0 top-0 bottom-0 z-40 transition-transform duration-300 flex items-center h-full" style={{ transform: isToolbarVisible ? "translateX(0)" : "translateX(calc(100% - 14px))" }}>
             <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className="bg-slate-800 border-2 border-r-0 border-slate-600 w-7 h-20 rounded-l-xl flex items-center justify-center text-xs text-blue-400 font-bold">{isToolbarVisible ? "▶" : "◀"}</button>
 
@@ -628,7 +640,7 @@ export default function StudioHybridPresenter() {
               
               <div className="p-3 flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar">
                 
-                {/* PILIHAN TAB SUMBER MATERI */}
+                {/* PILIHAN TAB SUMBER MATERI[cite: 3] */}
                 <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-800 flex flex-col gap-2">
                   <span className="text-[9px] text-slate-400 font-bold uppercase px-1">Pilih Sumber Materi:</span>
                   <div className="grid grid-cols-3 gap-1">
@@ -715,7 +727,7 @@ export default function StudioHybridPresenter() {
                   </div>
                 )}
 
-                {/* MEDIA KAMERA */}
+                {/* MEDIA KAMERA[cite: 3] */}
                 <div className="flex flex-col gap-1 border-b border-slate-800 pb-3">
                   <label className="text-[9px] text-slate-400 font-bold uppercase mb-1">Kamera Pengajar:</label>
                   <button onClick={toggleCamera} className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}>
@@ -723,7 +735,7 @@ export default function StudioHybridPresenter() {
                   </button>
                 </div>
 
-                {/* PAPAN TULIS INTERAKTIF */}
+                {/* PAPAN TULIS INTERAKTIF[cite: 3] */}
                 <button onClick={() => setShowWhiteboard(!showWhiteboard)} className={`py-2 px-2 rounded-lg font-semibold border text-[11px] flex items-center justify-center gap-1.5 ${showWhiteboard ? "bg-amber-600 border-amber-400 text-white" : "bg-slate-800 border-slate-700 text-slate-300"}`}>
                   {showWhiteboard ? "Papan Tulis: AKTIF" : "✏️ Buka Papan Tulis"}
                 </button>
@@ -738,7 +750,7 @@ export default function StudioHybridPresenter() {
                   </div>
                 )}
 
-                {/* LIST VIDEO REKAMAN */}
+                {/* LIST VIDEO REKAMAN[cite: 3] */}
                 <div className="flex flex-col gap-2 flex-1">
                   <div className="text-[10px] text-green-400 font-bold uppercase border-b border-slate-800 pb-1">🎬 Hasil Rekaman Lokal</div>
                   {recordingsList.map((video) => (
@@ -771,7 +783,7 @@ export default function StudioHybridPresenter() {
             </div>
           </div>
 
-          {/* OVERLAY WHITEBOARD MELAYANG */}
+          {/* OVERLAY WHITEBOARD MELAYANG[cite: 3] */}
           {showWhiteboard && (
             <div style={{ left: `${(wbPos.x / 1280) * 100}%`, top: `${(wbPos.y / 720) * 100}%`, width: `${(wbPos.w / 1280) * 100}%`, height: `${(wbPos.h / 720) * 100}%` }} className="absolute z-10 border-2 border-amber-500 bg-slate-900/90 rounded-xl overflow-hidden flex flex-col shadow-2xl">
               <div onMouseDown={(e) => handleMouseDown("wb", e)} className="bg-amber-600/30 border-b border-amber-500/40 px-3 py-1 cursor-move text-[11px] text-amber-300 font-semibold">✋ Geser Papan Tulis</div>
@@ -779,7 +791,7 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
-          {/* OVERLAY BOX KAMERA MELAYANG */}
+          {/* OVERLAY BOX KAMERA MELAYANG[cite: 3] */}
           <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: "20.3%", height: "27.1%" }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-lg overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
             {isCamOn ? (
               <div className="w-full h-full relative">
@@ -794,7 +806,7 @@ export default function StudioHybridPresenter() {
             )}
           </div>
 
-          {/* TOMBOL UTAMA REKAMAN */}
+          {/* TOMBOL UTAMA REKAMAN[cite: 3] */}
           <div className="absolute top-4 left-4 z-30">
             {!recording ? (
               <button onClick={startRecording} className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition hover:bg-red-500 shadow-md">🔴 Mulai Rekam Kelas</button>
