@@ -122,46 +122,40 @@ export default function StudioHybridPresenter() {
     }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
-useEffect(() => {
-  // 1. Logika inisialisasi react-pdf hanya di Client-Side
-  if (typeof window !== "undefined") {
-    import("react-pdf").then(({ pdfjs }) => {
-      pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-      console.log("PDF Worker dari react-pdf berhasil dikonfigurasi!");
-    }).catch((err) => {
-      console.error("Gagal memuat react-pdf secara dinamis:", err);
-    });
+// Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      import("react-pdf")
+        .then(({ pdfjs }) => {
+          pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+          console.log("PDF Worker berhasil diset!");
+        })
+        .catch((err) => console.error("Gagal memuat PDF worker:", err));
 
-    // 2. Logika pembuatan Canvas Cache (jika masih dipakai dari kode lamamu)[cite: 3]
-    slideCanvasCache.current = document.createElement("canvas");
-    pdfCanvasRef.current = document.createElement("canvas");
-  }
-}, []); // <-- Ini adalah baris 165 yang eror di log kamu!
-
-      slideCanvasCache.current = document.createElement("canvas");
-      screenVideoRef.current = document.createElement("video");
-      screenVideoRef.current.autoplay = true;
-      screenVideoRef.current.playsInline = true;
-      screenVideoRef.current.muted = true;
+      slideCanvasCache.current = document.createElement("canvas");[cite: 2]
+      screenVideoRef.current = document.createElement("video");[cite: 2]
+      screenVideoRef.current.autoplay = true;[cite: 2]
+      screenVideoRef.current.playsInline = true;[cite: 2]
+      screenVideoRef.current.muted = true;[cite: 2]
       
-      pdfCanvasRef.current = document.createElement("canvas");
+      pdfCanvasRef.current = document.createElement("canvas");[cite: 2]
 
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = (event: any) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      const request = indexedDB.open(DB_NAME, DB_VERSION);[cite: 2]
+      request.onupgradeneeded = (event: any) => {[cite: 2]
+        const db = event.target.result;[cite: 2]
+        if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });[cite: 2]
       };
-      request.onsuccess = (event: any) => {
-        const db = event.target.result;
-        const transaction = db.transaction(STORE_NAME, "readonly");
-        const store = transaction.objectStore(STORE_NAME);
-        const getAllRequest = store.getAll();
-        getAllRequest.onsuccess = () => {
-          const items = getAllRequest.result || [];
-          const formattedItems = items.map((item: any) => ({
-            id: item.id, blob: item.blob, url: URL.createObjectURL(item.blob), timestamp: item.timestamp, uploadStatus: "idle" as const,
+      request.onsuccess = (event: any) => {[cite: 2]
+        const db = event.target.result;[cite: 2]
+        const transaction = db.transaction(STORE_NAME, "readonly");[cite: 2]
+        const store = transaction.objectStore(STORE_NAME);[cite: 2]
+        const getAllRequest = store.getAll();[cite: 2]
+        getAllRequest.onsuccess = () => {[cite: 2]
+          const items = getAllRequest.result || [];[cite: 2]
+          const formattedItems = items.map((item: any) => ({[cite: 2]
+            id: item.id, blob: item.blob, url: URL.createObjectURL(item.blob), timestamp: item.timestamp, uploadStatus: "idle" as const,[cite: 2]
           }));
-          setRecordingsList(formattedItems.sort((a: any, b: any) => b.id.localeCompare(a.id)));
+          setRecordingsList(formattedItems.sort((a: any, b: any) => b.id.localeCompare(a.id)));[cite: 2]
         };
       };
     }
