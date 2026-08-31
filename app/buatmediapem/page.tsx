@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-
+import * as pdfjsLib from "pdfjs-dist";
 interface RecordingHistory {
   id: string;
   blob: Blob;
@@ -9,7 +9,16 @@ interface RecordingHistory {
   timestamp: string;
   uploadStatus?: "idle" | "uploading" | "success" | "error"
 }
-
+// konfigurasi worker PDFJS
+15
+if (typeof window !== "undefined") {
+16
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+17
+"/pdf.worker.min.mjs";
+18
+}
+19
 interface ExtractedSlideData {
   title: string;
   subtitle: string;
@@ -123,11 +132,13 @@ export default function StudioHybridPresenter() {
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
   // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB[cite: 3]
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      import("pdfjs-dist").then((pdfjs) => {
-        pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
-      }).catch(err => console.error("Gagal memuat PDF worker:", err));
+ useEffect(() => {
+  if (typeof window !== "undefined") {
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "/pdf.worker.min.mjs";
+
+ //   slideCanvasCache.current = document.createElement("canvas");
 
       slideCanvasCache.current = document.createElement("canvas");
       screenVideoRef.current = document.createElement("video");
