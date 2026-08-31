@@ -46,11 +46,12 @@ const DB_NAME = "StudioPresenterDB";
 const STORE_NAME = "recordings";
 const DB_VERSION = 1;
 const BACKEND_URL = "https://backend.mejatika.com/api/upload";
-
+const [isCamOn, setIsCamOn] = useState<boolean>(false);
 export default function StudioHybridPresenter() {
   const [recording, setRecording] = useState(false);
   const [recordingsList, setRecordingsList] = useState<RecordingHistory[]>([]);
-
+const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+const [selectedCamera, setSelectedCamera] = useState("");
   // Pilihan Mode Sumber Materi: 'pdf', 'screen', atau 'pdf-animation'[cite: 3]
   const [sourceMode, setSourceMode] = useState<'pdf' | 'screen' | 'pdf-animation'>('pdf');
   
@@ -169,19 +170,39 @@ export default function StudioHybridPresenter() {
   // ==========================================
   // WEBCAM STREAM LOGIC[cite: 3]
   // ==========================================
-  useEffect(() => {
-    if (typeof window !== "undefined" && navigator.mediaDevices?.getUserMedia) {
-      navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 }, audio: true })
-        .then((stream) => {
-          streamRef.current = stream;
-          setIsCamOn(true);
-        })
-        .catch((err) => console.error("Akses kamera ditolak:", err));
+useEffect(() => {
+  const initDevices = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+
+      const devices =
+        await navigator.mediaDevices.enumerateDevices();
+
+      const cameras = devices.filter(
+        (d) => d.kind === "videoinput"
+      );
+
+      setVideoDevices(cameras);
+
+      const droidCam = cameras.find(
+        (d) =>
+          d.label.toLowerCase().includes("droid")
+      );
+
+      if (droidCam) {
+        setSelectedCamera(droidCam.deviceId);
+      } else if (cameras[0]) {
+        setSelectedCamera(cameras[0].deviceId);
+      }
+    } catch (err) {
+      console.error(err);
     }
-    return () => {
-      if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
+  };
+
+  initDevices();
+}, []);
 
   useEffect(() => {
     if (isCamOn && streamRef.current && webcamVideoRef.current) {
@@ -200,6 +221,54 @@ export default function StudioHybridPresenter() {
     }
   };
 
+
+  const startCamera = async (
+  deviceId?: string
+) => {
+  try {
+
+    if (streamRef.current) {
+      streamRef.current
+        .getTracks()
+        .forEach((t) => t.stop());
+    }
+
+    const stream =
+      await navigator.mediaDevices.getUserMedia({
+        video: deviceId
+          ? {
+              deviceId: {
+                exact: deviceId,
+              },
+            }
+          : true,
+        audio: true,
+      });
+
+    streamRef.current = stream;
+
+    if (webcamVideoRef.current) {
+      webcamVideoRef.current.srcObject =
+        stream;
+
+      await webcamVideoRef.current.play();
+
+      console.log(
+        "Camera Settings:",
+        stream
+          .getVideoTracks()[0]
+          .getSettings()
+      );
+    }
+
+    setIsCamOn(true);
+  } catch (err) {
+    console.error(
+      "Gagal membuka kamera:",
+      err
+    );
+  }
+};
   // ==========================================
   // LOGIC RENDER FILE PDF ASLI (DENGAN ANIMASI FADE)[cite: 3]
   // ==========================================
