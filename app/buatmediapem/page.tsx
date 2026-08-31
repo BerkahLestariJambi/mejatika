@@ -1,13 +1,13 @@
-"use client";
+"use client"
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react"
 
 interface RecordingHistory {
   id: string;
   blob: Blob;
   url: string;
   timestamp: string;
-  uploadStatus?: "idle" | "uploading" | "success" | "error";
+  uploadStatus?: "idle" | "uploading" | "success" | "error"
 }
 
 interface ExtractedSlideData {
