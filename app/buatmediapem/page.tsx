@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import * as pdfjsLib from "pdfjs-dist";
+import * as pdfjsLib from "pdfjs-dist"
+
 interface RecordingHistory {
   id: string;
   blob: Blob;
@@ -9,16 +10,12 @@ interface RecordingHistory {
   timestamp: string;
   uploadStatus?: "idle" | "uploading" | "success" | "error"
 }
-// konfigurasi worker PDFJS
-15
 if (typeof window !== "undefined") {
-16
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-17
-"/pdf.worker.min.mjs";
-18
+pdfjsLib.GlobalWorkerOptions.workerSrc = String(
+"/pdf.worker.min.mjs"
+);
 }
-19
+
 interface ExtractedSlideData {
   title: string;
   subtitle: string;
