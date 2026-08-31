@@ -11,9 +11,9 @@ interface RecordingHistory {
   uploadStatus?: "idle" | "uploading" | "success" | "error"
 }
 if (typeof window !== "undefined") {
-pdfjsLib.GlobalWorkerOptions.workerSrc = String(
-"/pdf.worker.min.mjs"
-);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = String(
+    "/pdf.worker.min.mjs"
+  );
 }
 
 interface ExtractedSlideData {
@@ -22,7 +22,7 @@ interface ExtractedSlideData {
   bullets: string[];
 }
 
-// Fitur Tema Latar Belakang Presentasi untuk Mode Animasi Teks[cite: 3]
+// Fitur Tema Latar Belakang Presentasi untuk Mode Animasi Teks
 interface StudioTheme {
   id: string;
   name: string;
@@ -46,24 +46,25 @@ const DB_NAME = "StudioPresenterDB";
 const STORE_NAME = "recordings";
 const DB_VERSION = 1;
 const BACKEND_URL = "https://backend.mejatika.com/api/upload";
-const [isCamOn, setIsCamOn] = useState<boolean>(false);
+
 export default function StudioHybridPresenter() {
   const [recording, setRecording] = useState(false);
   const [recordingsList, setRecordingsList] = useState<RecordingHistory[]>([]);
-const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-const [selectedCamera, setSelectedCamera] = useState("");
-  // Pilihan Mode Sumber Materi: 'pdf', 'screen', atau 'pdf-animation'[cite: 3]
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCamera, setSelectedCamera] = useState("");
+  
+  // Pilihan Mode Sumber Materi: 'pdf', 'screen', atau 'pdf-animation'
   const [sourceMode, setSourceMode] = useState<'pdf' | 'screen' | 'pdf-animation'>('pdf');
   
-  // State Tema Studio Aktif[cite: 3]
+  // State Tema Studio Aktif
   const [activeTheme, setActiveTheme] = useState<StudioTheme>(STUDIO_THEMES[0]);
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
 
-  // State Kamera Utama[cite: 3]
+  // State Kamera Utama
   const [isCamOn, setIsCamOn] = useState<boolean>(false);
   const streamRef = useRef<MediaStream | null>(null);
 
-  // State MODE PDF Asli & Animasi Cache[cite: 3]
+  // State MODE PDF Asli & Animasi Cache
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [currentSlide, setCurrentSlide] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(0);
@@ -71,7 +72,7 @@ const [selectedCamera, setSelectedCamera] = useState("");
   const slideCanvasCache = useRef<HTMLCanvasElement | null>(null);
   const slideAnimId = useRef<number | null>(null);
 
-  // State MODE PDF ANIMASI (Ekstrak Teks Otomatis)[cite: 3]
+  // State MODE PDF ANIMASI (Ekstrak Teks Otomatis)
   const [animatedSlides, setAnimatedSlides] = useState<ExtractedSlideData[]>([
     {
       title: "Silakan Unggah PDF Anda",
@@ -82,22 +83,22 @@ const [selectedCamera, setSelectedCamera] = useState("");
   const [textSlideIndex, setTextSlideIndex] = useState<number>(0);
   const textAnimProgress = useRef<number>(0);
 
-  // State MODE SHARE SCREEN[cite: 3]
+  // State MODE SHARE SCREEN
   const [isSharing, setIsSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
 
-  // State Papan Tulis Digital[cite: 3]
+  // State Papan Tulis Digital
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [isDrawing, setIsDrawing] = useState(false);
   const [penColor] = useState("#ef4444");
   const [penWidth] = useState(4);
   const [isEraser, setIsEraser] = useState(false);
 
-  // State Toolbar[cite: 3]
+  // State Toolbar
   const [isToolbarVisible, setIsToolbarVisible] = useState(true);
 
-  // Posisi Elemen Melayang[cite: 3]
+  // Posisi Elemen Melayang
   const [wbPos, setWbPos] = useState({ x: 50, y: 120, w: 560, h: 360 });
   const [isDraggingWb, setIsDraggingWb] = useState(false);
   const [camPos, setCamPos] = useState({ x: 980, y: 500 });
@@ -105,7 +106,7 @@ const [selectedCamera, setSelectedCamera] = useState("");
 
   const dragStartRef = useRef({ x: 0, y: 0 });
 
-  // Refs Canvas Rekaman & Media[cite: 3]
+  // Refs Canvas Rekaman & Media
   const mainCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const whiteboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -118,7 +119,7 @@ const [selectedCamera, setSelectedCamera] = useState("");
   useEffect(() => { wbPosRef.current = wbPos; }, [wbPos]);
   useEffect(() => { camPosRef.current = camPos; }, [camPos]);
 
-  // Trigger Animasi Setiap Kali Slide Teks Berpindah[cite: 3]
+  // Trigger Animasi Setiap Kali Slide Teks Berpindah
   const triggerTextAnimation = () => {
     textAnimProgress.current = 0;
   };
@@ -129,14 +130,10 @@ const [selectedCamera, setSelectedCamera] = useState("");
     }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
-  // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB[cite: 3]
- useEffect(() => {
-  if (typeof window !== "undefined") {
-
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "/pdf.worker.min.mjs";
-
- //   slideCanvasCache.current = document.createElement("canvas");
+  // Inisialisasi Cache PDF, Screen Element, & Load Awal Data IndexedDB
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
       slideCanvasCache.current = document.createElement("canvas");
       screenVideoRef.current = document.createElement("video");
@@ -168,41 +165,37 @@ const [selectedCamera, setSelectedCamera] = useState("");
   }, []);
 
   // ==========================================
-  // WEBCAM STREAM LOGIC[cite: 3]
+  // WEBCAM STREAM & DEVICE DETECTION LOGIC
   // ==========================================
-useEffect(() => {
-  const initDevices = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({
-        video: true,
-      });
+  useEffect(() => {
+    const initDevices = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter((d) => d.kind === "videoinput");
+        setVideoDevices(cameras);
 
-      const devices =
-        await navigator.mediaDevices.enumerateDevices();
-
-      const cameras = devices.filter(
-        (d) => d.kind === "videoinput"
-      );
-
-      setVideoDevices(cameras);
-
-      const droidCam = cameras.find(
-        (d) =>
-          d.label.toLowerCase().includes("droid")
-      );
-
-      if (droidCam) {
-        setSelectedCamera(droidCam.deviceId);
-      } else if (cameras[0]) {
-        setSelectedCamera(cameras[0].deviceId);
+        const droidCam = cameras.find((d) => d.label.toLowerCase().includes("droid"));
+        if (droidCam) {
+          setSelectedCamera(droidCam.deviceId);
+          startCamera(droidCam.deviceId);
+        } else if (cameras[0]) {
+          setSelectedCamera(cameras[0].deviceId);
+          startCamera(cameras[0].deviceId);
+        }
+      } catch (err) {
+        console.error("Gagal inisialisasi perangkat:", err);
       }
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    };
 
-  initDevices();
-}, []);
+    initDevices();
+
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (isCamOn && streamRef.current && webcamVideoRef.current) {
@@ -212,65 +205,50 @@ useEffect(() => {
   }, [isCamOn]);
 
   const toggleCamera = () => {
-    if (streamRef.current) {
-      const videoTrack = streamRef.current.getVideoTracks()[0];
-      if (videoTrack) {
-        videoTrack.enabled = !videoTrack.enabled;
-        setIsCamOn(videoTrack.enabled);
-      }
+    if (!isCamOn) {
+      startCamera(selectedCamera);
+    } else if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+      setIsCamOn(false);
     }
   };
 
+  const startCamera = async (deviceId?: string) => {
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
 
-  const startCamera = async (
-  deviceId?: string
-) => {
-  try {
-
-    if (streamRef.current) {
-      streamRef.current
-        .getTracks()
-        .forEach((t) => t.stop());
-    }
-
-    const stream =
-      await navigator.mediaDevices.getUserMedia({
-        video: deviceId
-          ? {
-              deviceId: {
-                exact: deviceId,
-              },
-            }
-          : true,
+      const constraints: MediaStreamConstraints = {
+        video: deviceId ? { deviceId: { exact: deviceId } } : true,
         audio: true,
-      });
+      };
 
-    streamRef.current = stream;
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
 
-    if (webcamVideoRef.current) {
-      webcamVideoRef.current.srcObject =
-        stream;
-
-      await webcamVideoRef.current.play();
-
-      console.log(
-        "Camera Settings:",
-        stream
-          .getVideoTracks()[0]
-          .getSettings()
-      );
+      if (webcamVideoRef.current) {
+        webcamVideoRef.current.srcObject = stream;
+        await webcamVideoRef.current.play();
+        console.log("Camera Settings:", stream.getVideoTracks()[0].getSettings());
+      }
+      setIsCamOn(true);
+    } catch (err) {
+      console.error("Gagal membuka kamera:", err);
+      setIsCamOn(false);
     }
+  };
 
-    setIsCamOn(true);
-  } catch (err) {
-    console.error(
-      "Gagal membuka kamera:",
-      err
-    );
-  }
-};
+  const handleCameraChange = (deviceId: string) => {
+    setSelectedCamera(deviceId);
+    if (isCamOn) {
+      startCamera(deviceId);
+    }
+  };
+
   // ==========================================
-  // LOGIC RENDER FILE PDF ASLI (DENGAN ANIMASI FADE)[cite: 3]
+  // LOGIC RENDER FILE PDF ASLI (DENGAN ANIMASI FADE)
   // ==========================================
   useEffect(() => {
     if (!pdfDoc || sourceMode !== 'pdf') return;
@@ -316,7 +294,7 @@ useEffect(() => {
   }, [pdfDoc, currentSlide, sourceMode]);
 
   // ==========================================
-  // LOGIC SHARE SCREEN (UNTUK POWERPOINT)[cite: 3]
+  // LOGIC SHARE SCREEN (UNTUK POWERPOINT)
   // ==========================================
   const startShareScreen = async () => {
     try {
@@ -357,7 +335,7 @@ useEffect(() => {
       setActiveTheme({
         id: "custom-image",
         name: "Gambar Kustom",
-        accentColor: "#3b82f6", // Warna default untuk tema kustom
+        accentColor: "#3b82f6",
         textColor: "#ffffff",
         subtitleColor: "#cbd5e1",
         bulletColor: "#f1f5f9",
@@ -367,7 +345,7 @@ useEffect(() => {
   };
 
   // ==========================================
-  // LOOP UTAMA UNTUK MERENDER CANVAS STUDIO (1280x720)[cite: 3]
+  // LOOP UTAMA UNTUK MERENDER CANVAS STUDIO (1280x720)
   // ==========================================
   useEffect(() => {
     const mainCanvas = mainCanvasRef.current;
@@ -386,15 +364,11 @@ useEffect(() => {
       } else if (sourceMode === 'screen' && isSharing && screenVideoRef.current) {
         ctx.drawImage(screenVideoRef.current, 0, 0, 1280, 720);
       } else if (sourceMode === 'pdf-animation') {
-        // PERBAIKAN: Deteksi render menggunakan Gambar Kustom atau Warna Gradient biasa
         if (activeTheme.id === "custom-image" && activeTheme.customImage) {
           ctx.drawImage(activeTheme.customImage, 0, 0, 1280, 720);
-          
-          // Tambahkan layer gelap tipis transparan (overlay) agar teks tetap mudah dibaca
           ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
           ctx.fillRect(0, 0, 1280, 720);
         } else if (activeTheme.bgGradientStart && activeTheme.bgGradientEnd) {
-          // Render Background Gradasi Bawaan[cite: 3]
           const gradient = ctx.createLinearGradient(0, 0, 1280, 720);
           gradient.addColorStop(0, activeTheme.bgGradientStart);
           gradient.addColorStop(1, activeTheme.bgGradientEnd);
@@ -405,7 +379,6 @@ useEffect(() => {
           ctx.beginPath(); ctx.arc(100, 100, 250, 0, Math.PI * 2); ctx.fill();
         }
 
-        // RENDER CORE ANIMASI TEKS YANG DIEKSTRAK[cite: 3]
         if (textAnimProgress.current < 1) {
           textAnimProgress.current += 0.02;
         }
@@ -413,15 +386,12 @@ useEffect(() => {
         const currentData = animatedSlides[textSlideIndex];
 
         if (currentData) {
-          // Safe Zone Padding (Batas Aman) Kiri & Kanan 120px[cite: 3]
           const safePaddingX = 120; 
-          const maxTextWidth = 1040; // 1280 - (120 * 2) agar teks otomatis wrap / tidak kepotong[cite: 3]
+          const maxTextWidth = 1040;
 
-          // 1. Animasi Judul Slide Teks
           ctx.save();
           ctx.globalAlpha = Math.min(1, progress * 1.5);
           
-          // Garis aksen bawah judul[cite: 3]
           ctx.fillStyle = activeTheme.accentColor;
           ctx.fillRect(safePaddingX, 155, 120 * Math.min(1, progress * 2), 6);
           
@@ -432,7 +402,6 @@ useEffect(() => {
           ctx.fillText(currentData.title, safePaddingX, titleY, maxTextWidth);
           ctx.restore();
 
-          // 2. Animasi Subtitle
           if (progress > 0.2) {
             ctx.save();
             ctx.globalAlpha = Math.min(1, (progress - 0.2) * 2);
@@ -442,7 +411,6 @@ useEffect(() => {
             ctx.restore();
           }
 
-          // 3. Animasi Poin Bullets Teks dari PDF[cite: 3]
           currentData.bullets.forEach((bullet, index) => {
             const triggerDelay = 0.3 + index * 0.12;
             if (progress > triggerDelay) {
@@ -451,10 +419,7 @@ useEffect(() => {
               ctx.font = "24px sans-serif";
               ctx.fillStyle = activeTheme.bulletColor;
               
-              // Jarak teks bullet masuk lebih dalam (+30px dari safe zone)[cite: 3]
               const bulletX = (safePaddingX + 30) + (1 - Math.min(1, (progress - triggerDelay) * 3)) * 15;
-              
-              // Batasi teks panjang secara aman agar tidak mepet kanan frame[cite: 3]
               const maxChar = 75;
               const displayText = bullet.length > maxChar ? bullet.substring(0, maxChar) + "..." : bullet;
               ctx.fillText(displayText, bulletX, 280 + index * 55, maxTextWidth - 30);
@@ -680,7 +645,7 @@ useEffect(() => {
       <header className="w-full max-w-7xl flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
         <div>
           <h1 className="text-2xl font-extrabold text-blue-400">Studio Presentasi Hybrid Pro</h1>
-          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan pengaturan margin aman 120px & kustomisasi tema visual[cite: 3].</p>
+          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman dengan pengaturan margin aman 120px & kustomisasi tema visual.</p>
         </div>
       </header>
 
@@ -689,7 +654,7 @@ useEffect(() => {
           
           <canvas ref={mainCanvasRef} width={1280} height={720} className="w-full h-full object-contain pointer-events-none" />
 
-          {/* NAVIGASI CONTROL SLIDE PDF ASLI[cite: 3] */}
+          {/* NAVIGASI CONTROL SLIDE PDF ASLI */}
           {sourceMode === 'pdf' && pdfDoc && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
               <button onClick={() => setCurrentSlide((p) => Math.max(1, p - 1))} disabled={currentSlide === 1} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
@@ -698,7 +663,7 @@ useEffect(() => {
             </div>
           )}
 
-          {/* NAVIGASI CONTROL SLIDE PDF EKSTRAK ANIMASI[cite: 3] */}
+          {/* NAVIGASI CONTROL SLIDE PDF EKSTRAK ANIMASI */}
           {sourceMode === 'pdf-animation' && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
               <button onClick={() => setTextSlideIndex(p => Math.max(0, p - 1))} disabled={textSlideIndex === 0} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
@@ -708,7 +673,7 @@ useEffect(() => {
             </div>
           )}
 
-          {/* TOOLBAR PANEL KONTROL KANAN[cite: 3] */}
+          {/* TOOLBAR PANEL KONTROL KANAN */}
           <div className="absolute right-0 top-0 bottom-0 z-40 transition-transform duration-300 flex items-center h-full" style={{ transform: isToolbarVisible ? "translateX(0)" : "translateX(calc(100% - 14px))" }}>
             <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className="bg-slate-800 border-2 border-r-0 border-slate-600 w-7 h-20 rounded-l-xl flex items-center justify-center text-xs text-blue-400 font-bold">{isToolbarVisible ? "▶" : "◀"}</button>
 
@@ -717,7 +682,7 @@ useEffect(() => {
               
               <div className="p-3 flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar">
                 
-                {/* PILIHAN TAB SUMBER MATERI[cite: 3] */}
+                {/* PILIHAN TAB SUMBER MATERI */}
                 <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-800 flex flex-col gap-2">
                   <span className="text-[9px] text-slate-400 font-bold uppercase px-1">Pilih Sumber Materi:</span>
                   <div className="grid grid-cols-3 gap-1">
@@ -804,15 +769,33 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* MEDIA KAMERA[cite: 3] */}
-                <div className="flex flex-col gap-1 border-b border-slate-800 pb-3">
-                  <label className="text-[9px] text-slate-400 font-bold uppercase mb-1">Kamera Pengajar:</label>
-                  <button onClick={toggleCamera} className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}>
+                {/* MEDIA KAMERA DAN DETEKSI */}
+                <div className="flex flex-col gap-2 border-b border-slate-800 pb-3">
+                  <label className="text-[9px] text-slate-400 font-bold uppercase">Kamera Pengajar:</label>
+                  
+                  {/* Dropdown Pemilihan Kamera Terdeteksi */}
+                  <select 
+                    value={selectedCamera} 
+                    onChange={(e) => handleCameraChange(e.target.value)}
+                    className="w-full py-1 px-2 bg-slate-950 text-slate-300 border border-slate-800 rounded text-[10px] font-medium focus:outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    {videoDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label || `Kamera ${videoDevices.indexOf(device) + 1}`}
+                      </option>
+                    ))}
+                    {videoDevices.length === 0 && <option value="">Tidak ada kamera terdeteksi</option>}
+                  </select>
+
+                  <button 
+                    onClick={toggleCamera} 
+                    className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}
+                  >
                     {isCamOn ? "📹 Kamera Utama: LIVE" : "🚫 Kamera Utama: OFF"}
                   </button>
                 </div>
 
-                {/* PAPAN TULIS INTERAKTIF[cite: 3] */}
+                {/* PAPAN TULIS INTERAKTIF */}
                 <button onClick={() => setShowWhiteboard(!showWhiteboard)} className={`py-2 px-2 rounded-lg font-semibold border text-[11px] flex items-center justify-center gap-1.5 ${showWhiteboard ? "bg-amber-600 border-amber-400 text-white" : "bg-slate-800 border-slate-700 text-slate-300"}`}>
                   {showWhiteboard ? "Papan Tulis: AKTIF" : "✏️ Buka Papan Tulis"}
                 </button>
@@ -827,7 +810,7 @@ useEffect(() => {
                   </div>
                 )}
 
-                {/* LIST VIDEO REKAMAN[cite: 3] */}
+                {/* LIST VIDEO REKAMAN */}
                 <div className="flex flex-col gap-2 flex-1">
                   <div className="text-[10px] text-green-400 font-bold uppercase border-b border-slate-800 pb-1">🎬 Hasil Rekaman Lokal</div>
                   {recordingsList.map((video) => (
@@ -860,7 +843,7 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* OVERLAY WHITEBOARD MELAYANG[cite: 3] */}
+          {/* OVERLAY WHITEBOARD MELAYANG */}
           {showWhiteboard && (
             <div style={{ left: `${(wbPos.x / 1280) * 100}%`, top: `${(wbPos.y / 720) * 100}%`, width: `${(wbPos.w / 1280) * 100}%`, height: `${(wbPos.h / 720) * 100}%` }} className="absolute z-10 border-2 border-amber-500 bg-slate-900/90 rounded-xl overflow-hidden flex flex-col shadow-2xl">
               <div onMouseDown={(e) => handleMouseDown("wb", e)} className="bg-amber-600/30 border-b border-amber-500/40 px-3 py-1 cursor-move text-[11px] text-amber-300 font-semibold">✋ Geser Papan Tulis</div>
@@ -868,7 +851,7 @@ useEffect(() => {
             </div>
           )}
 
-          {/* OVERLAY BOX KAMERA MELAYANG[cite: 3] */}
+          {/* OVERLAY BOX KAMERA MELAYANG */}
           <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: "20.3%", height: "27.1%" }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-lg overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
             {isCamOn ? (
               <div className="w-full h-full relative">
@@ -883,7 +866,7 @@ useEffect(() => {
             )}
           </div>
 
-          {/* TOMBOL UTAMA REKAMAN[cite: 3] */}
+          {/* TOMBOL UTAMA REKAMAN */}
           <div className="absolute top-4 left-4 z-30">
             {!recording ? (
               <button onClick={startRecording} className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition hover:bg-red-500 shadow-md">🔴 Mulai Rekam Kelas</button>
