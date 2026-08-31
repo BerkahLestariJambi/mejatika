@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+
 // Fungsi untuk mengambil data detail menu berdasarkan slug
 async function getMenuData(slug: string) {
   try {
