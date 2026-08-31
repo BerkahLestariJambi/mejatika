@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 
-
 // Fungsi untuk mengambil data detail menu berdasarkan slug
 async function getMenuData(slug: string) {
   try {
@@ -20,14 +19,8 @@ async function getMenuData(slug: string) {
   }
 }
 
-// Next.js 15 mewajibkan params bertipe Promise
-interface PageProps {
-  params: Promise<{ slug: string }>;
-}
-
-export default async function DynamicPage({ params }: PageProps) {
-  // Melakukan await params untuk mengambil slug secara asynchronous (Standar Next.js 15)
-  const { slug } = await params;
+export default async function DynamicPage({ params }: { params: { slug: string } }) {
+  const { slug } = params;
   const menuData = await getMenuData(slug);
 
   // Jika slug tidak ditemukan di database, tampilkan halaman 404
