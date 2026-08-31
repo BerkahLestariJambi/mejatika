@@ -482,7 +482,7 @@ export default function StudioHybridPresenter() {
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         const cleanTimestamp = videoItem.timestamp.replace(/:/g, "-");
-        const file = new File([videoItem.blob], `Rekaman_${cleanTimestamp}.mp4`, { type: "video/mp4" });
+        const file = new File([videoItem.blob], `Rekaman_${cleanTimestamp}.webm`, { type: "video/webm" });
         await navigator.share({
           title: "Hasil Rekaman Kelas Studio",
           text: `Halo, berikut hasil rekaman materi kelas jam: ${videoItem.timestamp}`,
@@ -502,7 +502,7 @@ export default function StudioHybridPresenter() {
   const uploadVideoToBackend = async (videoItem: RecordingHistory) => {
     setRecordingsList((prev) => prev.map((item) => (item.id === videoItem.id ? { ...item, uploadStatus: "uploading" } : item)));
     const formData = new FormData();
-    formData.append("video", videoItem.blob, `Studio_Record_${videoItem.timestamp.replace(/:/g, "-")}.mp4`);
+    formData.append("video", videoItem.blob, `Studio_Record_${videoItem.timestamp.replace(/:/g, "-")}.webm`);
     try {
       const response = await fetch(BACKEND_URL, { method: "POST", body: formData });
       if (!response.ok) throw new Error();
@@ -614,6 +614,9 @@ export default function StudioHybridPresenter() {
     }
   };
 
+  // ==========================================
+  // PERBAIKAN LOGIC PEREKAMAN AGAR BISA DI-PLAY
+  // ==========================================
   const startRecording = async () => {
     try {
       chunksRef.current = [];
@@ -621,22 +624,66 @@ export default function StudioHybridPresenter() {
       if (!mainCanvas) return;
 
       const canvasStream = mainCanvas.captureStream(30);
-      const audioTrack = (webcamVideoRef.current?.srcObject as MediaStream)?.getAudioTracks()[0];
-      if (audioTrack) canvasStream.addTrack(audioTrack);
 
-      const mediaRecorder = new MediaRecorder(canvasStream, { mimeType: "video/webm" });
+      // Ambil audio dari webcam aktif, jika mati buat audio kosong agar video tidak corrupt
+      let audioTrack = (webcamVideoRef.current?.srcObject as MediaStream)?.getAudioTracks()[0];
+      
+      if (!audioTrack && streamRef.current) {
+        audioTrack = streamRef.current.getAudioTracks()[0];
+      }
+
+      if (audioTrack) {
+        canvasStream.addTrack(audioTrack);
+      } else {
+        // Fallback: Jika mic tidak ditemukan, buat track audio kosong (silent track)
+        try {
+          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const destination = audioCtx.createMediaStreamDestination();
+          const silentTrack = destination.stream.getAudioTracks()[0];
+          if (silentTrack) canvasStream.addTrack(silentTrack);
+        } catch (e) {
+          console.warn("Gagal membuat fallback audio track:", e);
+        }
+      }
+
+      // Gunakan tipe MIME video/webm yang didukung luas oleh browser
+      const supportedMimeTypes = [
+        "video/webm;codecs=vp8,opus",
+        "video/webm;codecs=vp9,opus",
+        "video/webm"
+      ];
+      
+      let selectedMimeType = "";
+      for (const mime of supportedMimeTypes) {
+        if (MediaRecorder.isTypeSupported(mime)) {
+          selectedMimeType = mime;
+          break;
+        }
+      }
+
+      const mediaRecorder = new MediaRecorder(canvasStream, { 
+        mimeType: selectedMimeType || undefined 
+      });
+      
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mediaRecorder.ondataavailable = (e) => { 
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data); 
+      };
+      
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "video/mp4" });
+        // PERBAIKAN: Type Blob harus tetap video/webm agar codec video dibaca dengan benar
+        const blob = new Blob(chunksRef.current, { type: selectedMimeType || "video/webm" });
         const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const recordId = `rec-${Date.now()}`;
         saveToIndexedDB(recordId, blob, ts);
         setRecordingsList((prev) => [{ id: recordId, blob, url: URL.createObjectURL(blob), timestamp: ts, uploadStatus: "idle" }, ...prev]);
       };
-      mediaRecorder.start();
+      
+      mediaRecorder.start(250); // Merekam dalam fragmen waktu 250ms untuk kestabilan buffer data
       setRecording(true);
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+      console.error("Gagal memulai rekaman:", err); 
+    }
   };
 
   return (
