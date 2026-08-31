@@ -2,16 +2,8 @@ import { NextResponse } from "next/server"
 
 const LARAVEL_API_URL = "https://backend.mejatika.com/api/news";
 
-// 1. Definisikan tipe rute konteks Next.js 15 untuk folder [slug]
-interface RouteContext {
-  params: Promise<{ slug: string }>;
-}
-
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(request: Request) {
   try {
-    // Membaca params secara async agar lolos validasi Next.js 15 (walaupun tidak digunakan di fungsi ini)
-    await context.params;
-
     const { searchParams } = new URL(request.url)
     const limit = searchParams.get("limit")
 
@@ -46,11 +38,8 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 // DELETE harus bisa menangani ID dari database Laravel
-export async function DELETE(request: Request, context: RouteContext) {
+export async function DELETE(request: Request) {
   try {
-    // Membaca params secara async agar lolos validasi Next.js 15
-    await context.params;
-
     const { searchParams } = new URL(request.url)
     const id = searchParams.get("id")
     const token = request.headers.get("Authorization")
