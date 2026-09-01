@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink, ArrowLeft } from "lucide-react"
+import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink, ArrowLeft, MessageSquare } from "lucide-react"
 import Swal from 'sweetalert2'
 
 // KOMPONEN RENDER PDF KE CANVAS GAMBAR
@@ -192,7 +192,7 @@ export default function MentorTasksPage() {
   const handleOpenPreviewAndGrade = (task: any) => {
     setActiveTask(task)
     setScore(task.nilai ?? task.score ?? "")
-    setFeedback(task.feedback ?? "")
+    setFeedback(task.feedback ?? task.catatan ?? "")
     setZoomScale(1)
   }
 
@@ -246,10 +246,9 @@ export default function MentorTasksPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* JIKA ADA TUGAS YANG DIPILIH, TAMPILKAN LAYAR PENILAIAN FRAME UTAMA (FULL PAGE) */}
+      {/* JIKA TUGAS DIPILIH, TAMPILKAN PENILAIAN FRAME UTAMA */}
       {activeTask ? (
         <div className="space-y-4">
-          {/* HEADER NAVIGASI KEMBALI */}
           <div className="flex justify-between items-center bg-white p-4 lg:px-6 rounded-2xl border border-slate-100 shadow-sm">
             <button 
               onClick={() => setActiveTask(null)}
@@ -263,13 +262,8 @@ export default function MentorTasksPage() {
             </div>
           </div>
 
-          {/* MAIN FRAME: SPLIT 2 KOLOM (KIRI PREVIEW, KANAN FORM) */}
           <div className="grid grid-cols-1 lg:grid-cols-12 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden min-h-[600px] h-[calc(100vh-220px)]">
-            
-            {/* KOLOM KIRI: PREVIEW BERKAS / PDF CANVAS */}
             <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r border-slate-200 relative overflow-hidden h-full">
-              
-              {/* TOOLBAR CONTROLLER */}
               {(activeTask.file_path || activeTask.file_url) && (
                 <div className="absolute top-4 right-4 z-20 bg-white/90 backdrop-blur-md px-2 py-1.5 rounded-xl shadow-md border border-slate-200 flex items-center gap-1">
                   <button type="button" onClick={handleZoomOut} className="p-1 hover:bg-slate-100 rounded-lg text-slate-700" title="Perkecil">
@@ -296,7 +290,6 @@ export default function MentorTasksPage() {
                 </div>
               )}
 
-              {/* TAMPILAN FILE */}
               {!(activeTask.file_path || activeTask.file_url) ? (
                 <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-2">
                   <FileText className="mx-auto text-slate-300" size={40} />
@@ -336,7 +329,6 @@ export default function MentorTasksPage() {
               )}
             </div>
 
-            {/* KOLOM KANAN: FORM PENILAIAN */}
             <div className="lg:col-span-5 p-6 bg-white flex flex-col justify-between overflow-y-auto h-full">
               <form onSubmit={handleGradeSubmit} className="space-y-4 flex-1 flex flex-col justify-between">
                 <div>
@@ -401,11 +393,10 @@ export default function MentorTasksPage() {
                 </div>
               </form>
             </div>
-
           </div>
         </div>
       ) : (
-        /* TAMPILAN DAFTAR TUGAS BIASA */
+        /* DAFTAR TUGAS BESERTA DISPLAY FEEDBACK */
         <>
           <div>
             <h2 className="text-3xl font-bold text-slate-800">Daftar Tugas Siswa</h2>
@@ -425,11 +416,12 @@ export default function MentorTasksPage() {
             <div className="grid grid-cols-1 gap-4">
               {tasks.map((task) => {
                 const currentScore = task.nilai ?? task.score
+                const currentFeedback = task.feedback ?? task.catatan
                 const isGraded = currentScore !== null && currentScore !== undefined && currentScore !== ""
 
                 return (
                   <Card key={task.id} className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6 lg:p-8 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
-                    <div className="space-y-2 flex-1">
+                    <div className="space-y-3 flex-1">
                       <div className="flex items-center gap-3">
                         <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-bold rounded-full">
                           {task.course?.title || task.mapel || "Kursus"}
@@ -438,17 +430,36 @@ export default function MentorTasksPage() {
                           {isGraded ? 'Sudah Dinilai' : 'Perlu Dinilai'}
                         </span>
                       </div>
-                      <h3 className="text-xl font-bold text-slate-800">{task.title || task.name}</h3>
-                      <p className="text-xs text-slate-500">
-                        Siswa: <span className="font-bold text-slate-700">{task.user?.name || task.student?.name || task.student_name || "Siswa"}</span>
-                      </p>
-                      {task.description && <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl mt-2 line-clamp-2">{task.description}</p>}
+                      
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-800">{task.title || task.name}</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Siswa: <span className="font-bold text-slate-700">{task.user?.name || task.student?.name || task.student_name || "Siswa"}</span>
+                        </p>
+                      </div>
+
+                      {task.description && (
+                        <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl line-clamp-2">
+                          <span className="font-bold text-slate-500">Catatan Siswa: </span>"{task.description}"
+                        </p>
+                      )}
+
+                      {/* MENAMPILKAN FEEDBACK MENTOR DI CARD */}
+                      {isGraded && currentFeedback && (
+                        <div className="bg-amber-50/70 border border-amber-100 p-3.5 rounded-2xl flex items-start gap-2.5">
+                          <MessageSquare className="text-amber-600 shrink-0 mt-0.5" size={15} />
+                          <div className="text-xs space-y-0.5">
+                            <span className="font-bold text-amber-900 block">Feedback Mentor:</span>
+                            <p className="text-amber-800 line-clamp-3">{currentFeedback}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex flex-col items-end gap-3 min-w-[180px]">
+                    <div className="flex flex-col items-end gap-3 min-w-[200px]">
                       {isGraded && (
-                        <div className="text-right">
-                          <span className="text-[10px] font-bold text-slate-400 uppercase block">Nilai</span>
+                        <div className="text-right bg-emerald-50/60 px-4 py-2 rounded-2xl border border-emerald-100 w-full lg:w-auto text-center lg:text-right">
+                          <span className="text-[10px] font-bold text-emerald-600 uppercase block">Nilai Akhir</span>
                           <span className="text-3xl font-black text-emerald-600">{currentScore}</span>
                         </div>
                       )}
@@ -465,7 +476,7 @@ export default function MentorTasksPage() {
                           type="button"
                           onClick={() => handleDeleteTask(task.id)}
                           className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl transition flex items-center justify-center"
-                          title="Hapus Tugas Duplikat"
+                          title="Hapus Tugas"
                         >
                           <Trash2 size={18} />
                         </button>
