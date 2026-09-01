@@ -41,8 +41,9 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
-  // State khusus untuk pengumpulan tugas dari menu "Tugas"
-  const [selectedTaskMaterial, setSelectedTaskMaterial] = useState<any>(null)
+  // State khusus Modal Tugas dari Menu "Tugas"
+  const [selectedTaskItem, setSelectedTaskItem] = useState<any>(null)
+  const [modalOpen, setModalOpen] = useState(false)
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -186,8 +187,13 @@ export default function StudentDashboard() {
 
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
-    const currentReg = registrations.find(r => Number(r.course_id) === Number(expandedCourse))
+    
+    const targetMaterialId = modalOpen && selectedTaskItem ? selectedTaskItem.material.id : activeMaterial?.id
+    const targetCourseId = modalOpen && selectedTaskItem ? selectedTaskItem.courseId : expandedCourse
+    
+    const currentReg = registrations.find(r => Number(r.course_id) === Number(targetCourseId))
     if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
+    
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
     const isUpdate = submissionFeedback && submissionFeedback.id
@@ -196,11 +202,12 @@ export default function StudentDashboard() {
       const res = await fetch(url, {
         method: isUpdate ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-        body: JSON.stringify({ material_id: activeMaterial.id, registration_id: currentReg.id, student_answer: studentAnswer, project_link: taskLink })
+        body: JSON.stringify({ material_id: targetMaterialId, registration_id: currentReg.id, student_answer: studentAnswer, project_link: taskLink })
       })
       if (res.ok) { 
-        alert(isUpdate ? "Tugas diperbarui!" : "Tugas terkirim!");
-        markStepComplete(activeMaterial.id, "tugas", "feedback");
+        Swal.fire("Berhasil", isUpdate ? "Tugas diperbarui!" : "Tugas berhasil dikirim!", "success");
+        markStepComplete(targetMaterialId, "tugas", "feedback");
+        if (modalOpen) setModalOpen(false);
       }
     } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
   }
@@ -297,7 +304,6 @@ export default function StudentDashboard() {
     }
   }
 
-  // Mengumpulkan seluruh tugas dari semua modul yang terdaftar
   const getAllTasks = () => {
     const activeRegs = registrations.filter(r => r.status === 'success' || r.status === 'aktif')
     const tasks: any[] = []
@@ -318,6 +324,30 @@ export default function StudentDashboard() {
     return tasks
   }
 
+  const openTaskModal = async (item: any) => {
+    setSelectedTaskItem(item)
+    setStudentAnswer("")
+    setTaskLink("")
+    setSubmissionFeedback(null)
+    setModalOpen(true)
+
+    const token = localStorage.getItem("token")
+    try {
+      const res = await fetch(`${API_URL}/submissions/check/${item.material.id}`, {
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+      })
+      const data = await res.json()
+      const submission = data.data || data
+      if (submission) {
+        setSubmissionFeedback(submission)
+        setStudentAnswer(submission.student_answer || "")
+        setTaskLink(submission.project_link || "")
+      }
+    } catch (err) {
+      console.error("Gagal mengambil data tugas")
+    }
+  }
+
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
 
   return (
@@ -334,7 +364,7 @@ export default function StudentDashboard() {
             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
             { id: "courses", label: "Katalog Kursus", icon: BookOpen },
             { id: "materials", label: "Ruang Belajar", icon: FileCheck },
-            { id: "assignments", label: "Tugas", icon: Flame }, // ITEM MENU TUGAS BARU
+            { id: "assignments", label: "Tugas", icon: Flame },
             { id: "certificates", label: "Sertifikat", icon: Award },
           ].map((item) => (
             <button key={item.id} onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }} 
@@ -546,7 +576,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* --- MENU KHUSUS TUGAS (BARU) --- */}
+        {/* --- MENU KHUSUS TUGAS (DENGAN FORM UPLOAD MODAL) --- */}
         {activeMenu === "assignments" && (
           <div className="space-y-10 animate-in fade-in duration-500">
             <div>
@@ -586,16 +616,11 @@ export default function StudentDashboard() {
 
                         <div className="flex items-center gap-3">
                           <Button 
-                            onClick={() => {
-                              setExpandedCourse(item.courseId);
-                              setActiveMaterial(item.material);
-                              setActiveStep("tugas");
-                              setActiveMenu("materials");
-                            }} 
+                            onClick={() => openTaskModal(item)} 
                             className="bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-6 rounded-2xl font-bold text-xs flex items-center gap-2"
                           >
                             <Flame size={16} /> 
-                            {isDone ? "Lihat / Edit Tugas" : "Kerjakan Tugas"}
+                            {isDone ? "Edit / Kirim Ulang" : "Upload Tugas"}
                           </Button>
                         </div>
                       </div>
@@ -609,6 +634,74 @@ export default function StudentDashboard() {
                   <p className="text-[10px] mt-2 italic text-slate-400 max-w-xs text-center px-6">Daftar kursus terlebih dahulu untuk membuka akses tugas praktik.</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL FORM UPLOAD TUGAS (MEMBERIKAN FORM DI MENU TUGAS) */}
+        {modalOpen && selectedTaskItem && (
+          <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+            <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-6 lg:p-10 shadow-2xl relative space-y-6 border border-slate-100 animate-in zoom-in-95">
+              <button 
+                onClick={() => setModalOpen(false)} 
+                className="absolute top-6 right-6 h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
+              >
+                <X size={20} />
+              </button>
+
+              <div>
+                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{selectedTaskItem.courseTitle}</span>
+                <h3 className="text-2xl font-bold text-slate-800">{selectedTaskItem.material.title}</h3>
+              </div>
+
+              <div className="p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                <h4 className="text-xs font-bold text-indigo-700 mb-2 uppercase tracking-wider flex items-center gap-2">
+                  <Flame size={14}/> Instruksi Tugas:
+                </h4>
+                <div className="text-xs text-slate-700 leading-relaxed font-medium">
+                  {selectedTaskItem.material.quiz_task || "Sesuai arahan mentor."}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">Jawaban Teks / Penjelasan</label>
+                  <textarea 
+                    value={studentAnswer} 
+                    onChange={(e) => setStudentAnswer(e.target.value)} 
+                    placeholder="Tuliskan jawaban atau ringkasan tugas kamu di sini..." 
+                    className="w-full h-36 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2">Link Project / File (Google Drive, Github, Figma, dll)</label>
+                  <input 
+                    type="text" 
+                    value={taskLink} 
+                    onChange={(e) => setTaskLink(e.target.value)} 
+                    placeholder="https://..." 
+                    className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <Button 
+                  onClick={() => setModalOpen(false)} 
+                  variant="outline"
+                  className="h-12 px-6 rounded-xl font-bold text-xs"
+                >
+                  Batal
+                </Button>
+                <Button 
+                  onClick={handleSubmitTask} 
+                  disabled={isSubmittingTask} 
+                  className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-100"
+                >
+                  {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Jawaban" : "Kirim Jawaban")}
+                </Button>
+              </div>
             </div>
           </div>
         )}
