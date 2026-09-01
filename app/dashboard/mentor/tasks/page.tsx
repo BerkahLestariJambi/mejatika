@@ -1,24 +1,117 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink } from "lucide-react"
 import Swal from 'sweetalert2'
+import * as pdfjsLib from 'pdfjs-dist'
+
+// Set worker PDF.js langsung dari CDN unpkg
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+
+// KOMPONEN KHUSUS UNTUK CONVERT DAN RENDER HALAMAN UTAMA PDF MENJADI GAMBAR CANVAS
+function PdfCanvasViewer({ pdfUrl, scale }: { pdfUrl: string; scale: number }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    setLoading(true)
+    setError(false)
+
+    const renderPdf = async () => {
+      try {
+        const loadingTask = pdfjsLib.getDocument(pdfUrl)
+        const pdf = await loadingTask.promise
+        const page = await pdf.getPage(1) // Ambil Halaman 1
+
+        if (!isMounted) return
+
+        const viewport = page.getViewport({ scale: 1.5 }) // Kualitas gambar default
+        const canvas = canvasRef.current
+        if (!canvas) return
+
+        const context = canvas.getContext('2d')
+        if (!context) return
+
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport,
+        }
+
+        await page.render(renderContext).promise
+        if (isMounted) setLoading(false)
+      } catch (err) {
+        console.error("Gagal convert PDF ke gambar:", err)
+        if (isMounted) {
+          setError(true)
+          setLoading(false)
+        }
+      }
+    }
+
+    renderPdf()
+    return () => {
+      isMounted = false
+    }
+  }, [pdfUrl])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-amber-500 font-bold gap-2">
+        <Loader2 className="animate-spin" size={28} />
+        <span className="text-xs text-slate-500">Mengubah PDF ke Gambar...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <Paperclip className="mx-auto text-amber-500" size={40} />
+        <div>
+          <p className="font-bold text-slate-800 text-sm">Gagal Mengonversi PDF</p>
+          <p className="text-xs text-slate-500 mt-0.5">Silakan unduh atau buka berkas langsung di tab baru.</p>
+        </div>
+        <a 
+          href={pdfUrl} 
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition"
+        >
+          <ExternalLink size={14} /> Buka PDF di Tab Baru
+        </a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
+      <canvas 
+        ref={canvasRef} 
+        style={{ transform: `scale(${scale})`, transition: 'transform 0.2s ease-in-out' }}
+        className="max-w-full max-h-full object-contain rounded-xl shadow-md origin-center bg-white"
+      />
+    </div>
+  )
+}
 
 export default function MentorTasksPage() {
   const router = useRouter()
   const [tasks, setTasks] = useState<any[]>([])
   const [loadingTasks, setLoadingTasks] = useState(true)
 
-  // Combined State untuk Preview File sekaligus Penilaian
   const [activeTask, setActiveTask] = useState<any | null>(null)
   const [score, setScore] = useState<number | string>("")
   const [feedback, setFeedback] = useState("")
   const [isSubmittingGrade, setIsSubmittingGrade] = useState(false)
 
-  // State Kontrol Zoom Preview
   const [zoomScale, setZoomScale] = useState<number>(1)
 
   const API_URL = "https://backend.mejatika.com/api"
@@ -56,7 +149,6 @@ export default function MentorTasksPage() {
     fetchMentorTasks()
   }, [fetchMentorTasks])
 
-  // FUNGSI UNTUK MENGHAPUS TUGAS DUPLIKAT
   const handleDeleteTask = async (taskId: number) => {
     const confirm = await Swal.fire({
       title: "Hapus Tugas?",
@@ -95,20 +187,17 @@ export default function MentorTasksPage() {
     }
   }
 
-  // FUNGSI MEMBUKA PREVIEW + FORM NILAI
   const handleOpenPreviewAndGrade = (task: any) => {
     setActiveTask(task)
     setScore(task.nilai ?? task.score ?? "")
     setFeedback(task.feedback ?? "")
-    setZoomScale(1) // Reset zoom saat membuka file baru
+    setZoomScale(1)
   }
 
-  // CONTROLLER ZOOM
   const handleZoomIn = () => setZoomScale(prev => Math.min(prev + 0.25, 3))
   const handleZoomOut = () => setZoomScale(prev => Math.max(prev - 0.25, 0.5))
   const handleZoomReset = () => setZoomScale(1)
 
-  // SUBMIT PENILAIAN LANGSUNG DARI HALAMAN PREVIEW
   const handleGradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!activeTask) return
@@ -225,7 +314,7 @@ export default function MentorTasksPage() {
         </div>
       )}
 
-      {/* MODAL PREVIEW FILE RINGKAS DENGAN FITUR ZOOM & FORM PENILAIAN */}
+      {/* MODAL PREVIEW FILE + FORM PENILAIAN */}
       {activeTask && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-3 lg:p-6 overflow-y-auto">
           <div className="bg-white rounded-[2rem] w-full max-w-5xl my-auto flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100">
@@ -263,10 +352,10 @@ export default function MentorTasksPage() {
             {/* BODY MODAL: GRID 2 KOLOM */}
             <div className="grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
               
-              {/* KOLOM KIRI: PREVIEW BERKAS DENGAN KONTROL ZOOM */}
+              {/* KOLOM KIRI: PREVIEW BERKAS / GAMBAR HASIL PDF CONVERT */}
               <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center h-[320px] lg:h-[420px] border-b lg:border-b-0 lg:border-r border-slate-200 relative overflow-hidden group">
                 
-                {/* TOOLBAR KONTROL ZOOM (HANYA MUNCUL DILAYAR YANG PUNYA FILE) */}
+                {/* TOOLBAR ZOOM */}
                 {(activeTask.file_path || activeTask.file_url) && (
                   <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-md px-2 py-1.5 rounded-xl shadow-md border border-slate-200 flex items-center gap-1 opacity-90 hover:opacity-100 transition">
                     <button 
@@ -301,14 +390,14 @@ export default function MentorTasksPage() {
                       target="_blank" 
                       rel="noreferrer" 
                       className="p-1 hover:bg-slate-100 rounded-lg text-amber-600 border-l border-slate-200 ml-1 pl-1.5"
-                      title="Buka File di Tab Baru (Layar Penuh)"
+                      title="Buka File di Tab Baru"
                     >
                       <ExternalLink size={15} />
                     </a>
                   </div>
                 )}
 
-                {/* KONTEN PREVIEW */}
+                {/* LOGIKA CONVERT PDF & RENDERING */}
                 {!(activeTask.file_path || activeTask.file_url) ? (
                   <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-2">
                     <FileText className="mx-auto text-slate-300" size={40} />
@@ -325,25 +414,16 @@ export default function MentorTasksPage() {
                     />
                   </div>
                 ) : getFileType(activeTask.file_path || activeTask.file_url) === 'pdf' ? (
-                  <div className="w-full h-full overflow-hidden rounded-xl shadow-sm bg-white">
-                    <iframe 
-                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(activeTask.file_path || activeTask.file_url)}&embedded=true`}
-                      style={{ 
-                        transform: `scale(${zoomScale})`, 
-                        transformOrigin: 'top center',
-                        width: zoomScale !== 1 ? `${100 / zoomScale}%` : '100%',
-                        height: zoomScale !== 1 ? `${100 / zoomScale}%` : '100%',
-                        transition: 'transform 0.2s ease-in-out'
-                      }}
-                      className="border-none bg-white"
-                      title="PDF Preview"
-                    />
-                  </div>
+                  // FITUR KONVERSI PDF KE CANVAS GAMBAR (TIDAK DIBLOKIR BROWSER/IFRAME)
+                  <PdfCanvasViewer 
+                    pdfUrl={activeTask.file_path || activeTask.file_url} 
+                    scale={zoomScale} 
+                  />
                 ) : (
                   <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-3">
                     <Paperclip className="mx-auto text-amber-500" size={40} />
                     <div>
-                      <p className="font-bold text-slate-800 text-sm">Preview Langsung Tidak Tersedia</p>
+                      <p className="font-bold text-slate-800 text-sm">Format Berkas Tidak Didukung untuk Preview</p>
                       <p className="text-xs text-slate-500 mt-0.5">Silakan unduh berkas di bawah ini untuk melihat isinya.</p>
                     </div>
                     <a 
