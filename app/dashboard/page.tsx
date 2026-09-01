@@ -31,17 +31,15 @@ export default function StudentDashboard() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
   
-  // State khusus Form Upload Tugas Standalone
+  // State khusus disesuaikan dengan skema tabel 'tasks' (title, description, file_path)
   const [taskTitle, setTaskTitle] = useState("")
-  const [studentAnswer, setStudentAnswer] = useState("")
-  const [taskLink, setTaskLink] = useState("")
+  const [taskDescription, setTaskDescription] = useState("")
   const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
   
   const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
   const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
   const [replyText, setReplyText] = useState("")
-  const [isSendingReply, setIsSendingReply] = useState(false)
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -94,11 +92,15 @@ export default function StudentDashboard() {
     if (saved) setCourseProgress(JSON.parse(saved))
   }, [fetchData])
 
-  // Submit Tugas Standalone (Tanpa Keterikatan Kursus)
-  const handleStandaloneTaskSubmit = async (e: React.FormEvent) => {
+  // Submit Tugas sesuai struktur tabel 'tasks'
+  const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!studentAnswer && !taskLink && !taskFile) {
-      return Swal.fire("Peringatan", "Mohon isi deskripsi jawaban, link project, atau lampirkan file tugas.", "warning")
+    if (!taskTitle.trim()) {
+      return Swal.fire("Peringatan", "Judul tugas wajib diisi.", "warning")
+    }
+
+    if (!taskFile && !taskDescription.trim()) {
+      return Swal.fire("Peringatan", "Mohon sertakan file tugas atau isi deskripsi tugas.", "warning")
     }
 
     setIsSubmittingTask(true)
@@ -106,12 +108,11 @@ export default function StudentDashboard() {
 
     try {
       const formData = new FormData()
-      if (taskTitle) formData.append("title", taskTitle)
-      if (studentAnswer) formData.append("answer", studentAnswer)
-      if (taskLink) formData.append("link", taskLink)
-      if (taskFile) formData.append("file", taskFile)
+      formData.append("title", taskTitle)
+      if (taskDescription) formData.append("description", taskDescription)
+      if (taskFile) formData.append("file_path", taskFile) // disesuaikan kolom file_path
 
-      const res = await fetch(`${API_URL}/submissions`, {
+      const res = await fetch(`${API_URL}/tasks`, {
         method: "POST",
         headers: { 
           "Authorization": `Bearer ${token}`,
@@ -121,37 +122,16 @@ export default function StudentDashboard() {
       })
 
       if (res.ok) {
-        Swal.fire("Berhasil!", "Tugas kamu berhasil diunggah.", "success")
+        Swal.fire("Berhasil!", "Tugas berhasil dikirim ke database.", "success")
         setTaskTitle("")
-        setStudentAnswer("")
-        setTaskLink("")
+        setTaskDescription("")
         setTaskFile(null)
       } else {
-        // Jika backend menerima format JSON sederhana
-        const jsonRes = await fetch(`${API_URL}/submissions`, {
-          method: "POST",
-          headers: { 
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          body: JSON.stringify({
-            title: taskTitle,
-            student_answer: studentAnswer,
-            project_link: taskLink
-          })
-        })
-        if (jsonRes.ok) {
-          Swal.fire("Berhasil!", "Tugas kamu berhasil dikirim.", "success")
-          setTaskTitle("")
-          setStudentAnswer("")
-          setTaskLink("")
-        } else {
-          throw new Error("Gagal mengirim tugas")
-        }
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || "Gagal menyimpan tugas.")
       }
-    } catch (err) {
-      Swal.fire("Gagal", "Terjadi kesalahan saat mengunggah tugas.", "error")
+    } catch (err: any) {
+      Swal.fire("Gagal", err.message || "Terjadi kesalahan saat mengunggah tugas.", "error")
     } finally {
       setIsSubmittingTask(false)
     }
@@ -245,42 +225,8 @@ export default function StudentDashboard() {
                       <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
                       {(status === 'success' || status === 'aktif') ? (
                         <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
-                      ) : status === 'pending' ? (
-                        <div className="space-y-4 bg-indigo-50 p-6 rounded-3xl">
-                           <div className="text-indigo-700 font-bold text-sm mb-2 text-center">Silahkan unggah bukti transfer / konfirmasi (Gambar atau PDF)</div>
-                           
-                           <label className="flex flex-col items-center justify-center w-full min-h-[120px] p-4 border-2 border-dashed border-indigo-200 rounded-2xl bg-white cursor-pointer hover:bg-indigo-100/50 transition-colors relative overflow-hidden">
-                             {selectedProof ? (
-                               selectedProof.type.startsWith("image/") ? (
-                                 <div className="flex flex-col items-center space-y-2">
-                                   <img src={previewUrl!} alt="Preview Bukti" className="h-28 object-contain rounded-xl shadow-sm border" />
-                                   <span className="text-[11px] font-bold text-emerald-600 truncate max-w-[200px]">{selectedProof.name}</span>
-                                 </div>
-                               ) : selectedProof.type === "application/pdf" ? (
-                                 <div className="flex flex-col items-center space-y-2 py-2">
-                                   <FileText className="text-indigo-600 h-10 w-10" />
-                                   <span className="text-[11px] font-bold text-indigo-700 truncate max-w-[200px]">{selectedProof.name}</span>
-                                   <span className="text-[9px] bg-indigo-100 text-indigo-700 font-extrabold px-2 py-0.5 rounded-full uppercase">Dokumen PDF</span>
-                                 </div>
-                               ) : (
-                                 <span className="text-xs font-bold text-emerald-600 truncate px-4">{selectedProof.name}</span>
-                               )
-                             ) : (
-                               <div className="flex flex-col items-center space-y-1 text-indigo-400">
-                                 <UploadCloud size={30} />
-                                 <span className="text-xs font-bold">Pilih File Gambar / PDF</span>
-                                 <span className="text-[10px] text-slate-400">PNG, JPG, WEBP, atau PDF</span>
-                               </div>
-                             )}
-                             <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
-                           </label>
-
-                           <Button onClick={() => {}} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
-                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Pembayaran"}
-                           </Button>
-                        </div>
                       ) : (
-                        <Button onClick={() => {}} disabled={registeringId === course.id} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
+                        <Button onClick={() => {}} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -297,50 +243,49 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* --- MENU TUGAS (STANDALONE FORM LANGSUNG TERBUKA DI FRAME) --- */}
+        {/* --- MENU TUGAS (SESUAI STRUKTUR TABEL tasks) --- */}
         {activeMenu === "assignments" && (
           <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl">
             <div>
               <h2 className="text-3xl font-bold text-slate-800">Pengumpulan Tugas</h2>
-              <p className="text-slate-500 font-medium">Unggah berkas atau kirimkan link hasil tugas kamu langsung di bawah ini.</p>
+              <p className="text-slate-500 font-medium">Form pengiriman tugas langsung ke basis data.</p>
             </div>
 
-            <form onSubmit={handleStandaloneTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+            <form onSubmit={handleTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
               
+              {/* Field: title */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Judul / Nama Tugas (Opsional)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                  Judul Tugas <span className="text-red-500">*</span>
+                </label>
                 <input 
                   type="text" 
                   value={taskTitle} 
                   onChange={(e) => setTaskTitle(e.target.value)} 
-                  placeholder="Contoh: Tugas Desain UI/UX - Modul 1" 
+                  placeholder="Masukkan judul tugas..." 
+                  required
                   className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
                 />
               </div>
 
+              {/* Field: description */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Jawaban / Catatan Tugas</label>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                  Deskripsi / Catatan Tugas
+                </label>
                 <textarea 
-                  value={studentAnswer} 
-                  onChange={(e) => setStudentAnswer(e.target.value)} 
-                  placeholder="Tuliskan keterangan, catatan, atau penjelasan tugas kamu di sini..." 
+                  value={taskDescription} 
+                  onChange={(e) => setTaskDescription(e.target.value)} 
+                  placeholder="Tuliskan deskripsi atau ringkasan tugas kamu di sini..." 
                   className="w-full h-40 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
                 />
               </div>
 
+              {/* Field: file_path */}
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Link Project / Hasil (Google Drive, GitHub, Figma, dll)</label>
-                <input 
-                  type="url" 
-                  value={taskLink} 
-                  onChange={(e) => setTaskLink(e.target.value)} 
-                  placeholder="https://drive.google.com/..." 
-                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Unggah File (Dokumen / PDF / Zip / Gambar)</label>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                  Unggah Berkas Tugas (file_path)
+                </label>
                 <label className="flex flex-col items-center justify-center w-full min-h-[140px] p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors">
                   {taskFile ? (
                     <div className="flex items-center gap-3 text-indigo-600 font-bold text-sm">
@@ -350,8 +295,8 @@ export default function StudentDashboard() {
                   ) : (
                     <div className="flex flex-col items-center space-y-2 text-slate-400">
                       <UploadCloud size={36} className="text-indigo-500" />
-                      <span className="text-xs font-bold text-slate-600">Klik di sini untuk memilih file</span>
-                      <span className="text-[10px] text-slate-400">PDF, ZIP, DOCX, PNG, JPG (Maks 10MB)</span>
+                      <span className="text-xs font-bold text-slate-600">Pilih file untuk diunggah</span>
+                      <span className="text-[10px] text-slate-400">PDF, ZIP, DOCX, PNG, JPG</span>
                     </div>
                   )}
                   <input type="file" onChange={handleTaskFileChange} className="hidden" />
