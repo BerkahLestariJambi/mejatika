@@ -32,10 +32,8 @@ export default function MentorTasksPage() {
       })
       const data = await res.json()
       
-      // Debugging: Cek isi respons di inspect console browser
       console.log("Response /mentor/tasks:", data)
 
-      // Penanganan berbagai format JSON dari Laravel (paginated / plain array)
       if (Array.isArray(data)) {
         setTasks(data)
       } else if (data && Array.isArray(data.data)) {
@@ -58,7 +56,8 @@ export default function MentorTasksPage() {
 
   const handleOpenGradeModal = (task: any) => {
     setSelectedTask(task)
-    setScore(task.score ?? "")
+    // Mendukung membaca nilai dari kolom 'nilai' maupun 'score'
+    setScore(task.nilai ?? task.score ?? "")
     setFeedback(task.feedback ?? "")
   }
 
@@ -70,7 +69,8 @@ export default function MentorTasksPage() {
     const token = localStorage.getItem("token")
 
     try {
-      const res = await fetch(`${API_URL}/tasks/${selectedTask.id}/grade`, {
+      // PERBAIKAN: Mengubah Endpoint URL menjadi /mentor/tasks/{id}/grade
+      const res = await fetch(`${API_URL}/mentor/tasks/${selectedTask.id}/grade`, {
         method: "POST",
         headers: { 
           "Authorization": `Bearer ${token}`,
@@ -117,7 +117,10 @@ export default function MentorTasksPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4">
           {tasks.map((task) => {
-            const isGraded = task.score !== null && task.score !== undefined
+            // Mencek status nilai baik dari kolom 'nilai' maupun 'score'
+            const currentScore = task.nilai ?? task.score
+            const isGraded = currentScore !== null && currentScore !== undefined && currentScore !== ""
+
             return (
               <Card key={task.id} className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6 lg:p-8 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
                 <div className="space-y-2 flex-1">
@@ -146,7 +149,7 @@ export default function MentorTasksPage() {
                   {isGraded && (
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-slate-400 uppercase block">Nilai</span>
-                      <span className="text-3xl font-black text-emerald-600">{task.score}</span>
+                      <span className="text-3xl font-black text-emerald-600">{currentScore}</span>
                     </div>
                   )}
                   <Button 
