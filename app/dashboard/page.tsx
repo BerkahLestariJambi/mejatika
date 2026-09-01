@@ -103,7 +103,7 @@ export default function StudentDashboard() {
       }
     } catch (err) {
       console.error("Error fetching tasks:", err)
-    } fontally {
+    } finally {
       setLoadingTasks(false)
     }
   }, [user])
