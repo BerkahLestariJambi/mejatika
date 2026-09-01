@@ -6,13 +6,18 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
-  ChevronDown, Loader2, Flame, Zap, UploadCloud, Paperclip, Menu
+  ChevronDown, Loader2, Flame, Zap, UploadCloud, Paperclip, Menu,
+  Upload, Eye, CheckCircle2, AlertCircle
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
 export default function StudentDashboard() {
   const router = useRouter()
   const [activeMenu, setActiveMenu] = useState("dashboard")
+  
+  // Sub-menu khusus Tugas ("upload" | "list")
+  const [taskSubMenu, setTaskSubMenu] = useState<"upload" | "list">("upload")
+
   const [registrations, setRegistrations] = useState<any[]>([])
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
   const [myCertificates, setMyCertificates] = useState<any[]>([]) 
@@ -21,12 +26,16 @@ export default function StudentDashboard() {
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // State Form Tugas (Sesuai $fillable: title, mapel, description, file_path)
+  // State Form Tugas
   const [taskTitle, setTaskTitle] = useState("")
   const [taskMapel, setTaskMapel] = useState("Matematika")
   const [taskDescription, setTaskDescription] = useState("")
   const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
+
+  // State Daftar Tugas Terkirim
+  const [submittedTasks, setSubmittedTasks] = useState<any[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -62,11 +71,35 @@ export default function StudentDashboard() {
     }
   }, [router])
 
+  // Fungsi untuk mengambil daftar tugas terkirim
+  const fetchSubmittedTasks = useCallback(async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    setLoadingTasks(true)
+    try {
+      const res = await fetch(`${API_URL}/tasks`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      const data = await res.json()
+      setSubmittedTasks(Array.isArray(data) ? data : data.data || [])
+    } catch (err) {
+      console.error("Error fetching tasks:", err)
+    } finally {
+      setLoadingTasks(false)
+    }
+  }, [])
+
   useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // Submit Tugas — Key FormData disesuaikan dengan $fillable
+  useEffect(() => {
+    if (activeMenu === "assignments" && taskSubMenu === "list") {
+      fetchSubmittedTasks()
+    }
+  }, [activeMenu, taskSubMenu, fetchSubmittedTasks])
+
+  // Submit Tugas
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!taskTitle.trim()) {
@@ -79,10 +112,9 @@ export default function StudentDashboard() {
     try {
       const formData = new FormData()
       formData.append("title", taskTitle)
-      formData.append("mapel", taskMapel) // Disesuaikan dengan $fillable 'mapel'
+      formData.append("mapel", taskMapel)
       if (taskDescription) formData.append("description", taskDescription)
       
-      // Mengirimkan file dengan key 'file_path' dan 'file' untuk mengantisipasi validasi backend
       if (taskFile) {
         formData.append("file_path", taskFile)
         formData.append("file", taskFile) 
@@ -103,6 +135,8 @@ export default function StudentDashboard() {
         setTaskMapel("Matematika")
         setTaskDescription("")
         setTaskFile(null)
+        // Setelah upload, otomatis arahkan ke daftar tugas
+        setTaskSubMenu("list")
       } else {
         const errData = await res.json().catch(() => ({}))
         throw new Error(errData.message || "Gagal menyimpan tugas.")
@@ -215,92 +249,174 @@ export default function StudentDashboard() {
         {activeMenu === "assignments" && (
           <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl">
             <div>
-              <h2 className="text-3xl font-bold text-slate-800">Pengumpulan Tugas</h2>
-              <p className="text-slate-500 font-medium">Form pengiriman tugas langsung ke basis data.</p>
+              <h2 className="text-3xl font-bold text-slate-800">Pengelolaan Tugas</h2>
+              <p className="text-slate-500 font-medium">Kirim tugas atau cek nilai & feedback dari pengajar.</p>
             </div>
 
-            <form onSubmit={handleTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
-              
-              {/* Dropdown: mapel */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                  Mata Pelajaran <span className="text-red-500">*</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={taskMapel}
-                    onChange={(e) => setTaskMapel(e.target.value)}
-                    required
-                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
-                  >
-                    <option value="Matematika">Matematika</option>
-                    <option value="Bahasa Indonesia">Bahasa Indonesia</option>
-                    <option value="PKN">PKN</option>
-                    <option value="Bahasa Inggris">Bahasa Inggris</option>
-                    <option value="Informatika">Informatika</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
-                </div>
-              </div>
-
-              {/* Field: title */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                  Judul Tugas <span className="text-red-500">*</span>
-                </label>
-                <input 
-                  type="text" 
-                  value={taskTitle} 
-                  onChange={(e) => setTaskTitle(e.target.value)} 
-                  placeholder="Masukkan judul tugas..." 
-                  required
-                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
-                />
-              </div>
-
-              {/* Field: description */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                  Deskripsi / Catatan Tugas
-                </label>
-                <textarea 
-                  value={taskDescription} 
-                  onChange={(e) => setTaskDescription(e.target.value)} 
-                  placeholder="Tuliskan deskripsi atau ringkasan tugas kamu di sini..." 
-                  className="w-full h-40 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
-                />
-              </div>
-
-              {/* Field: file_path */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                  Unggah Berkas Tugas
-                </label>
-                <label className="flex flex-col items-center justify-center w-full min-h-[140px] p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors">
-                  {taskFile ? (
-                    <div className="flex items-center gap-3 text-indigo-600 font-bold text-sm">
-                      <Paperclip size={20} />
-                      <span className="truncate max-w-xs">{taskFile.name}</span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center space-y-2 text-slate-400">
-                      <UploadCloud size={36} className="text-indigo-500" />
-                      <span className="text-xs font-bold text-slate-600">Pilih file untuk diunggah</span>
-                      <span className="text-[10px] text-slate-400">PDF, ZIP, DOCX, PNG, JPG</span>
-                    </div>
-                  )}
-                  <input type="file" onChange={handleTaskFileChange} className="hidden" />
-                </label>
-              </div>
-
-              <Button 
-                type="submit" 
-                disabled={isSubmittingTask} 
-                className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 mt-4 transition-all"
+            {/* TAB SUB-MENU TUGAS */}
+            <div className="flex gap-4 border-b border-slate-200 pb-4">
+              <button
+                onClick={() => setTaskSubMenu("upload")}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
+                  taskSubMenu === "upload"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
               >
-                {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Tugas Sekarang"}
-              </Button>
-            </form>
+                <Upload size={18} /> Upload Tugas
+              </button>
+              <button
+                onClick={() => setTaskSubMenu("list")}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
+                  taskSubMenu === "list"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <Eye size={18} /> Tugas Terkirim
+              </button>
+            </div>
+
+            {/* SUB-MENU 1: UPLOAD TUGAS */}
+            {taskSubMenu === "upload" && (
+              <form onSubmit={handleTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Mata Pelajaran <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={taskMapel}
+                      onChange={(e) => setTaskMapel(e.target.value)}
+                      required
+                      className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
+                    >
+                      <option value="Matematika">Matematika</option>
+                      <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                      <option value="PKN">PKN</option>
+                      <option value="Bahasa Inggris">Bahasa Inggris</option>
+                      <option value="Informatika">Informatika</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Judul Tugas <span className="text-red-500">*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    value={taskTitle} 
+                    onChange={(e) => setTaskTitle(e.target.value)} 
+                    placeholder="Masukkan judul tugas..." 
+                    required
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Deskripsi / Catatan Tugas
+                  </label>
+                  <textarea 
+                    value={taskDescription} 
+                    onChange={(e) => setTaskDescription(e.target.value)} 
+                    placeholder="Tuliskan deskripsi atau ringkasan tugas kamu di sini..." 
+                    className="w-full h-40 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Unggah Berkas Tugas
+                  </label>
+                  <label className="flex flex-col items-center justify-center w-full min-h-[140px] p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors">
+                    {taskFile ? (
+                      <div className="flex items-center gap-3 text-indigo-600 font-bold text-sm">
+                        <Paperclip size={20} />
+                        <span className="truncate max-w-xs">{taskFile.name}</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center space-y-2 text-slate-400">
+                        <UploadCloud size={36} className="text-indigo-500" />
+                        <span className="text-xs font-bold text-slate-600">Pilih file untuk diunggah</span>
+                        <span className="text-[10px] text-slate-400">PDF, ZIP, DOCX, PNG, JPG</span>
+                      </div>
+                    )}
+                    <input type="file" onChange={handleTaskFileChange} className="hidden" />
+                  </label>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  disabled={isSubmittingTask} 
+                  className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 mt-4 transition-all"
+                >
+                  {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Tugas Sekarang"}
+                </Button>
+              </form>
+            )}
+
+            {/* SUB-MENU 2: LIHAT TUGAS TERKIRIM */}
+            {taskSubMenu === "list" && (
+              <div className="space-y-4">
+                {loadingTasks ? (
+                  <div className="p-12 text-center text-indigo-500 font-bold flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" /> Memuat data tugas...
+                  </div>
+                ) : submittedTasks.length === 0 ? (
+                  <div className="bg-white p-12 rounded-[2.5rem] text-center border border-slate-100 space-y-3">
+                    <AlertCircle className="mx-auto text-slate-300" size={48} />
+                    <p className="text-slate-500 font-medium">Belum ada tugas yang kamu kirimkan.</p>
+                  </div>
+                ) : (
+                  submittedTasks.map((item) => (
+                    <Card key={item.id} className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6 lg:p-8">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+                        <div>
+                          <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full mb-2">
+                            {item.mapel || "Umum"}
+                          </span>
+                          <h3 className="text-xl font-bold text-slate-800">{item.title}</h3>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Dikirim pada: {new Date(item.submitted_at || item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
+                        </div>
+                        
+                        {/* Nilai */}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase">Nilai</span>
+                            <span className="text-2xl font-black text-indigo-600">
+                              {item.score !== null && item.score !== undefined ? item.score : "-"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Deskripsi Tugas */}
+                      {item.description && (
+                        <div className="mb-4">
+                          <p className="text-xs font-bold text-slate-400 uppercase mb-1">Catatan Siswa:</p>
+                          <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-2xl">{item.description}</p>
+                        </div>
+                      )}
+
+                      {/* Feedback Pengajar */}
+                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 font-bold text-amber-800 text-xs uppercase mb-1">
+                          <CheckCircle2 size={16} className="text-amber-600" /> Feedback Pengajar
+                        </div>
+                        <p className="text-sm text-amber-900 font-medium">
+                          {item.feedback || item.comment || "Belum ada feedback dari pengajar."}
+                        </p>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         )}
 
