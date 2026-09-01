@@ -10,7 +10,8 @@ import {
   ChevronRight, 
   Clock, 
   CheckCircle2,
-  Loader2 
+  Loader2,
+  FileCheck
 } from "lucide-react"
 
 export default function MentorDashboard() {
@@ -64,11 +65,18 @@ export default function MentorDashboard() {
             Panel Kontributor Mejatika • <span className="text-zinc-900 font-bold">{user?.role}</span>
           </p>
         </div>
-        <Link href="/dashboard/mentor/profile">
-          <Button className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl px-6 h-14 font-black uppercase text-xs tracking-widest shadow-xl transition-transform hover:-translate-y-1">
-            <UserCircle className="mr-2" size={20} /> Edit Profil
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/mentor/tasks">
+            <Button className="bg-amber-500 hover:bg-amber-600 text-white rounded-2xl px-6 h-14 font-black uppercase text-xs tracking-widest shadow-xl transition-transform hover:-translate-y-1">
+              <FileCheck className="mr-2" size={20} /> Koreksi Tugas
+            </Button>
+          </Link>
+          <Link href="/dashboard/mentor/profile">
+            <Button className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl px-6 h-14 font-black uppercase text-xs tracking-widest shadow-xl transition-transform hover:-translate-y-1">
+              <UserCircle className="mr-2" size={20} /> Edit Profil
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* STATS CARDS */}
@@ -149,11 +157,18 @@ export default function MentorDashboard() {
               Jadilah instruktur dan bantu siswa Mejatika mencapai impian mereka. Klik tombol di bawah untuk melihat daftar kursus yang butuh mentor.
             </p>
           </div>
-          <Link href="/dashboard/mentor/apply-course" className="mt-10 relative z-10">
-            <Button className="w-full bg-white hover:bg-zinc-900 text-zinc-900 hover:text-white rounded-2xl h-14 font-black uppercase text-xs tracking-widest transition-all shadow-lg">
-              Cari Kursus Baru
-            </Button>
-          </Link>
+          <div className="mt-10 relative z-10 space-y-3">
+            <Link href="/dashboard/mentor/tasks">
+              <Button className="w-full bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl h-14 font-black uppercase text-xs tracking-widest transition-all shadow-lg mb-3">
+                Periksa Tugas Siswa
+              </Button>
+            </Link>
+            <Link href="/dashboard/mentor/apply-course">
+              <Button className="w-full bg-white hover:bg-zinc-900 text-zinc-900 hover:text-white rounded-2xl h-14 font-black uppercase text-xs tracking-widest transition-all shadow-lg">
+                Cari Kursus Baru
+              </Button>
+            </Link>
+          </div>
           {/* Decorative element */}
           <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-amber-400 rounded-full opacity-50 shadow-inner"></div>
         </div>
