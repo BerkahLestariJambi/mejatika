@@ -402,7 +402,7 @@ export default function StudentDashboard() {
                       <div className="flex flex-col items-center space-y-2 text-slate-400">
                         <UploadCloud size={36} className="text-indigo-500" />
                         <span className="text-xs font-bold text-slate-600">Pilih file untuk diunggah</span>
-                        <span className="text-[10px] text-slate-400">PDF, ZIP, DOCX, PNG, JPG</span>
+                        <span className="text-[10px] text-slate-400">PNG, JPG, Bitmap</span>
                       </div>
                     )}
                     <input type="file" onChange={handleTaskFileChange} className="hidden" />
