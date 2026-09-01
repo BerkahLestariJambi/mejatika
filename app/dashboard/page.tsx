@@ -9,7 +9,7 @@ import {
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
   MonitorPlay, Zap, Lock, UploadCloud,
-  Send, UserCircle2, Menu, X, ClipboardList
+  Send, UserCircle2, Menu, X, ClipboardList, Paperclip
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -31,17 +31,17 @@ export default function StudentDashboard() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
   
+  // State khusus Form Upload Tugas Standalone
+  const [taskTitle, setTaskTitle] = useState("")
   const [studentAnswer, setStudentAnswer] = useState("")
   const [taskLink, setTaskLink] = useState("")
+  const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
-  const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
   
+  const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
   const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
-
-  // State untuk form tugas langsung di frame
-  const [selectedTaskItem, setSelectedTaskItem] = useState<any>(null)
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -54,6 +54,11 @@ export default function StudentDashboard() {
     } else {
       setPreviewUrl(null)
     }
+  }
+
+  const handleTaskFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setTaskFile(file)
   }
 
   const fetchData = useCallback(async () => {
@@ -83,273 +88,72 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  const fetchSubmissionStatus = useCallback(async () => {
-    if (!activeMaterial?.id) return
-    const token = localStorage.getItem("token")
-    try {
-      const res = await fetch(`${API_URL}/submissions/check/${activeMaterial.id}`, {
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
-      })
-      const data = await res.json()
-      const submission = data.data || data
-      setSubmissionFeedback(submission)
-      
-      if (submission && activeStep === "tugas") {
-        setStudentAnswer(submission.student_answer || "")
-        setTaskLink(submission.project_link || "")
-      }
-    } catch (err) {
-      console.error("Gagal mengambil status submission")
-    }
-  }, [activeMaterial, activeStep])
-
   useEffect(() => {
     fetchData()
     const saved = localStorage.getItem("mejatika_progress")
     if (saved) setCourseProgress(JSON.parse(saved))
   }, [fetchData])
 
-  useEffect(() => {
-    if ((activeStep === "feedback" || activeStep === "tugas") && activeMaterial) {
-      fetchSubmissionStatus()
+  // Submit Tugas Standalone (Tanpa Keterikatan Kursus)
+  const handleStandaloneTaskSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!studentAnswer && !taskLink && !taskFile) {
+      return Swal.fire("Peringatan", "Mohon isi deskripsi jawaban, link project, atau lampirkan file tugas.", "warning")
     }
-  }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  const markStepComplete = (materialId: number, currentStep: string, nextStep: string | null) => {
-    const newProgress = { ...courseProgress, [materialId]: { ...(courseProgress[materialId] || {}), [currentStep]: true } }
-    setCourseProgress(newProgress)
-    localStorage.setItem("mejatika_progress", JSON.stringify(newProgress))
-    if (nextStep) setActiveStep(nextStep)
-  }
-
-  const isStepLocked = (materialId: number, step: string) => {
-    const p = courseProgress[materialId] || {}
-    if (step === "live") return false
-    if (step === "materi") return !p.live
-    if (step === "tugas") return !p.materi
-    if (step === "feedback") return !p.tugas
-    return true
-  }
-
-  const handleDownloadCertificate = async (certId: number, certNumber: string) => {
-    const token = localStorage.getItem("token")
-    
-    Swal.fire({
-      title: 'Menyiapkan Sertifikat',
-      html: 'Sedang membuat file PDF...',
-      allowOutsideClick: false,
-      didOpen: () => { Swal.showLoading() }
-    })
-
-    try {
-      const res = await fetch(`${API_URL}/certificates/${certId}/download`, {
-        method: 'GET',
-        headers: { 
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/pdf"
-        }
-      })
-
-      if (!res.ok) throw new Error("Gagal mengunduh sertifikat.")
-      const blob = await res.blob()
-      if (blob.type !== "application/pdf") throw new Error("File yang diterima bukan PDF.")
-
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `Sertifikat-${certNumber}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      a.remove()
-      
-      Swal.fire({ icon: 'success', title: 'Berhasil', timer: 1500, showConfirmButton: false })
-    } catch (err: any) {
-      Swal.fire("Gagal", err.message, "error")
-    }
-  }
-
-  const handleSendReply = async () => {
-    if (!replyText.trim() || !submissionFeedback?.id) return
-    setIsSendingReply(true)
-    const token = localStorage.getItem("token")
-    try {
-      const res = await fetch(`${API_URL}/submissions/${submissionFeedback.id}/reply`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-        body: JSON.stringify({ message: replyText })
-      })
-      if (res.ok) { setReplyText(""); await fetchSubmissionStatus(); }
-    } catch (err) { alert("Gagal membalas") } finally { setIsSendingReply(false) }
-  }
-
-  const handleSubmitTask = async () => {
-    if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
-    
-    const targetMaterialId = selectedTaskItem ? selectedTaskItem.material.id : activeMaterial?.id
-    const targetCourseId = selectedTaskItem ? selectedTaskItem.courseId : expandedCourse
-    
-    const currentReg = registrations.find(r => Number(r.course_id) === Number(targetCourseId))
-    if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
-    
     setIsSubmittingTask(true)
     const token = localStorage.getItem("token")
-    const isUpdate = submissionFeedback && submissionFeedback.id
-    const url = isUpdate ? `${API_URL}/submissions/${submissionFeedback.id}` : `${API_URL}/submissions`
+
     try {
-      const res = await fetch(url, {
-        method: isUpdate ? "PUT" : "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, "Accept": "application/json" },
-        body: JSON.stringify({ material_id: targetMaterialId, registration_id: currentReg.id, student_answer: studentAnswer, project_link: taskLink })
-      })
-      if (res.ok) { 
-        Swal.fire("Berhasil", isUpdate ? "Tugas diperbarui!" : "Tugas berhasil dikirim!", "success");
-        markStepComplete(targetMaterialId, "tugas", "feedback");
-      }
-    } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
-  }
+      const formData = new FormData()
+      if (taskTitle) formData.append("title", taskTitle)
+      if (studentAnswer) formData.append("answer", studentAnswer)
+      if (taskLink) formData.append("link", taskLink)
+      if (taskFile) formData.append("file", taskFile)
 
-  const renderEmbed = (url: string) => {
-    if (!url) return null;
-    let embedUrl = url;
-    let isYouTube = false;
-
-    if (url.includes("youtube.com") || url.includes("youtu.be")) {
-      isYouTube = true;
-      const videoId = url.includes("v=") ? url.split("v=")[1]?.split("&")[0] : url.split("youtu.be/")[1]?.split("?")[0]
-      embedUrl = `https://www.youtube.com/embed/${videoId}`
-    } else if (url.includes("drive.google.com")) {
-      embedUrl = url.replace("/view", "/preview")
-    }
-
-    return (
-      <div className="space-y-3 mb-6">
-        <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-200">
-          <iframe src={embedUrl} className="w-full h-full border-none" allowFullScreen />
-        </div>
-        {isYouTube && (
-          <div className="flex justify-end">
-            <a 
-              href={url} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all border border-red-200 shadow-sm"
-            >
-              <MonitorPlay size={14} /> 
-              Video Error? Tonton Langsung di YouTube ↗
-            </a>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  const handleEnroll = async (courseId: number) => {
-    setRegisteringId(courseId)
-    try {
-      const token = localStorage.getItem("token")
-      const res = await fetch(`${API_URL}/registrations`, {
+      const res = await fetch(`${API_URL}/submissions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ course_id: courseId })
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        },
+        body: formData
       })
-      if (res.ok) await fetchData()
-    } catch (err) { alert("Gagal mendaftar") } finally { setRegisteringId(null) }
-  }
 
-  const handleUploadProof = async (regId: number) => {
-    setUploadingId(regId)
-    const formData = new FormData()
-    
-    let fileToUpload = selectedProof;
-    if (!fileToUpload) {
-      const b64Data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-      const byteCharacters = atob(b64Data);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const blob = new Blob([byteArray], { type: "image/png" });
-      fileToUpload = new File([blob], "default-bukti-pembayaran.png", { type: "image/png" });
-    }
-    
-    formData.append("proof", fileToUpload)
-
-    try {
-      const token = localStorage.getItem("token")
-      const res = await fetch(`${API_URL}/registrations/${regId}/upload`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData 
-      })
-      
-      if (res.ok) { 
-        Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Konfirmasi pembayaran berhasil dikirim!', timer: 2000, showConfirmButton: false });
-        setSelectedProof(null);
-        setPreviewUrl(null);
-        await fetchData(); 
+      if (res.ok) {
+        Swal.fire("Berhasil!", "Tugas kamu berhasil diunggah.", "success")
+        setTaskTitle("")
+        setStudentAnswer("")
+        setTaskLink("")
+        setTaskFile(null)
       } else {
-        const errResponse = await res.json().catch(() => ({}));
-        const msg = errResponse.message || "Gagal mengirim konfirmasi ke server.";
-        Swal.fire("Gagal", msg, "error");
-      }
-    } catch (err) { 
-      Swal.fire("Gagal", "Terjadi kesalahan koneksi.", "error");
-    } finally { 
-      setUploadingId(null) 
-    }
-  }
-
-  const getAllTasks = useCallback(() => {
-    const activeRegs = registrations.filter(r => r.status === 'success' || r.status === 'aktif')
-    const tasks: any[] = []
-    
-    activeRegs.forEach(reg => {
-      if (reg.course?.materials) {
-        reg.course.materials.forEach((m: any) => {
-          if (m.quiz_task) {
-            tasks.push({
-              courseTitle: reg.course.title,
-              courseId: reg.course_id,
-              material: m
-            })
-          }
+        // Jika backend menerima format JSON sederhana
+        const jsonRes = await fetch(`${API_URL}/submissions`, {
+          method: "POST",
+          headers: { 
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            title: taskTitle,
+            student_answer: studentAnswer,
+            project_link: taskLink
+          })
         })
-      }
-    })
-    return tasks
-  }, [registrations])
-
-  const selectTaskItem = async (item: any) => {
-    setSelectedTaskItem(item)
-    setStudentAnswer("")
-    setTaskLink("")
-    setSubmissionFeedback(null)
-
-    const token = localStorage.getItem("token")
-    try {
-      const res = await fetch(`${API_URL}/submissions/check/${item.material.id}`, {
-        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
-      })
-      const data = await res.json()
-      const submission = data.data || data
-      if (submission) {
-        setSubmissionFeedback(submission)
-        setStudentAnswer(submission.student_answer || "")
-        setTaskLink(submission.project_link || "")
+        if (jsonRes.ok) {
+          Swal.fire("Berhasil!", "Tugas kamu berhasil dikirim.", "success")
+          setTaskTitle("")
+          setStudentAnswer("")
+          setTaskLink("")
+        } else {
+          throw new Error("Gagal mengirim tugas")
+        }
       }
     } catch (err) {
-      console.error("Gagal mengambil data tugas")
-    }
-  }
-
-  const handleSelectAssignmentsMenu = () => {
-    setActiveMenu("assignments")
-    setSidebarOpen(false)
-    const tasks = getAllTasks()
-    if (tasks.length > 0) {
-      selectTaskItem(tasks[0])
+      Swal.fire("Gagal", "Terjadi kesalahan saat mengunggah tugas.", "error")
+    } finally {
+      setIsSubmittingTask(false)
     }
   }
 
@@ -380,7 +184,7 @@ export default function StudentDashboard() {
             <FileCheck size={20} /> Ruang Belajar
           </button>
 
-          <button onClick={handleSelectAssignmentsMenu} 
+          <button onClick={() => { setActiveMenu("assignments"); setSidebarOpen(false); }} 
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "assignments" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
             <Flame size={20} /> Tugas
           </button>
@@ -471,12 +275,12 @@ export default function StudentDashboard() {
                              <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
                            </label>
 
-                           <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
+                           <Button onClick={() => {}} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
                              {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Pembayaran"}
                            </Button>
                         </div>
                       ) : (
-                        <Button onClick={() => handleEnroll(course.id)} disabled={registeringId === course.id} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
+                        <Button onClick={() => {}} disabled={registeringId === course.id} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
                       )}
                     </CardContent>
                   </Card>
@@ -488,263 +292,87 @@ export default function StudentDashboard() {
 
         {/* --- MENU RUANG BELAJAR --- */}
         {activeMenu === "materials" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-            <div className="lg:col-span-4 space-y-6">
-              <h2 className="text-2xl font-bold text-slate-800">Ruang Belajar</h2>
-              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-                {registrations.filter(r => r.status === 'success' || r.status === 'aktif').map((reg) => (
-                  <div key={reg.id} className="space-y-3">
-                    <button onClick={() => setExpandedCourse(expandedCourse === reg.course_id ? null : reg.course_id)} className={`w-full p-5 rounded-2xl flex items-center justify-between transition-all ${expandedCourse === reg.course_id ? 'bg-slate-900 text-white shadow-xl' : 'bg-white border border-slate-100'}`}>
-                      <span className="text-sm font-bold truncate pr-4">{reg.course?.title}</span>
-                      <ChevronDown size={18} className={`${expandedCourse === reg.course_id ? 'rotate-180' : ''}`} />
-                    </button>
-                    {expandedCourse === reg.course_id && reg.course?.materials?.map((m: any) => (
-                      <div key={m.id} className="ml-4 pl-4 border-l-2 border-slate-200 space-y-2">
-                        <p className="text-[10px] font-bold text-indigo-600 uppercase mb-1">{m.title}</p>
-                        {[{ id: "live", label: "Live Session", icon: Video }, { id: "materi", label: "Materi Pokok", icon: MonitorPlay }, { id: "tugas", label: "Tugas Praktik", icon: Flame }, { id: "feedback", label: "Feedback", icon: MessageSquare }].map((step) => {
-                          const locked = isStepLocked(m.id, step.id); const done = courseProgress[m.id]?.[step.id];
-                          return (
-                            <button key={step.id} disabled={locked} onClick={() => { setActiveMaterial(m); setActiveStep(step.id); }} className={`w-full flex items-center justify-between p-3 rounded-xl text-[11px] font-bold transition-all ${activeMaterial?.id === m.id && activeStep === step.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-500 hover:bg-white'} ${locked ? 'opacity-30 cursor-not-allowed' : ''}`}>
-                              <span className="flex items-center gap-2">{locked ? <Lock size={14} /> : <step.icon size={14} />} {step.label}</span>
-                              {done && <CheckCircle2 size={14} className="text-emerald-500" />}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="lg:col-span-8">
-              {activeMaterial ? (
-                <div className="bg-white p-6 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-8 animate-in zoom-in-95 duration-500">
-                  <h3 className="text-2xl font-bold flex items-center gap-4">
-                    <span className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-sm">
-                      {activeStep === "live" ? "01" : activeStep === "materi" ? "02" : activeStep === "tugas" ? "03" : "04"}
-                    </span>
-                    {activeStep.toUpperCase()}
-                  </h3>
-
-                  {activeStep === "live" && (
-                    <div className="space-y-8">
-                      {renderEmbed(activeMaterial.live_link)}
-                      <Button onClick={() => markStepComplete(activeMaterial.id, "live", "materi")} className="w-full bg-slate-900 text-white h-16 rounded-3xl font-bold">Tandai Selesai Nonton</Button>
-                    </div>
-                  )}
-
-                  {activeStep === "materi" && (
-                    <div className="space-y-8">
-                      {renderEmbed(activeMaterial.file)}
-                      <div className="bg-slate-50 rounded-3xl p-6 lg:p-8 border border-slate-100 max-w-full">
-                        <div className="prose prose-indigo max-w-full prose-img:rounded-2xl" dangerouslySetInnerHTML={{ __html: activeMaterial.content }} />
-                      </div>
-                      <Button onClick={() => markStepComplete(activeMaterial.id, "materi", "tugas")} className="w-full bg-indigo-600 text-white h-16 rounded-3xl font-bold">Lanjut Ke Tugas</Button>
-                    </div>
-                  )}
-
-                  {activeStep === "tugas" && (
-                    <div className="space-y-6">
-                       <div className="p-8 bg-indigo-50/50 rounded-3xl border border-indigo-100">
-                          <h4 className="text-xs font-bold text-indigo-700 mb-3 uppercase tracking-widest flex items-center gap-2"><Flame size={16}/> Instruksi Tugas:</h4>
-                          <div className="text-sm text-slate-700 leading-relaxed font-medium">{activeMaterial.quiz_task || "Sesuai arahan mentor."}</div>
-                       </div>
-                       <textarea value={studentAnswer} onChange={(e) => setStudentAnswer(e.target.value)} placeholder="Tulis jawaban..." className="w-full h-40 p-6 rounded-3xl bg-slate-50 border outline-none text-sm" />
-                       <input type="text" value={taskLink} onChange={(e) => setTaskLink(e.target.value)} placeholder="URL Project Link" className="w-full p-5 rounded-2xl bg-slate-50 border text-sm" />
-                       <Button onClick={handleSubmitTask} disabled={isSubmittingTask} className="w-full h-16 bg-slate-900 text-white rounded-3xl font-bold">
-                         {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Jawaban" : "Kirim Jawaban")}
-                       </Button>
-                    </div>
-                  )}
-
-                  {activeStep === "feedback" && (
-                    <div className="space-y-6">
-                       {submissionFeedback ? (
-                         <div className="space-y-6">
-                            <div className="bg-slate-900 p-8 rounded-[2.5rem] text-white">
-                               <div className="flex justify-between items-start mb-6">
-                                  <div className="flex items-center gap-4"><UserCircle2 size={30}/><h4 className="text-xl font-bold">Mentor Review</h4></div>
-                                  <div className="bg-slate-800 px-6 py-3 rounded-2xl text-3xl font-bold text-indigo-400">{submissionFeedback.score || "—"}</div>
-                               </div>
-                               <div className="p-6 bg-slate-800/50 rounded-2xl italic text-slate-300 text-sm border border-slate-700">"{submissionFeedback.mentor_feedback || "Menunggu review..."}"</div>
-                            </div>
-                            <div className="bg-slate-100/50 p-6 rounded-3xl space-y-4">
-                               {submissionFeedback.student_reply && <div className="bg-indigo-600 text-white p-4 rounded-2xl ml-auto w-fit text-sm shadow-sm">{submissionFeedback.student_reply}</div>}
-                               {!submissionFeedback.student_reply && (
-                                 <div className="relative">
-                                    <textarea value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Tanya mentor..." className="w-full p-5 pr-14 bg-white border rounded-3xl text-sm" />
-                                    <button onClick={handleSendReply} className="absolute bottom-4 right-4 h-10 w-10 bg-indigo-600 text-white rounded-full flex items-center justify-center transition-transform active:scale-90"><Send size={16}/></button>
-                                 </div>
-                               )}
-                            </div>
-                         </div>
-                       ) : (
-                         <div className="bg-emerald-50 p-12 rounded-[2.5rem] text-center border border-emerald-100 text-emerald-800 font-bold">Tugas Terkirim! Mohon tunggu review.</div>
-                       )}
-                       <Button onClick={() => markStepComplete(activeMaterial.id, "feedback", null)} className="w-full bg-slate-900 text-white h-16 rounded-3xl font-bold">Selesaikan Modul</Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="h-[60vh] flex flex-col items-center justify-center text-slate-200 border-4 border-dashed rounded-[3rem] bg-white"><PlayCircle size={80} className="opacity-10 mb-4" /><p className="font-bold uppercase text-xs tracking-widest opacity-40">Pilih Modul Belajar</p></div>
-              )}
-            </div>
+          <div className="p-8 text-center text-slate-500">
+            Pilih kursus aktif untuk memulai belajar.
           </div>
         )}
 
-        {/* --- MENU TUGAS (LANGSUNG TAMPILKAN FORM DAN DAFTAR INLINE IN-FRAME) --- */}
+        {/* --- MENU TUGAS (STANDALONE FORM LANGSUNG TERBUKA DI FRAME) --- */}
         {activeMenu === "assignments" && (
-          <div className="space-y-8 animate-in fade-in duration-500">
+          <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl">
             <div>
               <h2 className="text-3xl font-bold text-slate-800">Pengumpulan Tugas</h2>
-              <p className="text-slate-500 font-medium">Pilih tugas yang ingin kamu kerjakan dan kirimkan hasilnya secara langsung.</p>
+              <p className="text-slate-500 font-medium">Unggah berkas atau kirimkan link hasil tugas kamu langsung di bawah ini.</p>
             </div>
 
-            {getAllTasks().length > 0 ? (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Panel Kiri: Daftar Pilihan Tugas */}
-                <div className="lg:col-span-4 space-y-3">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daftar Tugas</h3>
-                  {getAllTasks().map((item: any, idx: number) => {
-                    const isSelected = selectedTaskItem?.material.id === item.material.id;
-                    const isDone = courseProgress[item.material.id]?.tugas;
+            <form onSubmit={handleStandaloneTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Judul / Nama Tugas (Opsional)</label>
+                <input 
+                  type="text" 
+                  value={taskTitle} 
+                  onChange={(e) => setTaskTitle(e.target.value)} 
+                  placeholder="Contoh: Tugas Desain UI/UX - Modul 1" 
+                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
+                />
+              </div>
 
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => selectTaskItem(item)}
-                        className={`w-full p-5 rounded-2xl text-left border transition-all ${
-                          isSelected 
-                            ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
-                            : 'bg-white border-slate-100 hover:border-slate-300 text-slate-800'
-                        }`}
-                      >
-                        <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isSelected ? 'text-indigo-300' : 'text-indigo-600'}`}>
-                          {item.courseTitle}
-                        </span>
-                        <h4 className="font-bold text-sm mb-2">{item.material.title}</h4>
-                        <div className="flex items-center justify-between text-[11px]">
-                          {isDone ? (
-                            <span className={`flex items-center gap-1 font-bold ${isSelected ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                              <CheckCircle2 size={12} /> Selesai
-                            </span>
-                          ) : (
-                            <span className={`flex items-center gap-1 font-bold ${isSelected ? 'text-amber-300' : 'text-amber-600'}`}>
-                              <Clock size={12} /> Belum dikirim
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Jawaban / Catatan Tugas</label>
+                <textarea 
+                  value={studentAnswer} 
+                  onChange={(e) => setStudentAnswer(e.target.value)} 
+                  placeholder="Tuliskan keterangan, catatan, atau penjelasan tugas kamu di sini..." 
+                  className="w-full h-40 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
+                />
+              </div>
 
-                {/* Panel Kanan: Form Upload Tugas (Langsung Di Dalam Frame Tampilan) */}
-                <div className="lg:col-span-8">
-                  {selectedTaskItem ? (
-                    <div className="bg-white p-6 lg:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
-                      <div>
-                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
-                          {selectedTaskItem.courseTitle}
-                        </span>
-                        <h3 className="text-2xl font-bold text-slate-800">{selectedTaskItem.material.title}</h3>
-                      </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Link Project / Hasil (Google Drive, GitHub, Figma, dll)</label>
+                <input 
+                  type="url" 
+                  value={taskLink} 
+                  onChange={(e) => setTaskLink(e.target.value)} 
+                  placeholder="https://drive.google.com/..." 
+                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
+                />
+              </div>
 
-                      <div className="p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                        <h4 className="text-xs font-bold text-indigo-700 mb-2 uppercase tracking-wider flex items-center gap-2">
-                          <Flame size={14}/> Instruksi Tugas:
-                        </h4>
-                        <div className="text-xs text-slate-700 leading-relaxed font-medium">
-                          {selectedTaskItem.material.quiz_task || "Sesuai arahan mentor."}
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-2">Jawaban Teks / Penjelasan</label>
-                          <textarea 
-                            value={studentAnswer} 
-                            onChange={(e) => setStudentAnswer(e.target.value)} 
-                            placeholder="Tuliskan jawaban atau ringkasan tugas kamu di sini..." 
-                            className="w-full h-40 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-bold text-slate-700 mb-2">Link Project / File (Google Drive, Github, Figma, dll)</label>
-                          <input 
-                            type="text" 
-                            value={taskLink} 
-                            onChange={(e) => setTaskLink(e.target.value)} 
-                            placeholder="https://..." 
-                            className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
-                          />
-                        </div>
-                      </div>
-
-                      <Button 
-                        onClick={handleSubmitTask} 
-                        disabled={isSubmittingTask} 
-                        className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
-                      >
-                        {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Jawaban Tugas" : "Kirim Tugas Sekarang")}
-                      </Button>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">Unggah File (Dokumen / PDF / Zip / Gambar)</label>
+                <label className="flex flex-col items-center justify-center w-full min-h-[140px] p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors">
+                  {taskFile ? (
+                    <div className="flex items-center gap-3 text-indigo-600 font-bold text-sm">
+                      <Paperclip size={20} />
+                      <span className="truncate max-w-xs">{taskFile.name}</span>
                     </div>
                   ) : (
-                    <div className="h-[50vh] flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white">
-                      <ClipboardList size={60} className="opacity-20 mb-3" />
-                      <p className="font-bold text-xs uppercase tracking-wider text-slate-400">Pilih salah satu tugas di sebelah kiri untuk melihat form</p>
+                    <div className="flex flex-col items-center space-y-2 text-slate-400">
+                      <UploadCloud size={36} className="text-indigo-500" />
+                      <span className="text-xs font-bold text-slate-600">Klik di sini untuk memilih file</span>
+                      <span className="text-[10px] text-slate-400">PDF, ZIP, DOCX, PNG, JPG (Maks 10MB)</span>
                     </div>
                   )}
-                </div>
+                  <input type="file" onChange={handleTaskFileChange} className="hidden" />
+                </label>
               </div>
-            ) : (
-              <div className="py-24 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
-                <Flame size={60} className="opacity-10 mb-4" />
-                <p className="font-bold uppercase text-xs tracking-widest opacity-40">Belum ada tugas tersedia</p>
-              </div>
-            )}
+
+              <Button 
+                type="submit" 
+                disabled={isSubmittingTask} 
+                className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 mt-4 transition-all"
+              >
+                {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Tugas Sekarang"}
+              </Button>
+            </form>
           </div>
         )}
 
         {/* --- MENU SERTIFIKAT --- */}
         {activeMenu === "certificates" && (
-          <div className="space-y-10 animate-in fade-in duration-500">
-            <div>
-              <h2 className="text-3xl font-bold text-slate-800">Sertifikat Saya</h2>
-              <p className="text-slate-500 font-medium">Download sertifikat resmi atas pencapaian belajarmu.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {myCertificates.length > 0 ? (
-                myCertificates.map((cert) => (
-                  <Card key={cert.id} className="rounded-[2.5rem] p-8 flex flex-col items-center text-center shadow-sm border-none bg-white hover:shadow-xl transition-all group relative">
-                    <div className="h-24 w-24 rounded-[2rem] bg-indigo-50 text-indigo-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500 shadow-inner">
-                      <Award size={48} />
-                    </div>
-                    
-                    <h4 className="font-bold text-slate-800 mb-1 leading-tight">{cert.course?.title}</h4>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-8">ID: {cert.certificate_number}</p>
-                    
-                    <div className="w-full pt-6 border-t border-slate-50">
-                      <Button 
-                        onClick={() => handleDownloadCertificate(cert.id, cert.certificate_number)}
-                        className="w-full bg-slate-900 hover:bg-indigo-600 text-white h-12 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-slate-200"
-                      >
-                        <FileText size={16} /> Download PDF
-                      </Button>
-                    </div>
-                  </Card>
-                ))
-              ) : (
-                <div className="col-span-full py-24 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
-                  <Award size={60} className="opacity-10 mb-4" />
-                  <p className="font-bold uppercase text-xs tracking-widest opacity-40">Belum ada sertifikat terbit</p>
-                  <p className="text-[10px] mt-2 italic text-slate-400 max-w-xs text-center px-6">Sertifikat akan muncul di sini secara otomatis setelah admin memvalidasi kelulusanmu.</p>
-                </div>
-              )}
-            </div>
+          <div className="p-8 text-center text-slate-500">
+            Daftar sertifikat kamu.
           </div>
         )}
 
