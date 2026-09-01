@@ -6,8 +6,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
-  ChevronDown, Loader2, Flame, Zap, UploadCloud, Paperclip, Menu,
-  Upload, Eye, CheckCircle2, AlertCircle
+  ChevronDown, Loader2, Zap, UploadCloud, Paperclip, Menu,
+  Upload, Eye, CheckCircle2, AlertCircle, Check
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -27,7 +27,7 @@ export default function StudentDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // State Form Tugas
-  const [taskTitle, setTaskTitle] = useState("")
+  const [taskTitle, setTaskTitle] = useState("Tugas 1")
   const [taskMapel, setTaskMapel] = useState("Matematika")
   const [taskDescription, setTaskDescription] = useState("")
   const [taskFile, setTaskFile] = useState<File | null>(null)
@@ -38,6 +38,9 @@ export default function StudentDashboard() {
   const [loadingTasks, setLoadingTasks] = useState(false)
 
   const API_URL = "https://backend.mejatika.com/api"
+
+  // Daftar 10 Tugas
+  const TASK_OPTIONS = Array.from({ length: 10 }, (_, i) => `Tugas ${i + 1}`)
 
   const handleTaskFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
@@ -71,18 +74,16 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // PERBAIKAN: Fungsi untuk mengambil daftar tugas khusus milik siswa yang login
+  // Fungsi mengambil daftar tugas milik siswa
   const fetchSubmittedTasks = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return
     setLoadingTasks(true)
     try {
-      // Menggunakan endpoint spesifik tugas milik siswa (misal: /my-tasks atau /student/tasks)
       let res = await fetch(`${API_URL}/my-tasks`, {
         headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
 
-      // Jika endpoint /my-tasks 404, fallback ke /tasks dengan filter user ID di client-side
       if (!res.ok) {
         res = await fetch(`${API_URL}/tasks`, {
           headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
@@ -92,7 +93,6 @@ export default function StudentDashboard() {
       const data = await res.json()
       const rawList = Array.isArray(data) ? data : data.data || []
 
-      // Memastikan filter tugas hanya milik user yang sedang login
       if (user?.id) {
         const filteredTasks = rawList.filter((item: any) => 
           item.user_id === user.id || item.student_id === user.id
@@ -103,7 +103,7 @@ export default function StudentDashboard() {
       }
     } catch (err) {
       console.error("Error fetching tasks:", err)
-    } finally {
+    } fontally {
       setLoadingTasks(false)
     }
   }, [user])
@@ -113,16 +113,36 @@ export default function StudentDashboard() {
   }, [fetchData])
 
   useEffect(() => {
-    if (activeMenu === "assignments" && taskSubMenu === "list") {
-      fetchSubmittedTasks()
+    fetchSubmittedTasks()
+  }, [fetchSubmittedTasks])
+
+  // Cek apakah suatu tugas pada mapel tertentu sudah dikirim
+  const isTaskSubmitted = (title: string) => {
+    return submittedTasks.some(
+      (task) => task.mapel === taskMapel && task.title === title
+    )
+  }
+
+  // Auto select tugas pertama yang belum dikirim saat mapel berubah
+  useEffect(() => {
+    const firstAvailable = TASK_OPTIONS.find((t) => !isTaskSubmitted(t))
+    if (firstAvailable) {
+      setTaskTitle(firstAvailable)
+    } else {
+      setTaskTitle("")
     }
-  }, [activeMenu, taskSubMenu, fetchSubmittedTasks])
+  }, [taskMapel, submittedTasks])
 
   // Submit Tugas
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!taskTitle.trim()) {
-      return Swal.fire("Peringatan", "Judul tugas wajib diisi.", "warning")
+
+    if (!taskTitle) {
+      return Swal.fire("Peringatan", "Silakan pilih tugas yang akan diunggah.", "warning")
+    }
+
+    if (isTaskSubmitted(taskTitle)) {
+      return Swal.fire("Peringatan", `${taskTitle} untuk mata pelajaran ${taskMapel} sudah pernah dikirim.`, "warning")
     }
 
     setIsSubmittingTask(true)
@@ -150,10 +170,9 @@ export default function StudentDashboard() {
 
       if (res.ok) {
         Swal.fire("Berhasil!", "Tugas berhasil dikirim.", "success")
-        setTaskTitle("")
-        setTaskMapel("Matematika")
         setTaskDescription("")
         setTaskFile(null)
+        await fetchSubmittedTasks()
         setTaskSubMenu("list")
       } else {
         const errData = await res.json().catch(() => ({}))
@@ -195,7 +214,7 @@ export default function StudentDashboard() {
 
           <button onClick={() => { setActiveMenu("assignments"); setSidebarOpen(false); }} 
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "assignments" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
-            <Flame size={20} /> Tugas
+            <Zap size={20} /> Tugas
           </button>
 
           <button onClick={() => { setActiveMenu("certificates"); setSidebarOpen(false); }} 
@@ -319,18 +338,42 @@ export default function StudentDashboard() {
                   </div>
                 </div>
 
+                {/* PILIHAN TUGAS 1 - 10 (GRID BUTTONS) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                    Judul Tugas <span className="text-red-500">*</span>
+                    Pilih Tugas <span className="text-red-500">*</span>
                   </label>
-                  <input 
-                    type="text" 
-                    value={taskTitle} 
-                    onChange={(e) => setTaskTitle(e.target.value)} 
-                    placeholder="Masukkan judul tugas..." 
-                    required
-                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
-                  />
+                  <p className="text-xs text-slate-400 mb-3">Tugas yang sudah dikirim akan ditandai dan tidak bisa dipilih kembali.</p>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {TASK_OPTIONS.map((item) => {
+                      const submitted = isTaskSubmitted(item)
+                      const isSelected = taskTitle === item
+
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          disabled={submitted}
+                          onClick={() => setTaskTitle(item)}
+                          className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 ${
+                            submitted
+                              ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                              : isSelected
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100"
+                              : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                          }`}
+                        >
+                          <span>{item}</span>
+                          {submitted ? (
+                            <CheckCircle2 size={14} className="text-slate-400 flex-shrink-0" />
+                          ) : isSelected ? (
+                            <Check size={14} className="text-white flex-shrink-0" />
+                          ) : null}
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 <div>
@@ -341,7 +384,7 @@ export default function StudentDashboard() {
                     value={taskDescription} 
                     onChange={(e) => setTaskDescription(e.target.value)} 
                     placeholder="Tuliskan deskripsi atau ringkasan tugas kamu di sini..." 
-                    className="w-full h-40 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
+                    className="w-full h-32 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
                   />
                 </div>
 
@@ -368,8 +411,8 @@ export default function StudentDashboard() {
 
                 <Button 
                   type="submit" 
-                  disabled={isSubmittingTask} 
-                  className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 mt-4 transition-all"
+                  disabled={isSubmittingTask || !taskTitle} 
+                  className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 mt-4 transition-all disabled:opacity-50"
                 >
                   {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Tugas Sekarang"}
                 </Button>
