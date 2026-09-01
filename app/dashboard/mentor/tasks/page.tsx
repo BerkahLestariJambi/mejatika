@@ -450,7 +450,7 @@ export default function MentorTasksPage() {
   <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl flex items-start gap-3">
     <MessageSquare className="text-amber-600 shrink-0 mt-0.5" size={16} />
     <div className="text-xs space-y-1 w-full overflow-hidden">
-      <span className="font-bold text-amber-900 block">Feedback Mentor:</span>
+      <span className="font-bold text-amber-900 block">Feedback dari Guru Mata Pelajaran:</span>
       <p className="text-amber-800 whitespace-pre-line break-words leading-relaxed">
         {currentFeedback}
       </p>
