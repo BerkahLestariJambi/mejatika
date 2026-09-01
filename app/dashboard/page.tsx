@@ -8,9 +8,8 @@ import {
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
-  Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
-  Send, UserCircle2, Menu, X, Star, RefreshCw, Image as ImageIcon,
-  ClipboardList, AlertCircle
+  MonitorPlay, Zap, Lock, UploadCloud,
+  Send, UserCircle2, Menu, X, ClipboardList
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -41,9 +40,8 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
-  // State khusus Modal Tugas dari Menu "Tugas"
+  // State untuk form tugas langsung di frame
   const [selectedTaskItem, setSelectedTaskItem] = useState<any>(null)
-  const [modalOpen, setModalOpen] = useState(false)
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -188,8 +186,8 @@ export default function StudentDashboard() {
   const handleSubmitTask = async () => {
     if (!studentAnswer && !taskLink) return alert("Isi jawaban atau link tugas!")
     
-    const targetMaterialId = modalOpen && selectedTaskItem ? selectedTaskItem.material.id : activeMaterial?.id
-    const targetCourseId = modalOpen && selectedTaskItem ? selectedTaskItem.courseId : expandedCourse
+    const targetMaterialId = selectedTaskItem ? selectedTaskItem.material.id : activeMaterial?.id
+    const targetCourseId = selectedTaskItem ? selectedTaskItem.courseId : expandedCourse
     
     const currentReg = registrations.find(r => Number(r.course_id) === Number(targetCourseId))
     if (!currentReg) return alert("Pendaftaran tidak ditemukan.")
@@ -207,7 +205,6 @@ export default function StudentDashboard() {
       if (res.ok) { 
         Swal.fire("Berhasil", isUpdate ? "Tugas diperbarui!" : "Tugas berhasil dikirim!", "success");
         markStepComplete(targetMaterialId, "tugas", "feedback");
-        if (modalOpen) setModalOpen(false);
       }
     } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
   }
@@ -304,7 +301,7 @@ export default function StudentDashboard() {
     }
   }
 
-  const getAllTasks = () => {
+  const getAllTasks = useCallback(() => {
     const activeRegs = registrations.filter(r => r.status === 'success' || r.status === 'aktif')
     const tasks: any[] = []
     
@@ -322,14 +319,13 @@ export default function StudentDashboard() {
       }
     })
     return tasks
-  }
+  }, [registrations])
 
-  const openTaskModal = async (item: any) => {
+  const selectTaskItem = async (item: any) => {
     setSelectedTaskItem(item)
     setStudentAnswer("")
     setTaskLink("")
     setSubmissionFeedback(null)
-    setModalOpen(true)
 
     const token = localStorage.getItem("token")
     try {
@@ -348,6 +344,15 @@ export default function StudentDashboard() {
     }
   }
 
+  const handleSelectAssignmentsMenu = () => {
+    setActiveMenu("assignments")
+    setSidebarOpen(false)
+    const tasks = getAllTasks()
+    if (tasks.length > 0) {
+      selectTaskItem(tasks[0])
+    }
+  }
+
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
 
   return (
@@ -360,18 +365,30 @@ export default function StudentDashboard() {
           <h1 className="text-xl font-bold tracking-tight text-slate-800">Mejatika<span className="text-indigo-600">.</span></h1>
         </div>
         <nav className="flex-1 px-4 py-8 space-y-2">
-          {[
-            { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-            { id: "courses", label: "Katalog Kursus", icon: BookOpen },
-            { id: "materials", label: "Ruang Belajar", icon: FileCheck },
-            { id: "assignments", label: "Tugas", icon: Flame },
-            { id: "certificates", label: "Sertifikat", icon: Award },
-          ].map((item) => (
-            <button key={item.id} onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }} 
-              className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === item.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
-              <item.icon size={20} /> {item.label}
-            </button>
-          ))}
+          <button onClick={() => { setActiveMenu("dashboard"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "dashboard" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <LayoutDashboard size={20} /> Dashboard
+          </button>
+          
+          <button onClick={() => { setActiveMenu("courses"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "courses" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <BookOpen size={20} /> Katalog Kursus
+          </button>
+
+          <button onClick={() => { setActiveMenu("materials"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "materials" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <FileCheck size={20} /> Ruang Belajar
+          </button>
+
+          <button onClick={handleSelectAssignmentsMenu} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "assignments" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <Flame size={20} /> Tugas
+          </button>
+
+          <button onClick={() => { setActiveMenu("certificates"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "certificates" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <Award size={20} /> Sertifikat
+          </button>
         </nav>
         <div className="p-6 border-t border-slate-100">
             <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-all">
@@ -576,133 +593,118 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* --- MENU KHUSUS TUGAS (DENGAN FORM UPLOAD MODAL) --- */}
+        {/* --- MENU TUGAS (LANGSUNG TAMPILKAN FORM DAN DAFTAR INLINE IN-FRAME) --- */}
         {activeMenu === "assignments" && (
-          <div className="space-y-10 animate-in fade-in duration-500">
+          <div className="space-y-8 animate-in fade-in duration-500">
             <div>
-              <h2 className="text-3xl font-bold text-slate-800">Daftar Tugas</h2>
-              <p className="text-slate-500 font-medium">Kelola dan kerjakan tugas praktik dari seluruh modul kamu.</p>
+              <h2 className="text-3xl font-bold text-slate-800">Pengumpulan Tugas</h2>
+              <p className="text-slate-500 font-medium">Pilih tugas yang ingin kamu kerjakan dan kirimkan hasilnya secara langsung.</p>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-              {getAllTasks().length > 0 ? (
-                getAllTasks().map((item: any, idx: number) => {
-                  const isDone = courseProgress[item.material.id]?.tugas;
-                  return (
-                    <Card key={idx} className="rounded-[2rem] p-8 bg-white border-none shadow-sm hover:shadow-md transition-all">
-                      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
-                        <div className="space-y-3 flex-1">
-                          <div className="flex items-center gap-3">
-                            <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider">
-                              {item.courseTitle}
-                            </span>
-                            {isDone ? (
-                              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
-                                <CheckCircle2 size={12} /> Selesai Dikirim
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-                                <Clock size={12} /> Belum Dikerjakan
-                              </span>
-                            )}
-                          </div>
-                          
-                          <h3 className="text-xl font-bold text-slate-800">{item.material.title}</h3>
-                          
-                          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 font-medium line-clamp-2">
-                            {item.material.quiz_task || "Sesuai petunjuk modul."}
-                          </div>
-                        </div>
+            {getAllTasks().length > 0 ? (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Panel Kiri: Daftar Pilihan Tugas */}
+                <div className="lg:col-span-4 space-y-3">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daftar Tugas</h3>
+                  {getAllTasks().map((item: any, idx: number) => {
+                    const isSelected = selectedTaskItem?.material.id === item.material.id;
+                    const isDone = courseProgress[item.material.id]?.tugas;
 
-                        <div className="flex items-center gap-3">
-                          <Button 
-                            onClick={() => openTaskModal(item)} 
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-6 rounded-2xl font-bold text-xs flex items-center gap-2"
-                          >
-                            <Flame size={16} /> 
-                            {isDone ? "Edit / Kirim Ulang" : "Upload Tugas"}
-                          </Button>
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => selectTaskItem(item)}
+                        className={`w-full p-5 rounded-2xl text-left border transition-all ${
+                          isSelected 
+                            ? 'bg-slate-900 text-white border-slate-900 shadow-lg' 
+                            : 'bg-white border-slate-100 hover:border-slate-300 text-slate-800'
+                        }`}
+                      >
+                        <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${isSelected ? 'text-indigo-300' : 'text-indigo-600'}`}>
+                          {item.courseTitle}
+                        </span>
+                        <h4 className="font-bold text-sm mb-2">{item.material.title}</h4>
+                        <div className="flex items-center justify-between text-[11px]">
+                          {isDone ? (
+                            <span className={`flex items-center gap-1 font-bold ${isSelected ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                              <CheckCircle2 size={12} /> Selesai
+                            </span>
+                          ) : (
+                            <span className={`flex items-center gap-1 font-bold ${isSelected ? 'text-amber-300' : 'text-amber-600'}`}>
+                              <Clock size={12} /> Belum dikirim
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Panel Kanan: Form Upload Tugas (Langsung Di Dalam Frame Tampilan) */}
+                <div className="lg:col-span-8">
+                  {selectedTaskItem ? (
+                    <div className="bg-white p-6 lg:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+                      <div>
+                        <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">
+                          {selectedTaskItem.courseTitle}
+                        </span>
+                        <h3 className="text-2xl font-bold text-slate-800">{selectedTaskItem.material.title}</h3>
+                      </div>
+
+                      <div className="p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                        <h4 className="text-xs font-bold text-indigo-700 mb-2 uppercase tracking-wider flex items-center gap-2">
+                          <Flame size={14}/> Instruksi Tugas:
+                        </h4>
+                        <div className="text-xs text-slate-700 leading-relaxed font-medium">
+                          {selectedTaskItem.material.quiz_task || "Sesuai arahan mentor."}
                         </div>
                       </div>
-                    </Card>
-                  )
-                })
-              ) : (
-                <div className="py-24 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
-                  <Flame size={60} className="opacity-10 mb-4" />
-                  <p className="font-bold uppercase text-xs tracking-widest opacity-40">Belum ada tugas tersedia</p>
-                  <p className="text-[10px] mt-2 italic text-slate-400 max-w-xs text-center px-6">Daftar kursus terlebih dahulu untuk membuka akses tugas praktik.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* MODAL FORM UPLOAD TUGAS (MEMBERIKAN FORM DI MENU TUGAS) */}
-        {modalOpen && selectedTaskItem && (
-          <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-6 lg:p-10 shadow-2xl relative space-y-6 border border-slate-100 animate-in zoom-in-95">
-              <button 
-                onClick={() => setModalOpen(false)} 
-                className="absolute top-6 right-6 h-10 w-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
-              >
-                <X size={20} />
-              </button>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-2">Jawaban Teks / Penjelasan</label>
+                          <textarea 
+                            value={studentAnswer} 
+                            onChange={(e) => setStudentAnswer(e.target.value)} 
+                            placeholder="Tuliskan jawaban atau ringkasan tugas kamu di sini..." 
+                            className="w-full h-40 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
+                          />
+                        </div>
 
-              <div>
-                <span className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest">{selectedTaskItem.courseTitle}</span>
-                <h3 className="text-2xl font-bold text-slate-800">{selectedTaskItem.material.title}</h3>
-              </div>
+                        <div>
+                          <label className="block text-xs font-bold text-slate-700 mb-2">Link Project / File (Google Drive, Github, Figma, dll)</label>
+                          <input 
+                            type="text" 
+                            value={taskLink} 
+                            onChange={(e) => setTaskLink(e.target.value)} 
+                            placeholder="https://..." 
+                            className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
+                          />
+                        </div>
+                      </div>
 
-              <div className="p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100">
-                <h4 className="text-xs font-bold text-indigo-700 mb-2 uppercase tracking-wider flex items-center gap-2">
-                  <Flame size={14}/> Instruksi Tugas:
-                </h4>
-                <div className="text-xs text-slate-700 leading-relaxed font-medium">
-                  {selectedTaskItem.material.quiz_task || "Sesuai arahan mentor."}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">Jawaban Teks / Penjelasan</label>
-                  <textarea 
-                    value={studentAnswer} 
-                    onChange={(e) => setStudentAnswer(e.target.value)} 
-                    placeholder="Tuliskan jawaban atau ringkasan tugas kamu di sini..." 
-                    className="w-full h-36 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2">Link Project / File (Google Drive, Github, Figma, dll)</label>
-                  <input 
-                    type="text" 
-                    value={taskLink} 
-                    onChange={(e) => setTaskLink(e.target.value)} 
-                    placeholder="https://..." 
-                    className="w-full p-4 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm" 
-                  />
+                      <Button 
+                        onClick={handleSubmitTask} 
+                        disabled={isSubmittingTask} 
+                        className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-100"
+                      >
+                        {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Jawaban Tugas" : "Kirim Tugas Sekarang")}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="h-[50vh] flex flex-col items-center justify-center text-slate-300 border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white">
+                      <ClipboardList size={60} className="opacity-20 mb-3" />
+                      <p className="font-bold text-xs uppercase tracking-wider text-slate-400">Pilih salah satu tugas di sebelah kiri untuk melihat form</p>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <Button 
-                  onClick={() => setModalOpen(false)} 
-                  variant="outline"
-                  className="h-12 px-6 rounded-xl font-bold text-xs"
-                >
-                  Batal
-                </Button>
-                <Button 
-                  onClick={handleSubmitTask} 
-                  disabled={isSubmittingTask} 
-                  className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-indigo-100"
-                >
-                  {isSubmittingTask ? <Loader2 className="animate-spin" /> : (submissionFeedback ? "Update Jawaban" : "Kirim Jawaban")}
-                </Button>
+            ) : (
+              <div className="py-24 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
+                <Flame size={60} className="opacity-10 mb-4" />
+                <p className="font-bold uppercase text-xs tracking-widest opacity-40">Belum ada tugas tersedia</p>
               </div>
-            </div>
+            )}
           </div>
         )}
 
