@@ -35,6 +35,11 @@ export default function DashboardSidebar() {
       href: "/dashboard/mentor/submissions",
       icon: BookPlus,
     },
+     {
+      title: "Koreksi Tugas dan Feedback",
+      href: "/dashboard/mentor/task",
+      icon: BookPlus,
+    },
   ]
 
   return (
