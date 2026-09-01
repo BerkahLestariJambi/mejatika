@@ -4,16 +4,16 @@ import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2 } from "lucide-react"
+import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award } from "lucide-react"
 import Swal from 'sweetalert2'
 
 export default function MentorTasksPage() {
   const router = useRouter()
   const [tasks, setTasks] = useState<any[]>([])
   const [loadingTasks, setLoadingTasks] = useState(true)
-  const [selectedTask, setSelectedTask] = useState<any>(null)
-  const [previewFile, setPreviewFile] = useState<{ url: string; title: string } | null>(null)
 
+  // Combined State untuk Preview File sekaligus Penilaian
+  const [activeTask, setActiveTask] = useState<any | null>(null)
   const [score, setScore] = useState<number | string>("")
   const [feedback, setFeedback] = useState("")
   const [isSubmittingGrade, setIsSubmittingGrade] = useState(false)
@@ -92,21 +92,23 @@ export default function MentorTasksPage() {
     }
   }
 
-  const handleOpenGradeModal = (task: any) => {
-    setSelectedTask(task)
+  // FUNGSI MEMBUKA PREVIEW + FORM NILAI
+  const handleOpenPreviewAndGrade = (task: any) => {
+    setActiveTask(task)
     setScore(task.nilai ?? task.score ?? "")
     setFeedback(task.feedback ?? "")
   }
 
+  // SUBMIT PENILAIAN LANGSUNG DARI HALAMAN PREVIEW
   const handleGradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedTask) return
+    if (!activeTask) return
 
     setIsSubmittingGrade(true)
     const token = localStorage.getItem("token")
 
     try {
-      const res = await fetch(`${API_URL}/mentor/tasks/${selectedTask.id}/grade`, {
+      const res = await fetch(`${API_URL}/mentor/tasks/${activeTask.id}/grade`, {
         method: "POST",
         headers: { 
           "Authorization": `Bearer ${token}`,
@@ -121,7 +123,7 @@ export default function MentorTasksPage() {
 
       if (res.ok) {
         Swal.fire("Berhasil!", "Nilai dan feedback berhasil disimpan.", "success")
-        setSelectedTask(null)
+        setActiveTask(null)
         fetchMentorTasks()
       } else {
         const errData = await res.json().catch(() => ({}))
@@ -180,19 +182,9 @@ export default function MentorTasksPage() {
                     Siswa: <span className="font-bold text-slate-700">{task.user?.name || task.student?.name || task.student_name || "Siswa"}</span>
                   </p>
                   {task.description && <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl mt-2">{task.description}</p>}
-                  
-                  {fileUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setPreviewFile({ url: fileUrl, title: task.title || task.name })}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-600 text-xs font-bold rounded-xl transition mt-2 cursor-pointer"
-                    >
-                      <Eye size={14} /> Preview Berkas Tugas
-                    </button>
-                  )}
                 </div>
 
-                <div className="flex flex-col items-end gap-3 min-w-[160px]">
+                <div className="flex flex-col items-end gap-3 min-w-[180px]">
                   {isGraded && (
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-slate-400 uppercase block">Nilai</span>
@@ -202,10 +194,10 @@ export default function MentorTasksPage() {
                   
                   <div className="flex gap-2 w-full">
                     <Button 
-                      onClick={() => handleOpenGradeModal(task)} 
-                      className={`flex-1 rounded-2xl font-bold text-xs h-12 ${isGraded ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
+                      onClick={() => handleOpenPreviewAndGrade(task)} 
+                      className={`flex-1 rounded-2xl font-bold text-xs h-12 flex items-center justify-center gap-2 ${isGraded ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
                     >
-                      {isGraded ? "Edit Nilai" : "Beri Nilai"}
+                      <Eye size={16} /> {isGraded ? "Edit Nilai / Berkas" : "Periksa & Dinilai"}
                     </Button>
                     
                     {/* TOMBOL HAPUS TUGAS */}
@@ -225,128 +217,150 @@ export default function MentorTasksPage() {
         </div>
       )}
 
-      {/* MODAL PREVIEW FILE IN-FRAME */}
-      {previewFile && (
+      {/* MODAL PREVIEW FILE + INTEGRASI FORM PENILAIAN */}
+      {activeTask && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50/50">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+            
+            {/* HEADER MODAL */}
+            <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-slate-50/50">
               <div>
-                <h3 className="font-bold text-slate-800 text-lg">Preview Berkas</h3>
-                <p className="text-xs text-slate-500">{previewFile.title}</p>
+                <h3 className="font-bold text-slate-800 text-lg">Periksa & Nilai Tugas</h3>
+                <p className="text-xs text-slate-500">
+                  Judul: <span className="font-bold text-slate-700">{activeTask.title || activeTask.name}</span> | Siswa: <span className="font-bold text-slate-700">{activeTask.user?.name || activeTask.student?.name || activeTask.student_name || "Siswa"}</span>
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <a 
-                  href={previewFile.url} 
-                  download 
-                  target="_blank" 
-                  rel="noreferrer"
-                  className="p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
-                  title="Unduh Berkas"
-                >
-                  <Download size={18} />
-                </a>
+                {(activeTask.file_path || activeTask.file_url) && (
+                  <a 
+                    href={activeTask.file_path || activeTask.file_url} 
+                    download 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="p-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
+                    title="Unduh Berkas"
+                  >
+                    <Download size={18} />
+                  </a>
+                )}
                 <button 
-                  onClick={() => setPreviewFile(null)}
-                  className="p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
+                  onClick={() => setActiveTask(null)}
+                  className="p-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
                 >
                   <X size={18} />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 bg-slate-100 overflow-auto p-4 flex items-center justify-center min-h-[400px]">
-              {getFileType(previewFile.url) === 'image' && (
-                <img 
-                  src={previewFile.url} 
-                  alt="Preview" 
-                  className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-md"
-                />
-              )}
-
-              {getFileType(previewFile.url) === 'pdf' && (
-                <iframe 
-                  src={previewFile.url} 
-                  className="w-full h-[70vh] rounded-xl border-none shadow-md bg-white"
-                  title="PDF Preview"
-                />
-              )}
-
-              {getFileType(previewFile.url) === 'other' && (
-                <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-4">
-                  <Paperclip className="mx-auto text-amber-500" size={48} />
-                  <div>
-                    <p className="font-bold text-slate-800">Format file tidak mendukung preview langsung</p>
-                    <p className="text-xs text-slate-500 mt-1">Unduh berkas untuk melihat isinya.</p>
+            {/* BODY MODAL (GRID 2 KOLOM: PREVIEW & FORM) */}
+            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+              
+              {/* KOLOM KIRI: PREVIEW BERKAS */}
+              <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center min-h-[350px] lg:min-h-[500px] overflow-auto border-b lg:border-b-0 lg:border-r border-slate-200">
+                {!(activeTask.file_path || activeTask.file_url) ? (
+                  <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-2">
+                    <FileText className="mx-auto text-slate-300" size={48} />
+                    <p className="font-bold text-slate-700">Siswa Tidak Mengunggah File</p>
+                    <p className="text-xs text-slate-400">Penilaian dilakukan berdasarkan deskripsi atau catatan saja.</p>
                   </div>
-                  <a 
-                    href={previewFile.url} 
-                    download
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition"
-                  >
-                    <Download size={16} /> Unduh Berkas
-                  </a>
-                </div>
-              )}
+                ) : getFileType(activeTask.file_path || activeTask.file_url) === 'image' ? (
+                  <img 
+                    src={activeTask.file_path || activeTask.file_url} 
+                    alt="Preview Berkas" 
+                    className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-md"
+                  />
+                ) : getFileType(activeTask.file_path || activeTask.file_url) === 'pdf' ? (
+                  <iframe 
+                    src={activeTask.file_path || activeTask.file_url} 
+                    className="w-full h-full min-h-[450px] rounded-xl border-none shadow-md bg-white"
+                    title="PDF Preview"
+                  />
+                ) : (
+                  <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-4">
+                    <Paperclip className="mx-auto text-amber-500" size={48} />
+                    <div>
+                      <p className="font-bold text-slate-800">Format file tidak mendukung preview langsung</p>
+                      <p className="text-xs text-slate-500 mt-1">Unduh berkas untuk melihat isinya.</p>
+                    </div>
+                    <a 
+                      href={activeTask.file_path || activeTask.file_url} 
+                      download
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition"
+                    >
+                      <Download size={16} /> Unduh Berkas
+                    </a>
+                  </div>
+                )}
+              </div>
+
+              {/* KOLOM KANAN: FORM PENILAIAN */}
+              <div className="lg:col-span-5 p-6 lg:p-8 bg-white overflow-y-auto flex flex-col justify-between space-y-6">
+                <form onSubmit={handleGradeSubmit} className="space-y-6 flex-1 flex flex-col">
+                  <div>
+                    <div className="flex items-center gap-2 mb-4 text-amber-600 font-bold">
+                      <Award size={20} />
+                      <h4 className="text-lg">Form Input Nilai & Feedback</h4>
+                    </div>
+
+                    {activeTask.description && (
+                      <div className="mb-5 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Catatan Siswa:</span>
+                        <p className="text-xs text-slate-700 italic">"{activeTask.description}"</p>
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">
+                          Nilai (0 - 100) <span className="text-red-500">*</span>
+                        </label>
+                        <input 
+                          type="number" 
+                          min="0"
+                          max="100"
+                          value={score} 
+                          onChange={(e) => setScore(e.target.value)} 
+                          placeholder="Masukkan angka nilai (misal: 85)"
+                          required
+                          className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-lg font-black text-slate-800"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">
+                          Feedback / Catatan Mentor
+                        </label>
+                        <textarea 
+                          value={feedback} 
+                          onChange={(e) => setFeedback(e.target.value)} 
+                          placeholder="Tuliskan arahan, pujian, atau saran perbaikan untuk siswa..."
+                          className="w-full h-36 p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-medium"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-4 mt-auto">
+                    <Button 
+                      type="button" 
+                      onClick={() => setActiveTask(null)}
+                      className="flex-1 h-12 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs hover:bg-slate-200"
+                    >
+                      Batal
+                    </Button>
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmittingGrade}
+                      className="flex-1 h-12 bg-amber-500 text-white rounded-2xl font-bold text-xs hover:bg-amber-600 flex items-center justify-center gap-2 shadow-lg shadow-amber-100"
+                    >
+                      {isSubmittingGrade ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Simpan Penilaian</>}
+                    </Button>
+                  </div>
+                </form>
+              </div>
+
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* MODAL PENILAIAN */}
-      {selectedTask && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="border-b border-slate-100 pb-4">
-              <h3 className="text-2xl font-bold text-slate-800">Penilaian Tugas</h3>
-              <p className="text-xs text-slate-500 mt-1">Judul: <span className="font-bold text-slate-700">{selectedTask.title || selectedTask.name}</span></p>
-            </div>
-
-            <form onSubmit={handleGradeSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">
-                  Nilai (0 - 100) <span className="text-red-500">*</span>
-                </label>
-                <input 
-                  type="number" 
-                  min="0"
-                  max="100"
-                  value={score} 
-                  onChange={(e) => setScore(e.target.value)} 
-                  placeholder="Masukkan angka nilai (misal: 85)"
-                  required
-                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-bold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">
-                  Feedback / Catatan Mentor
-                </label>
-                <textarea 
-                  value={feedback} 
-                  onChange={(e) => setFeedback(e.target.value)} 
-                  placeholder="Tuliskan umpan balik atau arahan perbaikan untuk siswa..."
-                  className="w-full h-32 p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-medium"
-                />
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button 
-                  type="button" 
-                  onClick={() => setSelectedTask(null)}
-                  className="flex-1 h-12 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs hover:bg-slate-200"
-                >
-                  Batal
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={isSubmittingGrade}
-                  className="flex-1 h-12 bg-amber-500 text-white rounded-2xl font-bold text-xs hover:bg-amber-600 flex items-center justify-center gap-2"
-                >
-                  {isSubmittingGrade ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Simpan Nilai</>}
-                </Button>
-              </div>
-            </form>
           </div>
         </div>
       )}
