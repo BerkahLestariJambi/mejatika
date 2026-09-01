@@ -137,6 +137,7 @@ export default function MentorTasksPage() {
   }
 
   const getFileType = (url: string) => {
+    if (!url) return 'none'
     const ext = url.split('.').pop()?.toLowerCase() || ''
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) return 'image'
     if (ext === 'pdf') return 'pdf'
@@ -164,7 +165,6 @@ export default function MentorTasksPage() {
           {tasks.map((task) => {
             const currentScore = task.nilai ?? task.score
             const isGraded = currentScore !== null && currentScore !== undefined && currentScore !== ""
-            const fileUrl = task.file_path || task.file_url
 
             return (
               <Card key={task.id} className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6 lg:p-8 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
@@ -181,7 +181,7 @@ export default function MentorTasksPage() {
                   <p className="text-xs text-slate-500">
                     Siswa: <span className="font-bold text-slate-700">{task.user?.name || task.student?.name || task.student_name || "Siswa"}</span>
                   </p>
-                  {task.description && <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl mt-2">{task.description}</p>}
+                  {task.description && <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl mt-2 line-clamp-2">{task.description}</p>}
                 </div>
 
                 <div className="flex flex-col items-end gap-3 min-w-[180px]">
@@ -200,7 +200,6 @@ export default function MentorTasksPage() {
                       <Eye size={16} /> {isGraded ? "Edit Nilai / Berkas" : "Periksa & Dinilai"}
                     </Button>
                     
-                    {/* TOMBOL HAPUS TUGAS */}
                     <button
                       type="button"
                       onClick={() => handleDeleteTask(task.id)}
@@ -217,15 +216,15 @@ export default function MentorTasksPage() {
         </div>
       )}
 
-      {/* MODAL PREVIEW FILE + INTEGRASI FORM PENILAIAN */}
+      {/* MODAL PREVIEW FILE RINGKAS & FORM PENILAIAN */}
       {activeTask && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-6xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-3 lg:p-6 overflow-y-auto">
+          <div className="bg-white rounded-[2rem] w-full max-w-5xl my-auto flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100">
             
             {/* HEADER MODAL */}
-            <div className="flex justify-between items-center px-8 py-5 border-b border-slate-100 bg-slate-50/50">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50">
               <div>
-                <h3 className="font-bold text-slate-800 text-lg">Periksa & Nilai Tugas</h3>
+                <h3 className="font-bold text-slate-800 text-base lg:text-lg">Periksa & Nilai Tugas</h3>
                 <p className="text-xs text-slate-500">
                   Judul: <span className="font-bold text-slate-700">{activeTask.title || activeTask.name}</span> | Siswa: <span className="font-bold text-slate-700">{activeTask.user?.name || activeTask.student?.name || activeTask.student_name || "Siswa"}</span>
                 </p>
@@ -237,81 +236,83 @@ export default function MentorTasksPage() {
                     download 
                     target="_blank" 
                     rel="noreferrer"
-                    className="p-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
+                    className="p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
                     title="Unduh Berkas"
                   >
-                    <Download size={18} />
+                    <Download size={16} />
                   </a>
                 )}
                 <button 
                   onClick={() => setActiveTask(null)}
-                  className="p-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
+                  className="p-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition"
                 >
-                  <X size={18} />
+                  <X size={16} />
                 </button>
               </div>
             </div>
 
-            {/* BODY MODAL (GRID 2 KOLOM: PREVIEW & FORM) */}
-            <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-12">
+            {/* BODY MODAL: GRID 2 KOLOM DENGAN TINGGI COMPACT */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
               
-              {/* KOLOM KIRI: PREVIEW BERKAS */}
-              <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center min-h-[350px] lg:min-h-[500px] overflow-auto border-b lg:border-b-0 lg:border-r border-slate-200">
+              {/* KOLOM KIRI: PREVIEW BERKAS (UKURAN TINGGI DIBATASI AGAR TIDAK SCROLL PANJANG) */}
+              <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center h-[260px] lg:h-[400px] border-b lg:border-b-0 lg:border-r border-slate-200 relative">
                 {!(activeTask.file_path || activeTask.file_url) ? (
-                  <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-2">
-                    <FileText className="mx-auto text-slate-300" size={48} />
-                    <p className="font-bold text-slate-700">Siswa Tidak Mengunggah File</p>
-                    <p className="text-xs text-slate-400">Penilaian dilakukan berdasarkan deskripsi atau catatan saja.</p>
+                  <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-2">
+                    <FileText className="mx-auto text-slate-300" size={40} />
+                    <p className="font-bold text-slate-700 text-sm">Siswa Tidak Mengunggah File</p>
+                    <p className="text-xs text-slate-400">Penilaian dilakukan berdasarkan deskripsi atau catatan.</p>
                   </div>
                 ) : getFileType(activeTask.file_path || activeTask.file_url) === 'image' ? (
                   <img 
                     src={activeTask.file_path || activeTask.file_url} 
                     alt="Preview Berkas" 
-                    className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-md"
+                    className="max-w-full max-h-full object-contain rounded-xl shadow-sm"
                   />
                 ) : getFileType(activeTask.file_path || activeTask.file_url) === 'pdf' ? (
                   <iframe 
-                    src={activeTask.file_path || activeTask.file_url} 
-                    className="w-full h-full min-h-[450px] rounded-xl border-none shadow-md bg-white"
+                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(activeTask.file_path || activeTask.file_url)}&embedded=true`}
+                    className="w-full h-full rounded-xl border-none shadow-sm bg-white"
                     title="PDF Preview"
                   />
                 ) : (
-                  <div className="text-center p-8 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-4">
-                    <Paperclip className="mx-auto text-amber-500" size={48} />
+                  <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                    <Paperclip className="mx-auto text-amber-500" size={40} />
                     <div>
-                      <p className="font-bold text-slate-800">Format file tidak mendukung preview langsung</p>
-                      <p className="text-xs text-slate-500 mt-1">Unduh berkas untuk melihat isinya.</p>
+                      <p className="font-bold text-slate-800 text-sm">Preview Langsung Tidak Tersedia</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Silakan unduh berkas di bawah ini untuk melihat isinya.</p>
                     </div>
                     <a 
                       href={activeTask.file_path || activeTask.file_url} 
                       download
+                      target="_blank"
+                      rel="noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition"
                     >
-                      <Download size={16} /> Unduh Berkas
+                      <Download size={14} /> Unduh Berkas Tugas
                     </a>
                   </div>
                 )}
               </div>
 
               {/* KOLOM KANAN: FORM PENILAIAN */}
-              <div className="lg:col-span-5 p-6 lg:p-8 bg-white overflow-y-auto flex flex-col justify-between space-y-6">
-                <form onSubmit={handleGradeSubmit} className="space-y-6 flex-1 flex flex-col">
+              <div className="lg:col-span-5 p-5 lg:p-6 bg-white flex flex-col justify-between space-y-4 h-[400px] overflow-y-auto">
+                <form onSubmit={handleGradeSubmit} className="space-y-4 flex-1 flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center gap-2 mb-4 text-amber-600 font-bold">
-                      <Award size={20} />
-                      <h4 className="text-lg">Form Input Nilai & Feedback</h4>
+                    <div className="flex items-center gap-2 mb-3 text-amber-600 font-bold">
+                      <Award size={18} />
+                      <h4 className="text-base">Input Nilai & Feedback</h4>
                     </div>
 
                     {activeTask.description && (
-                      <div className="mb-5 bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Catatan Siswa:</span>
+                      <div className="mb-3 bg-slate-50 border border-slate-100 p-3 rounded-xl max-h-24 overflow-y-auto">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block mb-0.5">Catatan Siswa:</span>
                         <p className="text-xs text-slate-700 italic">"{activeTask.description}"</p>
                       </div>
                     )}
 
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
                           Nilai (0 - 100) <span className="text-red-500">*</span>
                         </label>
                         <input 
@@ -320,40 +321,40 @@ export default function MentorTasksPage() {
                           max="100"
                           value={score} 
                           onChange={(e) => setScore(e.target.value)} 
-                          placeholder="Masukkan angka nilai (misal: 85)"
+                          placeholder="Nilai angka (misal: 85)"
                           required
-                          className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-lg font-black text-slate-800"
+                          className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-base font-black text-slate-800"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">
+                        <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
                           Feedback / Catatan Mentor
                         </label>
                         <textarea 
                           value={feedback} 
                           onChange={(e) => setFeedback(e.target.value)} 
-                          placeholder="Tuliskan arahan, pujian, atau saran perbaikan untuk siswa..."
-                          className="w-full h-36 p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-medium"
+                          placeholder="Tuliskan umpan balik atau arahan perbaikan untuk siswa..."
+                          className="w-full h-24 p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs font-medium resize-none"
                         />
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex gap-3 pt-4 mt-auto">
+                  <div className="flex gap-2 pt-2 border-t border-slate-100">
                     <Button 
                       type="button" 
                       onClick={() => setActiveTask(null)}
-                      className="flex-1 h-12 bg-slate-100 text-slate-600 rounded-2xl font-bold text-xs hover:bg-slate-200"
+                      className="flex-1 h-10 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200"
                     >
                       Batal
                     </Button>
                     <Button 
                       type="submit" 
                       disabled={isSubmittingGrade}
-                      className="flex-1 h-12 bg-amber-500 text-white rounded-2xl font-bold text-xs hover:bg-amber-600 flex items-center justify-center gap-2 shadow-lg shadow-amber-100"
+                      className="flex-1 h-10 bg-amber-500 text-white rounded-xl font-bold text-xs hover:bg-amber-600 flex items-center justify-center gap-1.5 shadow-md shadow-amber-100"
                     >
-                      {isSubmittingGrade ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Simpan Penilaian</>}
+                      {isSubmittingGrade ? <Loader2 className="animate-spin" size={16} /> : <><Send size={14} /> Simpan Nilai</>}
                     </Button>
                   </div>
                 </form>
