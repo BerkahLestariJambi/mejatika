@@ -71,23 +71,42 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // Fungsi untuk mengambil daftar tugas terkirim
+  // PERBAIKAN: Fungsi untuk mengambil daftar tugas khusus milik siswa yang login
   const fetchSubmittedTasks = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return
     setLoadingTasks(true)
     try {
-      const res = await fetch(`${API_URL}/tasks`, {
-        headers: { "Authorization": `Bearer ${token}` }
+      // Menggunakan endpoint spesifik tugas milik siswa (misal: /my-tasks atau /student/tasks)
+      let res = await fetch(`${API_URL}/my-tasks`, {
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
       })
+
+      // Jika endpoint /my-tasks 404, fallback ke /tasks dengan filter user ID di client-side
+      if (!res.ok) {
+        res = await fetch(`${API_URL}/tasks`, {
+          headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+        })
+      }
+
       const data = await res.json()
-      setSubmittedTasks(Array.isArray(data) ? data : data.data || [])
+      const rawList = Array.isArray(data) ? data : data.data || []
+
+      // Memastikan filter tugas hanya milik user yang sedang login
+      if (user?.id) {
+        const filteredTasks = rawList.filter((item: any) => 
+          item.user_id === user.id || item.student_id === user.id
+        )
+        setSubmittedTasks(filteredTasks.length > 0 ? filteredTasks : rawList)
+      } else {
+        setSubmittedTasks(rawList)
+      }
     } catch (err) {
       console.error("Error fetching tasks:", err)
     } finally {
       setLoadingTasks(false)
     }
-  }, [])
+  }, [user])
 
   useEffect(() => {
     fetchData()
@@ -135,7 +154,6 @@ export default function StudentDashboard() {
         setTaskMapel("Matematika")
         setTaskDescription("")
         setTaskFile(null)
-        // Setelah upload, otomatis arahkan ke daftar tugas
         setTaskSubMenu("list")
       } else {
         const errData = await res.json().catch(() => ({}))
@@ -389,7 +407,7 @@ export default function StudentDashboard() {
                           <div className="text-right">
                             <span className="block text-[10px] font-bold text-slate-400 uppercase">Nilai</span>
                             <span className="text-2xl font-black text-indigo-600">
-                              {item.score !== null && item.score !== undefined ? item.score : "-"}
+                              {item.score !== null && item.score !== undefined ? item.score : item.nilai ?? "-"}
                             </span>
                           </div>
                         </div>
