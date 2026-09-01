@@ -1,11 +1,108 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink } from "lucide-react"
 import Swal from 'sweetalert2'
+
+// KOMPONEN KHUSUS KONVERSI PDF KE GAMBAR REALTIME (PDF.js CDN)
+function PdfToImageViewer({ pdfUrl, scale }: { pdfUrl: string; scale: number }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    setLoading(true)
+    setError(false)
+
+    const loadAndRenderPdf = async () => {
+      try {
+        // Load PDF.js secara dinamis agar aman di Next.js SSR
+        const pdfjsLib = await import("pdfjs-dist")
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
+
+        const loadingTask = pdfjsLib.getDocument(pdfUrl)
+        const pdf = await loadingTask.promise
+        const page = await pdf.getPage(1) // Ambil halaman pertama
+
+        if (!isMounted) return
+
+        const viewport = page.getViewport({ scale: 1.5 })
+        const canvas = canvasRef.current
+        if (!canvas) return
+
+        const context = canvas.getContext("2d")
+        if (!context) return
+
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+
+        await page.render({
+          canvasContext: context,
+          viewport: viewport,
+        }).promise
+
+        if (isMounted) setLoading(false)
+      } catch (err) {
+        console.error("Gagal convert PDF ke Gambar:", err)
+        if (isMounted) {
+          setError(true)
+          setLoading(false)
+        }
+      }
+    }
+
+    if (pdfUrl) {
+      loadAndRenderPdf()
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [pdfUrl])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 text-amber-500 font-bold gap-2">
+        <Loader2 className="animate-spin" size={32} />
+        <span className="text-xs text-slate-500">Mengonversi PDF ke Gambar...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-3">
+        <Paperclip className="mx-auto text-amber-500" size={36} />
+        <div>
+          <p className="font-bold text-slate-800 text-sm">Pratinjau PDF Terhalang Keamanan Server</p>
+          <p className="text-xs text-slate-500 mt-0.5">Buka file secara langsung di tab baru.</p>
+        </div>
+        <a 
+          href={pdfUrl} 
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition"
+        >
+          <ExternalLink size={14} /> Buka PDF di Tab Baru
+        </a>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
+      <canvas 
+        ref={canvasRef} 
+        style={{ transform: `scale(${scale})`, transition: "transform 0.2s ease-in-out" }}
+        className="max-w-full max-h-full object-contain rounded-xl shadow-md origin-center bg-white"
+      />
+    </div>
+  )
+}
 
 export default function MentorTasksPage() {
   const router = useRouter()
@@ -147,11 +244,6 @@ export default function MentorTasksPage() {
     return 'other'
   }
 
-  // FUNGSI UNTUK KONVERSI URL PDF KE GAMBAR LEWAT GOOGLE THUMBNAIL ENGINE
-  const getPdfAsImageUrl = (pdfUrl: string) => {
-    return `https://drive.google.com/viewerng/img?url=${encodeURIComponent(pdfUrl)}`
-  }
-
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
@@ -224,10 +316,10 @@ export default function MentorTasksPage() {
         </div>
       )}
 
-      {/* MODAL PENILAIAN DENGAN PRESISI TINGGI DI TENGAH LAYAR */}
+      {/* MODAL PENILAIAN DENGAN POSISI TEPAT DI TENGAH */}
       {activeTask && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-5xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100 max-h-[90vh]">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-5xl flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100 h-[85vh] max-h-[700px]">
             
             {/* HEADER MODAL */}
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
@@ -262,8 +354,8 @@ export default function MentorTasksPage() {
             {/* BODY MODAL */}
             <div className="grid grid-cols-1 lg:grid-cols-12 overflow-hidden flex-1">
               
-              {/* KOLOM KIRI: TAMPILAN GAMBAR ATAU CONVERT PDF LANGSUNG JADI GAMBAR */}
-              <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center h-[350px] lg:h-auto border-b lg:border-b-0 lg:border-r border-slate-200 relative overflow-hidden group">
+              {/* KOLOM KIRI: CONVERT & RENDER PDF/GAMBAR */}
+              <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center border-b lg:border-b-0 lg:border-r border-slate-200 relative overflow-hidden h-full">
                 
                 {/* TOOLBAR ZOOM */}
                 {(activeTask.file_path || activeTask.file_url) && (
@@ -307,34 +399,48 @@ export default function MentorTasksPage() {
                   </div>
                 )}
 
-                {/* PREVIEW IMAGE / PDF YANG DIUBAH KE GAMBAR */}
+                {/* LOGIKA RENDERING */}
                 {!(activeTask.file_path || activeTask.file_url) ? (
                   <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-2">
                     <FileText className="mx-auto text-slate-300" size={40} />
                     <p className="font-bold text-slate-700 text-sm">Siswa Tidak Mengunggah File</p>
                   </div>
-                ) : (
+                ) : getFileType(activeTask.file_path || activeTask.file_url) === 'image' ? (
                   <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
                     <img 
-                      src={
-                        getFileType(activeTask.file_path || activeTask.file_url) === 'pdf'
-                          ? getPdfAsImageUrl(activeTask.file_path || activeTask.file_url)
-                          : (activeTask.file_path || activeTask.file_url)
-                      } 
+                      src={activeTask.file_path || activeTask.file_url} 
                       alt="Preview Berkas" 
                       style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.2s ease-in-out' }}
                       className="max-w-full max-h-full object-contain rounded-xl shadow-md origin-center"
-                      onError={(e) => {
-                        // Jika gagal load gambar konversi PDF, ganti pesan aman
-                        (e.target as HTMLElement).style.display = 'none';
-                      }}
                     />
+                  </div>
+                ) : getFileType(activeTask.file_path || activeTask.file_url) === 'pdf' ? (
+                  <PdfToImageViewer 
+                    pdfUrl={activeTask.file_path || activeTask.file_url} 
+                    scale={zoomScale} 
+                  />
+                ) : (
+                  <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-3">
+                    <Paperclip className="mx-auto text-amber-500" size={40} />
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">Format Berkas Lain</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Unduh berkas untuk melihat isinya.</p>
+                    </div>
+                    <a 
+                      href={activeTask.file_path || activeTask.file_url} 
+                      download
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition"
+                    >
+                      <Download size={14} /> Unduh Berkas
+                    </a>
                   </div>
                 )}
               </div>
 
               {/* KOLOM KANAN: FORM PENILAIAN */}
-              <div className="lg:col-span-5 p-5 lg:p-6 bg-white flex flex-col justify-between overflow-y-auto">
+              <div className="lg:col-span-5 p-5 lg:p-6 bg-white flex flex-col justify-between overflow-y-auto h-full">
                 <form onSubmit={handleGradeSubmit} className="space-y-4 flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-3 text-amber-600 font-bold">
