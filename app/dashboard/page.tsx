@@ -9,7 +9,8 @@ import {
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
   Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
-  Send, UserCircle2, Menu, X, Star, RefreshCw
+  Send, UserCircle2, Menu, X, Star, RefreshCw, Image as ImageIcon,
+  ClipboardList, AlertCircle
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -18,7 +19,7 @@ export default function StudentDashboard() {
   const [activeMenu, setActiveMenu] = useState("dashboard")
   const [registrations, setRegistrations] = useState<any[]>([])
   const [availableCourses, setAvailableCourses] = useState<any[]>([])
-  const [myCertificates, setMyCertificates] = useState<any[]>([]) // Ambil langsung dari tabel certificates
+  const [myCertificates, setMyCertificates] = useState<any[]>([]) 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [registeringId, setRegisteringId] = useState<number | null>(null)
@@ -28,6 +29,7 @@ export default function StudentDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
   const [selectedProof, setSelectedProof] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [activeStep, setActiveStep] = useState<string>("live") 
   
   const [studentAnswer, setStudentAnswer] = useState("")
@@ -39,9 +41,22 @@ export default function StudentDashboard() {
   const [replyText, setReplyText] = useState("")
   const [isSendingReply, setIsSendingReply] = useState(false)
 
+  // State khusus untuk pengumpulan tugas dari menu "Tugas"
+  const [selectedTaskMaterial, setSelectedTaskMaterial] = useState<any>(null)
+
   const API_URL = "https://backend.mejatika.com/api"
 
-  // 1. Fetch Data Utama & Sertifikat Langsung
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setSelectedProof(file)
+    if (file) {
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+    } else {
+      setPreviewUrl(null)
+    }
+  }
+
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem("token")
     if (!token) return router.push("/login")
@@ -50,7 +65,7 @@ export default function StudentDashboard() {
         fetch(`${API_URL}/registrations`, { headers: { "Authorization": `Bearer ${token}` } }),
         fetch(`${API_URL}/me`, { headers: { "Authorization": `Bearer ${token}` } }),
         fetch(`${API_URL}/courses`, { headers: { "Authorization": `Bearer ${token}` } }),
-        fetch(`${API_URL}/my-certificates`, { headers: { "Authorization": `Bearer ${token}` } }) // Langsung ke tabel certificates
+        fetch(`${API_URL}/my-certificates`, { headers: { "Authorization": `Bearer ${token}` } })
       ])
       
       const dataReg = await resReg.json()
@@ -69,7 +84,6 @@ export default function StudentDashboard() {
     }
   }, [router])
 
-  // 2. Fetch Status Tugas & Feedback
   const fetchSubmissionStatus = useCallback(async () => {
     if (!activeMaterial?.id) return
     const token = localStorage.getItem("token")
@@ -102,7 +116,6 @@ export default function StudentDashboard() {
     }
   }, [activeStep, activeMaterial, fetchSubmissionStatus])
 
-  // --- LOGIKA PROGRESS FLOW ---
   const markStepComplete = (materialId: number, currentStep: string, nextStep: string | null) => {
     const newProgress = { ...courseProgress, [materialId]: { ...(courseProgress[materialId] || {}), [currentStep]: true } }
     setCourseProgress(newProgress)
@@ -119,22 +132,6 @@ export default function StudentDashboard() {
     return true
   }
 
-  const calculateProgress = (courseId: number) => {
-    const course = availableCourses.find(c => Number(c.id) === Number(courseId))
-    if (!course || !course.materials || course.materials.length === 0) return 0
-    const totalSteps = course.materials.length * 4
-    let completedSteps = 0
-    course.materials.forEach((m: any) => {
-      const prog = courseProgress[m.id] || {}
-      if (prog.live) completedSteps++
-      if (prog.materi) completedSteps++
-      if (prog.tugas) completedSteps++
-      if (prog.feedback) completedSteps++
-    })
-    return Math.round((completedSteps / totalSteps) * 100)
-  }
-
-  // --- LOGIKA DOWNLOAD SERTIFIKAT (SINKRON DENGAN ADMIN) ---
   const handleDownloadCertificate = async (certId: number, certNumber: string) => {
     const token = localStorage.getItem("token")
     
@@ -173,7 +170,6 @@ export default function StudentDashboard() {
     }
   }
 
-  // --- HANDLERS TUGAS ---
   const handleSendReply = async () => {
     if (!replyText.trim() || !submissionFeedback?.id) return
     setIsSendingReply(true)
@@ -209,57 +205,40 @@ export default function StudentDashboard() {
     } catch (err) { console.error(err) } finally { setIsSubmittingTask(false) }
   }
 
-  {/* const renderEmbed = (url: string) => {
+  const renderEmbed = (url: string) => {
     if (!url) return null;
     let embedUrl = url;
+    let isYouTube = false;
+
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
+      isYouTube = true;
       const videoId = url.includes("v=") ? url.split("v=")[1]?.split("&")[0] : url.split("youtu.be/")[1]?.split("?")[0]
       embedUrl = `https://www.youtube.com/embed/${videoId}`
     } else if (url.includes("drive.google.com")) {
       embedUrl = url.replace("/view", "/preview")
     }
+
     return (
-      <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-200 mb-6">
-        <iframe src={embedUrl} className="w-full h-full border-none" allowFullScreen />
+      <div className="space-y-3 mb-6">
+        <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-200">
+          <iframe src={embedUrl} className="w-full h-full border-none" allowFullScreen />
+        </div>
+        {isYouTube && (
+          <div className="flex justify-end">
+            <a 
+              href={url} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all border border-red-200 shadow-sm"
+            >
+              <MonitorPlay size={14} /> 
+              Video Error? Tonton Langsung di YouTube ↗
+            </a>
+          </div>
+        )}
       </div>
     )
-  }*/}
-  const renderEmbed = (url: string) => {
-  if (!url) return null;
-  let embedUrl = url;
-  let isYouTube = false;
-
-  if (url.includes("youtube.com") || url.includes("youtu.be")) {
-    isYouTube = true;
-    const videoId = url.includes("v=") ? url.split("v=")[1]?.split("&")[0] : url.split("youtu.be/")[1]?.split("?")[0]
-    embedUrl = `https://www.youtube.com/embed/${videoId}`
-  } else if (url.includes("drive.google.com")) {
-    embedUrl = url.replace("/view", "/preview")
   }
-
-  return (
-    <div className="space-y-3 mb-6">
-      <div className="relative w-full aspect-video rounded-2xl overflow-hidden bg-slate-100 shadow-sm border border-slate-200">
-        <iframe src={embedUrl} className="w-full h-full border-none" allowFullScreen />
-      </div>
-      
-      {/* TOMBOL PENYELAMAT: Muncul jika link berasal dari YouTube */}
-      {isYouTube && (
-        <div className="flex justify-end">
-          <a 
-            href={url} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-xs font-bold transition-all border border-red-200 shadow-sm"
-          >
-            <MonitorPlay size={14} /> 
-            Video Error? Tonton Langsung di YouTube ↗
-          </a>
-        </div>
-      )}
-    </div>
-  )
-}
 
   const handleEnroll = async (courseId: number) => {
     setRegisteringId(courseId)
@@ -273,34 +252,14 @@ export default function StudentDashboard() {
       if (res.ok) await fetchData()
     } catch (err) { alert("Gagal mendaftar") } finally { setRegisteringId(null) }
   }
-  {/*
-  const handleUploadProof = async (regId: number) => {
-    if (!selectedProof) return alert("Pilih file bukti!")
-    setUploadingId(regId)
-    const formData = new FormData()
-    formData.append("proof", selectedProof)
-    try {
-      const token = localStorage.getItem("token")
-      const res = await fetch(`${API_URL}/registrations/${regId}/upload`, {
-        method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData 
-      })
-      if (res.ok) { alert("Bukti terkirim!"); await fetchData(); }
-    } catch (err) { alert("Gagal upload") } finally { setUploadingId(null) }
-  }
-*/}
+
   const handleUploadProof = async (regId: number) => {
     setUploadingId(regId)
     const formData = new FormData()
     
     let fileToUpload = selectedProof;
-    
-    // Jika tidak ada file yang dipilih, buat Base64 Gambar Transparan 1x1 piksel asli
     if (!fileToUpload) {
       const b64Data = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
-      
-      // Proses konversi Base64 menjadi file binary asli (.png)
       const byteCharacters = atob(b64Data);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -308,7 +267,6 @@ export default function StudentDashboard() {
       }
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: "image/png" });
-      
       fileToUpload = new File([blob], "default-bukti-pembayaran.png", { type: "image/png" });
     }
     
@@ -325,9 +283,9 @@ export default function StudentDashboard() {
       if (res.ok) { 
         Swal.fire({ icon: 'success', title: 'Berhasil', text: 'Konfirmasi pembayaran berhasil dikirim!', timer: 2000, showConfirmButton: false });
         setSelectedProof(null);
+        setPreviewUrl(null);
         await fetchData(); 
       } else {
-        // Biar tau pesan error asli dari Laravel (misal: validasi gagal / token expired)
         const errResponse = await res.json().catch(() => ({}));
         const msg = errResponse.message || "Gagal mengirim konfirmasi ke server.";
         Swal.fire("Gagal", msg, "error");
@@ -338,6 +296,28 @@ export default function StudentDashboard() {
       setUploadingId(null) 
     }
   }
+
+  // Mengumpulkan seluruh tugas dari semua modul yang terdaftar
+  const getAllTasks = () => {
+    const activeRegs = registrations.filter(r => r.status === 'success' || r.status === 'aktif')
+    const tasks: any[] = []
+    
+    activeRegs.forEach(reg => {
+      if (reg.course?.materials) {
+        reg.course.materials.forEach((m: any) => {
+          if (m.quiz_task) {
+            tasks.push({
+              courseTitle: reg.course.title,
+              courseId: reg.course_id,
+              material: m
+            })
+          }
+        })
+      }
+    })
+    return tasks
+  }
+
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
 
   return (
@@ -354,6 +334,7 @@ export default function StudentDashboard() {
             { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
             { id: "courses", label: "Katalog Kursus", icon: BookOpen },
             { id: "materials", label: "Ruang Belajar", icon: FileCheck },
+            { id: "assignments", label: "Tugas", icon: Flame }, // ITEM MENU TUGAS BARU
             { id: "certificates", label: "Sertifikat", icon: Award },
           ].map((item) => (
             <button key={item.id} onClick={() => { setActiveMenu(item.id); setSidebarOpen(false); }} 
@@ -415,13 +396,36 @@ export default function StudentDashboard() {
                         <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
                       ) : status === 'pending' ? (
                         <div className="space-y-4 bg-indigo-50 p-6 rounded-3xl">
-                           <div className="text-indigo-700 font-bold text-sm mb-2 text-center">Silahkan langsung klik konfirmasi</div>
-                           <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-indigo-200 rounded-2xl bg-white cursor-pointer hover:bg-indigo-100 transition-colors">
-                             {selectedProof ? <span className="text-xs font-bold text-emerald-600 truncate px-4">{selectedProof.name}</span> : <UploadCloud className="text-indigo-300" size={24} />}
-                             <input type="file" className="hidden" onChange={(e) => setSelectedProof(e.target.files?.[0] || null)} />
+                           <div className="text-indigo-700 font-bold text-sm mb-2 text-center">Silahkan unggah bukti transfer / konfirmasi (Gambar atau PDF)</div>
+                           
+                           <label className="flex flex-col items-center justify-center w-full min-h-[120px] p-4 border-2 border-dashed border-indigo-200 rounded-2xl bg-white cursor-pointer hover:bg-indigo-100/50 transition-colors relative overflow-hidden">
+                             {selectedProof ? (
+                               selectedProof.type.startsWith("image/") ? (
+                                 <div className="flex flex-col items-center space-y-2">
+                                   <img src={previewUrl!} alt="Preview Bukti" className="h-28 object-contain rounded-xl shadow-sm border" />
+                                   <span className="text-[11px] font-bold text-emerald-600 truncate max-w-[200px]">{selectedProof.name}</span>
+                                 </div>
+                               ) : selectedProof.type === "application/pdf" ? (
+                                 <div className="flex flex-col items-center space-y-2 py-2">
+                                   <FileText className="text-indigo-600 h-10 w-10" />
+                                   <span className="text-[11px] font-bold text-indigo-700 truncate max-w-[200px]">{selectedProof.name}</span>
+                                   <span className="text-[9px] bg-indigo-100 text-indigo-700 font-extrabold px-2 py-0.5 rounded-full uppercase">Dokumen PDF</span>
+                                 </div>
+                               ) : (
+                                 <span className="text-xs font-bold text-emerald-600 truncate px-4">{selectedProof.name}</span>
+                               )
+                             ) : (
+                               <div className="flex flex-col items-center space-y-1 text-indigo-400">
+                                 <UploadCloud size={30} />
+                                 <span className="text-xs font-bold">Pilih File Gambar / PDF</span>
+                                 <span className="text-[10px] text-slate-400">PNG, JPG, WEBP, atau PDF</span>
+                               </div>
+                             )}
+                             <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
                            </label>
+
                            <Button onClick={() => handleUploadProof(reg.id)} disabled={uploadingId === reg.id} className="w-full bg-slate-900 text-white h-12 rounded-xl font-bold">
-                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi"}
+                             {uploadingId === reg.id ? <Loader2 className="animate-spin" /> : "Konfirmasi Pembayaran"}
                            </Button>
                         </div>
                       ) : (
@@ -542,7 +546,74 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* --- MENU SERTIFIKAT (LOGIKA BARU DARI TABEL) --- */}
+        {/* --- MENU KHUSUS TUGAS (BARU) --- */}
+        {activeMenu === "assignments" && (
+          <div className="space-y-10 animate-in fade-in duration-500">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-800">Daftar Tugas</h2>
+              <p className="text-slate-500 font-medium">Kelola dan kerjakan tugas praktik dari seluruh modul kamu.</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              {getAllTasks().length > 0 ? (
+                getAllTasks().map((item: any, idx: number) => {
+                  const isDone = courseProgress[item.material.id]?.tugas;
+                  return (
+                    <Card key={idx} className="rounded-[2rem] p-8 bg-white border-none shadow-sm hover:shadow-md transition-all">
+                      <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-6">
+                        <div className="space-y-3 flex-1">
+                          <div className="flex items-center gap-3">
+                            <span className="px-3 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[10px] font-bold uppercase tracking-wider">
+                              {item.courseTitle}
+                            </span>
+                            {isDone ? (
+                              <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                                <CheckCircle2 size={12} /> Selesai Dikirim
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-[11px] font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+                                <Clock size={12} /> Belum Dikerjakan
+                              </span>
+                            )}
+                          </div>
+                          
+                          <h3 className="text-xl font-bold text-slate-800">{item.material.title}</h3>
+                          
+                          <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 font-medium line-clamp-2">
+                            {item.material.quiz_task || "Sesuai petunjuk modul."}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Button 
+                            onClick={() => {
+                              setExpandedCourse(item.courseId);
+                              setActiveMaterial(item.material);
+                              setActiveStep("tugas");
+                              setActiveMenu("materials");
+                            }} 
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white h-12 px-6 rounded-2xl font-bold text-xs flex items-center gap-2"
+                          >
+                            <Flame size={16} /> 
+                            {isDone ? "Lihat / Edit Tugas" : "Kerjakan Tugas"}
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })
+              ) : (
+                <div className="py-24 bg-white rounded-[3rem] border-4 border-dashed border-slate-100 flex flex-col items-center justify-center text-slate-400">
+                  <Flame size={60} className="opacity-10 mb-4" />
+                  <p className="font-bold uppercase text-xs tracking-widest opacity-40">Belum ada tugas tersedia</p>
+                  <p className="text-[10px] mt-2 italic text-slate-400 max-w-xs text-center px-6">Daftar kursus terlebih dahulu untuk membuka akses tugas praktik.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* --- MENU SERTIFIKAT --- */}
         {activeMenu === "certificates" && (
           <div className="space-y-10 animate-in fade-in duration-500">
             <div>
