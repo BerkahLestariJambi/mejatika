@@ -25,10 +25,26 @@ export default function MentorTasksPage() {
     setLoadingTasks(true)
     try {
       const res = await fetch(`${API_URL}/mentor/tasks`, {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        }
       })
       const data = await res.json()
-      setTasks(Array.isArray(data) ? data : data.data || [])
+      
+      // Debugging: Cek isi respons di inspect console browser
+      console.log("Response /mentor/tasks:", data)
+
+      // Penanganan berbagai format JSON dari Laravel (paginated / plain array)
+      if (Array.isArray(data)) {
+        setTasks(data)
+      } else if (data && Array.isArray(data.data)) {
+        setTasks(data.data)
+      } else if (data && Array.isArray(data.tasks)) {
+        setTasks(data.tasks)
+      } else {
+        setTasks([])
+      }
     } catch (err) {
       console.error("Error fetching mentor tasks:", err)
     } finally {
@@ -90,12 +106,12 @@ export default function MentorTasksPage() {
       </div>
 
       {loadingTasks ? (
-        <div className="p-12 text-center text-indigo-500 font-bold flex items-center justify-center gap-2">
-          <Loader2 className="animate-spin" /> Memuat daftar tugas...
+        <div className="p-12 text-center text-amber-500 font-bold flex items-center justify-center gap-2">
+          <Loader2 className="animate-spin" size={24} /> Memuat daftar tugas...
         </div>
       ) : tasks.length === 0 ? (
-        <div className="bg-white p-12 rounded-[2.5rem] text-center border border-slate-100">
-          <FileText className="mx-auto text-slate-300 mb-2" size={48} />
+        <div className="bg-white p-12 rounded-[2.5rem] text-center border border-slate-100 shadow-sm">
+          <FileText className="mx-auto text-slate-300 mb-3" size={48} />
           <p className="text-slate-500 font-medium">Belum ada tugas siswa yang masuk.</p>
         </div>
       ) : (
@@ -106,19 +122,21 @@ export default function MentorTasksPage() {
               <Card key={task.id} className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6 lg:p-8 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
                 <div className="space-y-2 flex-1">
                   <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full">
-                      {task.mapel || "Umum"}
+                    <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-bold rounded-full">
+                      {task.course?.title || task.mapel || "Kursus"}
                     </span>
-                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${isGraded ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${isGraded ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-100 text-amber-700'}`}>
                       {isGraded ? 'Sudah Dinilai' : 'Perlu Dinilai'}
                     </span>
                   </div>
-                  <h3 className="text-xl font-bold text-slate-800">{task.title}</h3>
-                  <p className="text-xs text-slate-500">Siswa: <span className="font-bold text-slate-700">{task.student?.name || task.student_name || "Siswa"}</span></p>
+                  <h3 className="text-xl font-bold text-slate-800">{task.title || task.name}</h3>
+                  <p className="text-xs text-slate-500">
+                    Siswa: <span className="font-bold text-slate-700">{task.user?.name || task.student?.name || task.student_name || "Siswa"}</span>
+                  </p>
                   {task.description && <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded-xl mt-2">{task.description}</p>}
                   
-                  {task.file_path && (
-                    <a href={task.file_path} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-indigo-600 text-xs font-bold hover:underline mt-2">
+                  {(task.file_path || task.file_url) && (
+                    <a href={task.file_path || task.file_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-amber-600 text-xs font-bold hover:underline mt-2">
                       <Paperclip size={14} /> Lihat Berkas Tugas
                     </a>
                   )}
@@ -133,7 +151,7 @@ export default function MentorTasksPage() {
                   )}
                   <Button 
                     onClick={() => handleOpenGradeModal(task)} 
-                    className={`w-full rounded-2xl font-bold text-xs h-12 ${isGraded ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                    className={`w-full rounded-2xl font-bold text-xs h-12 ${isGraded ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
                   >
                     {isGraded ? "Edit Penilaian" : "Beri Nilai"}
                   </Button>
@@ -144,13 +162,13 @@ export default function MentorTasksPage() {
         </div>
       )}
 
-      {/* MODAL / FORM PENILAIAN */}
+      {/* MODAL PENILAIAN */}
       {selectedTask && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-[2.5rem] p-8 max-w-lg w-full space-y-6 shadow-2xl animate-in zoom-in-95 duration-200">
             <div className="border-b border-slate-100 pb-4">
               <h3 className="text-2xl font-bold text-slate-800">Penilaian Tugas</h3>
-              <p className="text-xs text-slate-500 mt-1">Judul: <span className="font-bold text-slate-700">{selectedTask.title}</span></p>
+              <p className="text-xs text-slate-500 mt-1">Judul: <span className="font-bold text-slate-700">{selectedTask.title || selectedTask.name}</span></p>
             </div>
 
             <form onSubmit={handleGradeSubmit} className="space-y-4">
@@ -166,7 +184,7 @@ export default function MentorTasksPage() {
                   onChange={(e) => setScore(e.target.value)} 
                   placeholder="Masukkan angka nilai (misal: 85)"
                   required
-                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold"
+                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-bold"
                 />
               </div>
 
@@ -178,7 +196,7 @@ export default function MentorTasksPage() {
                   value={feedback} 
                   onChange={(e) => setFeedback(e.target.value)} 
                   placeholder="Tuliskan umpan balik atau arahan perbaikan untuk siswa..."
-                  className="w-full h-32 p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium"
+                  className="w-full h-32 p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-medium"
                 />
               </div>
 
@@ -193,7 +211,7 @@ export default function MentorTasksPage() {
                 <Button 
                   type="submit" 
                   disabled={isSubmittingGrade}
-                  className="flex-1 h-12 bg-indigo-600 text-white rounded-2xl font-bold text-xs hover:bg-indigo-700 flex items-center justify-center gap-2"
+                  className="flex-1 h-12 bg-amber-500 text-white rounded-2xl font-bold text-xs hover:bg-amber-600 flex items-center justify-center gap-2"
                 >
                   {isSubmittingGrade ? <Loader2 className="animate-spin" /> : <><Send size={16} /> Simpan Nilai</>}
                 </Button>
