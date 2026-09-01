@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award } from "lucide-react"
+import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink } from "lucide-react"
 import Swal from 'sweetalert2'
 
 export default function MentorTasksPage() {
@@ -17,6 +17,9 @@ export default function MentorTasksPage() {
   const [score, setScore] = useState<number | string>("")
   const [feedback, setFeedback] = useState("")
   const [isSubmittingGrade, setIsSubmittingGrade] = useState(false)
+
+  // State Kontrol Zoom Preview
+  const [zoomScale, setZoomScale] = useState<number>(1)
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -97,7 +100,13 @@ export default function MentorTasksPage() {
     setActiveTask(task)
     setScore(task.nilai ?? task.score ?? "")
     setFeedback(task.feedback ?? "")
+    setZoomScale(1) // Reset zoom saat membuka file baru
   }
+
+  // CONTROLLER ZOOM
+  const handleZoomIn = () => setZoomScale(prev => Math.min(prev + 0.25, 3))
+  const handleZoomOut = () => setZoomScale(prev => Math.max(prev - 0.25, 0.5))
+  const handleZoomReset = () => setZoomScale(1)
 
   // SUBMIT PENILAIAN LANGSUNG DARI HALAMAN PREVIEW
   const handleGradeSubmit = async (e: React.FormEvent) => {
@@ -216,7 +225,7 @@ export default function MentorTasksPage() {
         </div>
       )}
 
-      {/* MODAL PREVIEW FILE RINGKAS & FORM PENILAIAN */}
+      {/* MODAL PREVIEW FILE RINGKAS DENGAN FITUR ZOOM & FORM PENILAIAN */}
       {activeTask && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-3 lg:p-6 overflow-y-auto">
           <div className="bg-white rounded-[2rem] w-full max-w-5xl my-auto flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100">
@@ -251,11 +260,55 @@ export default function MentorTasksPage() {
               </div>
             </div>
 
-            {/* BODY MODAL: GRID 2 KOLOM DENGAN TINGGI COMPACT */}
+            {/* BODY MODAL: GRID 2 KOLOM */}
             <div className="grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
               
-              {/* KOLOM KIRI: PREVIEW BERKAS (UKURAN TINGGI DIBATASI AGAR TIDAK SCROLL PANJANG) */}
-              <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center h-[260px] lg:h-[400px] border-b lg:border-b-0 lg:border-r border-slate-200 relative">
+              {/* KOLOM KIRI: PREVIEW BERKAS DENGAN KONTROL ZOOM */}
+              <div className="lg:col-span-7 bg-slate-100 p-4 flex flex-col items-center justify-center h-[320px] lg:h-[420px] border-b lg:border-b-0 lg:border-r border-slate-200 relative overflow-hidden group">
+                
+                {/* TOOLBAR KONTROL ZOOM (HANYA MUNCUL DILAYAR YANG PUNYA FILE) */}
+                {(activeTask.file_path || activeTask.file_url) && (
+                  <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-md px-2 py-1.5 rounded-xl shadow-md border border-slate-200 flex items-center gap-1 opacity-90 hover:opacity-100 transition">
+                    <button 
+                      type="button" 
+                      onClick={handleZoomOut} 
+                      className="p-1 hover:bg-slate-100 rounded-lg text-slate-700" 
+                      title="Perkecil"
+                    >
+                      <ZoomOut size={16} />
+                    </button>
+                    <span className="text-[11px] font-bold text-slate-600 px-1 min-w-[36px] text-center">
+                      {Math.round(zoomScale * 100)}%
+                    </span>
+                    <button 
+                      type="button" 
+                      onClick={handleZoomIn} 
+                      className="p-1 hover:bg-slate-100 rounded-lg text-slate-700" 
+                      title="Perbesar"
+                    >
+                      <ZoomIn size={16} />
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={handleZoomReset} 
+                      className="p-1 hover:bg-slate-100 rounded-lg text-slate-700" 
+                      title="Reset Ukuran"
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                    <a 
+                      href={activeTask.file_path || activeTask.file_url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="p-1 hover:bg-slate-100 rounded-lg text-amber-600 border-l border-slate-200 ml-1 pl-1.5"
+                      title="Buka File di Tab Baru (Layar Penuh)"
+                    >
+                      <ExternalLink size={15} />
+                    </a>
+                  </div>
+                )}
+
+                {/* KONTEN PREVIEW */}
                 {!(activeTask.file_path || activeTask.file_url) ? (
                   <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-2">
                     <FileText className="mx-auto text-slate-300" size={40} />
@@ -263,17 +316,29 @@ export default function MentorTasksPage() {
                     <p className="text-xs text-slate-400">Penilaian dilakukan berdasarkan deskripsi atau catatan.</p>
                   </div>
                 ) : getFileType(activeTask.file_path || activeTask.file_url) === 'image' ? (
-                  <img 
-                    src={activeTask.file_path || activeTask.file_url} 
-                    alt="Preview Berkas" 
-                    className="max-w-full max-h-full object-contain rounded-xl shadow-sm"
-                  />
+                  <div className="w-full h-full flex items-center justify-center overflow-auto p-2">
+                    <img 
+                      src={activeTask.file_path || activeTask.file_url} 
+                      alt="Preview Berkas" 
+                      style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.2s ease-in-out' }}
+                      className="max-w-full max-h-full object-contain rounded-xl shadow-sm origin-center"
+                    />
+                  </div>
                 ) : getFileType(activeTask.file_path || activeTask.file_url) === 'pdf' ? (
-                  <iframe 
-                    src={`https://docs.google.com/viewer?url=${encodeURIComponent(activeTask.file_path || activeTask.file_url)}&embedded=true`}
-                    className="w-full h-full rounded-xl border-none shadow-sm bg-white"
-                    title="PDF Preview"
-                  />
+                  <div className="w-full h-full overflow-hidden rounded-xl shadow-sm bg-white">
+                    <iframe 
+                      src={`https://docs.google.com/viewer?url=${encodeURIComponent(activeTask.file_path || activeTask.file_url)}&embedded=true`}
+                      style={{ 
+                        transform: `scale(${zoomScale})`, 
+                        transformOrigin: 'top center',
+                        width: zoomScale !== 1 ? `${100 / zoomScale}%` : '100%',
+                        height: zoomScale !== 1 ? `${100 / zoomScale}%` : '100%',
+                        transition: 'transform 0.2s ease-in-out'
+                      }}
+                      className="border-none bg-white"
+                      title="PDF Preview"
+                    />
+                  </div>
                 ) : (
                   <div className="text-center p-6 bg-white rounded-2xl shadow-sm border border-slate-200 space-y-3">
                     <Paperclip className="mx-auto text-amber-500" size={40} />
@@ -295,7 +360,7 @@ export default function MentorTasksPage() {
               </div>
 
               {/* KOLOM KANAN: FORM PENILAIAN */}
-              <div className="lg:col-span-5 p-5 lg:p-6 bg-white flex flex-col justify-between space-y-4 h-[400px] overflow-y-auto">
+              <div className="lg:col-span-5 p-5 lg:p-6 bg-white flex flex-col justify-between space-y-4 h-[420px] overflow-y-auto">
                 <form onSubmit={handleGradeSubmit} className="space-y-4 flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center gap-2 mb-3 text-amber-600 font-bold">
