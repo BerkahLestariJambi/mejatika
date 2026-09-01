@@ -9,7 +9,7 @@ import {
   PlayCircle, CheckCircle2, ChevronDown, Clock, 
   FileText, Loader2, Flame, MessageSquare, 
   MonitorPlay, Zap, Lock, UploadCloud,
-  Send, UserCircle2, Menu, X, ClipboardList, Paperclip
+  Send, UserCircle2, Menu, X, ClipboardList, Paperclip, Book
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -24,22 +24,17 @@ export default function StudentDashboard() {
   const [registeringId, setRegisteringId] = useState<number | null>(null)
   const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
-  const [activeMaterial, setActiveMaterial] = useState<any>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   
   const [selectedProof, setSelectedProof] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [activeStep, setActiveStep] = useState<string>("live") 
-  
-  // State khusus disesuaikan dengan skema tabel 'tasks' (title, description, file_path)
+
+  // State Form Tugas (Tabel tasks: title, subject, description, file_path)
   const [taskTitle, setTaskTitle] = useState("")
+  const [taskSubject, setTaskSubject] = useState("Matematika")
   const [taskDescription, setTaskDescription] = useState("")
   const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
-  
-  const [courseProgress, setCourseProgress] = useState<Record<number, any>>({})
-  const [submissionFeedback, setSubmissionFeedback] = useState<any>(null)
-  const [replyText, setReplyText] = useState("")
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -88,11 +83,9 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     fetchData()
-    const saved = localStorage.getItem("mejatika_progress")
-    if (saved) setCourseProgress(JSON.parse(saved))
   }, [fetchData])
 
-  // Submit Tugas sesuai struktur tabel 'tasks'
+  // Submit Tugas sesuai skema tabel 'tasks' (termasuk kolom 'subject')
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!taskTitle.trim()) {
@@ -100,7 +93,7 @@ export default function StudentDashboard() {
     }
 
     if (!taskFile && !taskDescription.trim()) {
-      return Swal.fire("Peringatan", "Mohon sertakan file tugas atau isi deskripsi tugas.", "warning")
+      return Swal.fire("Peringatan", "Mohon sertakan berkas tugas atau sertakan deskripsi tugas.", "warning")
     }
 
     setIsSubmittingTask(true)
@@ -109,8 +102,9 @@ export default function StudentDashboard() {
     try {
       const formData = new FormData()
       formData.append("title", taskTitle)
+      formData.append("subject", taskSubject) // Mengirimkan pilihan mapel
       if (taskDescription) formData.append("description", taskDescription)
-      if (taskFile) formData.append("file_path", taskFile) // disesuaikan kolom file_path
+      if (taskFile) formData.append("file_path", taskFile)
 
       const res = await fetch(`${API_URL}/tasks`, {
         method: "POST",
@@ -122,8 +116,9 @@ export default function StudentDashboard() {
       })
 
       if (res.ok) {
-        Swal.fire("Berhasil!", "Tugas berhasil dikirim ke database.", "success")
+        Swal.fire("Berhasil!", "Tugas berhasil dikirim ke basis data.", "success")
         setTaskTitle("")
+        setTaskSubject("Matematika")
         setTaskDescription("")
         setTaskFile(null)
       } else {
@@ -243,7 +238,7 @@ export default function StudentDashboard() {
           </div>
         )}
 
-        {/* --- MENU TUGAS (SESUAI STRUKTUR TABEL tasks) --- */}
+        {/* --- MENU TUGAS --- */}
         {activeMenu === "assignments" && (
           <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl">
             <div>
@@ -253,6 +248,28 @@ export default function StudentDashboard() {
 
             <form onSubmit={handleTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
               
+              {/* Dropdown: Subject / Mata Pelajaran */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                  Mata Pelajaran <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={taskSubject}
+                    onChange={(e) => setTaskSubject(e.target.value)}
+                    required
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
+                  >
+                    <option value="Matematika">Matematika</option>
+                    <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                    <option value="PKN">PKN</option>
+                    <option value="Bahasa Inggris">Bahasa Inggris</option>
+                    <option value="Informatika">Informatika</option>
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
+                </div>
+              </div>
+
               {/* Field: title */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
