@@ -445,15 +445,18 @@ export default function MentorTasksPage() {
                       )}
 
                       {/* MENAMPILKAN FEEDBACK MENTOR DI CARD */}
-                      {isGraded && currentFeedback && (
-                        <div className="bg-amber-50/70 border border-amber-100 p-3.5 rounded-2xl flex items-start gap-2.5">
-                          <MessageSquare className="text-amber-600 shrink-0 mt-0.5" size={15} />
-                          <div className="text-xs space-y-0.5">
-                            <span className="font-bold text-amber-900 block">Feedback Mentor:</span>
-                            <p className="text-amber-800 line-clamp-3">{currentFeedback}</p>
-                          </div>
-                        </div>
-                      )}
+                    {/* MENAMPILKAN FEEDBACK MENTOR SECARA UTUH */}
+{isGraded && currentFeedback && (
+  <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl flex items-start gap-3">
+    <MessageSquare className="text-amber-600 shrink-0 mt-0.5" size={16} />
+    <div className="text-xs space-y-1 w-full overflow-hidden">
+      <span className="font-bold text-amber-900 block">Feedback Mentor:</span>
+      <p className="text-amber-800 whitespace-pre-line break-words leading-relaxed">
+        {currentFeedback}
+      </p>
+    </div>
+  </div>
+)}
                     </div>
 
                     <div className="flex flex-col items-end gap-3 min-w-[200px]">
