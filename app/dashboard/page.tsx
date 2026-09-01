@@ -6,10 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
-  PlayCircle, CheckCircle2, ChevronDown, Clock, 
-  FileText, Loader2, Flame, MessageSquare, 
-  MonitorPlay, Zap, Lock, UploadCloud,
-  Send, UserCircle2, Menu, X, ClipboardList, Paperclip, Book
+  ChevronDown, Loader2, Flame, Zap, UploadCloud, Paperclip, Menu
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -21,33 +18,17 @@ export default function StudentDashboard() {
   const [myCertificates, setMyCertificates] = useState<any[]>([]) 
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [registeringId, setRegisteringId] = useState<number | null>(null)
-  const [uploadingId, setUploadingId] = useState<number | null>(null)
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  
-  const [selectedProof, setSelectedProof] = useState<File | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
-  // State Form Tugas (Tabel tasks: title, subject, description, file_path)
+  // State Form Tugas (Sesuai $fillable: title, mapel, description, file_path)
   const [taskTitle, setTaskTitle] = useState("")
-  const [taskSubject, setTaskSubject] = useState("Matematika")
+  const [taskMapel, setTaskMapel] = useState("Matematika")
   const [taskDescription, setTaskDescription] = useState("")
   const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
   const API_URL = "https://backend.mejatika.com/api"
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    setSelectedProof(file)
-    if (file) {
-      const url = URL.createObjectURL(file)
-      setPreviewUrl(url)
-    } else {
-      setPreviewUrl(null)
-    }
-  }
 
   const handleTaskFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
@@ -85,15 +66,11 @@ export default function StudentDashboard() {
     fetchData()
   }, [fetchData])
 
-  // Submit Tugas sesuai skema tabel 'tasks' (termasuk kolom 'subject')
+  // Submit Tugas — Key FormData disesuaikan dengan $fillable
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!taskTitle.trim()) {
       return Swal.fire("Peringatan", "Judul tugas wajib diisi.", "warning")
-    }
-
-    if (!taskFile && !taskDescription.trim()) {
-      return Swal.fire("Peringatan", "Mohon sertakan berkas tugas atau sertakan deskripsi tugas.", "warning")
     }
 
     setIsSubmittingTask(true)
@@ -102,9 +79,14 @@ export default function StudentDashboard() {
     try {
       const formData = new FormData()
       formData.append("title", taskTitle)
-      formData.append("subject", taskSubject) // Mengirimkan pilihan mapel
+      formData.append("mapel", taskMapel) // Disesuaikan dengan $fillable 'mapel'
       if (taskDescription) formData.append("description", taskDescription)
-      if (taskFile) formData.append("file_path", taskFile)
+      
+      // Mengirimkan file dengan key 'file_path' dan 'file' untuk mengantisipasi validasi backend
+      if (taskFile) {
+        formData.append("file_path", taskFile)
+        formData.append("file", taskFile) 
+      }
 
       const res = await fetch(`${API_URL}/tasks`, {
         method: "POST",
@@ -116,9 +98,9 @@ export default function StudentDashboard() {
       })
 
       if (res.ok) {
-        Swal.fire("Berhasil!", "Tugas berhasil dikirim ke basis data.", "success")
+        Swal.fire("Berhasil!", "Tugas berhasil dikirim.", "success")
         setTaskTitle("")
-        setTaskSubject("Matematika")
+        setTaskMapel("Matematika")
         setTaskDescription("")
         setTaskFile(null)
       } else {
@@ -170,7 +152,7 @@ export default function StudentDashboard() {
           </button>
         </nav>
         <div className="p-6 border-t border-slate-100">
-            <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-all">
+          <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-all">
             <LogOut size={20} /> Logout
           </button>
         </div>
@@ -207,26 +189,17 @@ export default function StudentDashboard() {
           <div className="space-y-8 animate-in fade-in duration-500">
             <h2 className="text-3xl font-bold text-slate-800">Katalog Kursus</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {availableCourses.map((course) => {
-                const reg = registrations.find(r => Number(r.course_id) === Number(course.id));
-                const status = reg?.status;
-                return (
-                  <Card key={course.id} className="rounded-[2.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:shadow-xl transition-all relative">
-                    <div className="h-48 bg-slate-50 flex items-center justify-center border-b border-slate-100">
-                      <BookOpen className="text-slate-200" size={60} />
-                      {(status === 'success' || status === 'aktif') && <div className="absolute top-6 right-6 bg-emerald-500 text-white p-2 rounded-full shadow-lg"><CheckCircle2 size={20}/></div>}
-                    </div>
-                    <CardContent className="p-10 flex-1 flex flex-col">
-                      <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
-                      {(status === 'success' || status === 'aktif') ? (
-                        <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
-                      ) : (
-                        <Button onClick={() => {}} className="w-full bg-slate-900 text-white h-14 rounded-2xl font-bold">Daftar Sekarang</Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                )
-              })}
+              {availableCourses.map((course) => (
+                <Card key={course.id} className="rounded-[2.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:shadow-xl transition-all relative">
+                  <div className="h-48 bg-slate-50 flex items-center justify-center border-b border-slate-100">
+                    <BookOpen className="text-slate-200" size={60} />
+                  </div>
+                  <CardContent className="p-10 flex-1 flex flex-col">
+                    <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
+                    <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
           </div>
         )}
@@ -248,15 +221,15 @@ export default function StudentDashboard() {
 
             <form onSubmit={handleTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
               
-              {/* Dropdown: Subject / Mata Pelajaran */}
+              {/* Dropdown: mapel */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                   Mata Pelajaran <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select
-                    value={taskSubject}
-                    onChange={(e) => setTaskSubject(e.target.value)}
+                    value={taskMapel}
+                    onChange={(e) => setTaskMapel(e.target.value)}
                     required
                     className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
                   >
@@ -301,7 +274,7 @@ export default function StudentDashboard() {
               {/* Field: file_path */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                  Unggah Berkas Tugas (file_path)
+                  Unggah Berkas Tugas
                 </label>
                 <label className="flex flex-col items-center justify-center w-full min-h-[140px] p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors">
                   {taskFile ? (
