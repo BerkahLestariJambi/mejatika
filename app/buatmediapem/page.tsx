@@ -585,7 +585,7 @@ export default function StudioHybridPresenter() {
   };
 
   // =======================================================
-  // LOGIC REKAMAN FIXED (ANTI KORUP & AMAN PLAYBACK LOKAL)
+  // LOGIC REKAMAN ULTIMATE (FIX PLAYBACK + FIX DROIDCAM/H264)
   // =======================================================
   const startRecording = async () => {
     try {
@@ -594,39 +594,36 @@ export default function StudioHybridPresenter() {
       if (!mainCanvas) return;
 
       const ctx = mainCanvas.getContext("2d");
-      if (ctx) {
-        // Pancingan frame: Gambar ulang warna transparan tipis agar stream aktif
-        ctx.fillStyle = "rgba(0,0,0,0.01)";
-        ctx.fillRect(0, 0, 1, 1);
-      }
 
+      // 1. Pancingan render frame konstan agar stream video tidak statis/korup
+      const forceRenderInterval = setInterval(() => {
+        if (ctx && mainCanvas) {
+          ctx.fillStyle = "rgba(255, 255, 255, 0.001)";
+          ctx.fillRect(0, 0, 1, 1);
+        }
+      }, 33);
+
+      // 2. Murni merekam dari Canvas (Transcoding otomatis dari DroidCam)
       const canvasStream = mainCanvas.captureStream(30);
+      const outputStream = new MediaStream();
 
-      let audioTrack = (webcamVideoRef.current?.srcObject as MediaStream)?.getAudioTracks()[0];
-      if (!audioTrack && streamRef.current) {
-        audioTrack = streamRef.current.getAudioTracks()[0];
-      }
+      canvasStream.getVideoTracks().forEach((track) => outputStream.addTrack(track));
 
-      if (audioTrack) {
-        canvasStream.addTrack(audioTrack);
-      } else {
-        try {
-          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const destination = audioCtx.createMediaStreamDestination();
-          const silentTrack = destination.stream.getAudioTracks()[0];
-          if (silentTrack) canvasStream.addTrack(silentTrack);
-        } catch (e) {
-          console.warn("Gagal membuat fallback audio track:", e);
+      // 3. Gabungkan Audio Mic / DroidCam jika tersedia
+      if (streamRef.current) {
+        const audioTrack = streamRef.current.getAudioTracks()[0];
+        if (audioTrack) {
+          outputStream.addTrack(audioTrack);
         }
       }
 
+      // 4. Pilih Codec VP8/VP9 Uniform WebM
       const supportedMimeTypes = [
-        "video/webm;codecs=vp9,opus",
         "video/webm;codecs=vp8,opus",
-        "video/webm",
-        "video/mp4;codecs=avc1.42E01E,mp4a.40.2"
+        "video/webm;codecs=vp9,opus",
+        "video/webm"
       ];
-      
+
       let selectedMimeType = "";
       for (const mime of supportedMimeTypes) {
         if (MediaRecorder.isTypeSupported(mime)) {
@@ -635,30 +632,51 @@ export default function StudioHybridPresenter() {
         }
       }
 
-      const mediaRecorder = new MediaRecorder(canvasStream, { 
+      const mediaRecorder = new MediaRecorder(outputStream, {
         mimeType: selectedMimeType || undefined,
-        videoBitsPerSecond: 2500000 
+        videoBitsPerSecond: 2500000
       });
-      
+
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.ondataavailable = (e) => { 
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data); 
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunksRef.current.push(e.data);
+        }
       };
-      
+
       mediaRecorder.onstop = () => {
+        clearInterval(forceRenderInterval); // stop pancingan interval
+
         const finalType = selectedMimeType || "video/webm";
         const blob = new Blob(chunksRef.current, { type: finalType });
+
+        if (blob.size < 1000) {
+          alert("Gagal menyimpan: Hasil rekaman kosong/terlalu kecil.");
+          return;
+        }
+
         const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const recordId = `rec-${Date.now()}`;
-        
+
         saveToIndexedDB(recordId, blob, ts);
-        setRecordingsList((prev) => [{ id: recordId, blob, url: URL.createObjectURL(blob), timestamp: ts, uploadStatus: "idle" }, ...prev]);
+        setRecordingsList((prev) => [
+          {
+            id: recordId,
+            blob,
+            url: URL.createObjectURL(blob),
+            timestamp: ts,
+            uploadStatus: "idle",
+          },
+          ...prev,
+        ]);
       };
-      
-      mediaRecorder.start(100); 
+
+      mediaRecorder.start(1000);
       setRecording(true);
-    } catch (err) { 
-      console.error("Gagal memulai rekaman:", err); 
+    } catch (err) {
+      console.error("Gagal memulai rekaman:", err);
+      alert("Gagal memulai rekaman. Pastikan izin kamera & mic aktif.");
     }
   };
 
@@ -786,9 +804,10 @@ export default function StudioHybridPresenter() {
                         <button onClick={() => deleteRecording(video.id)} className="text-[10px] text-red-400 hover:text-red-500 font-bold px-1 rounded">🗑️ Hapus</button>
                       </div>
                       <video src={video.url} controls className="w-full aspect-video rounded bg-black" />
-                      <div className="grid grid-cols-2 gap-1.5 mt-0.5">
+                      <div className="grid grid-cols-3 gap-1 mt-0.5">
                         <button onClick={() => uploadVideoToBackend(video)} className="py-1 bg-blue-600 hover:bg-blue-500 rounded font-bold text-[9px] text-white">☁️ Server</button>
                         <button onClick={() => shareRecording(video)} className="py-1 bg-emerald-600 hover:bg-emerald-500 rounded font-bold text-[9px] text-white flex items-center justify-center gap-1">🔗 Bagikan</button>
+                        <a href={video.url} download={`Rekaman-${video.timestamp}.webm`} className="py-1 bg-purple-600 hover:bg-purple-500 rounded font-bold text-[9px] text-white text-center flex items-center justify-center">💾 Unduh</a>
                       </div>
                     </div>
                   ))}
