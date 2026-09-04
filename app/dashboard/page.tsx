@@ -278,7 +278,7 @@ export default function StudentDashboard() {
     }
   }
 
-  // Submit Update Profil (Mengarahkan ke /users/{id} dengan method _method: PUT)
+  // PERBAIKAN: Submit Update Profil ke endpoint /profile untuk menghindari error 403
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsUpdatingProfile(true)
@@ -296,7 +296,8 @@ export default function StudentDashboard() {
         formData.append("photo", profilePhoto)
       }
 
-      const res = await fetch(`${API_URL}/users/${user.id}`, {
+      // Gunakan /profile agar bebas dari larangan middleware admin
+      const res = await fetch(`${API_URL}/profile`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -307,15 +308,27 @@ export default function StudentDashboard() {
 
       const data = await res.json()
 
-      if (res.ok) {
+      if (res.ok && (data.success || data.id)) {
         Swal.fire("Berhasil!", "Profil kamu berhasil diperbarui.", "success")
-        setUser(data.data || data)
+        const updatedUser = data.data || data
+        setUser(updatedUser)
+        setProfileName(updatedUser.name || profileName)
+        setProfileEmail(updatedUser.email || profileEmail)
         setProfilePassword("")
+        setProfilePhoto(null)
       } else {
-        throw new Error(data.message || "Gagal memperbarui profil.")
+        let errorMessage = data.message || "Gagal memperbarui profil."
+        if (data.errors) {
+          errorMessage = Object.values(data.errors).flat().join("<br>")
+        }
+        throw new Error(errorMessage)
       }
     } catch (err: any) {
-      Swal.fire("Gagal", err.message || "Terjadi kesalahan sistem.", "error")
+      Swal.fire({
+        icon: "error",
+        title: "Gagal Memperbarui Profil",
+        html: err.message || "Terjadi kesalahan sistem."
+      })
     } finally {
       setIsUpdatingProfile(false)
     }
