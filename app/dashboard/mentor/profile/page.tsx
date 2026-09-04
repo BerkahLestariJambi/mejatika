@@ -1,4 +1,5 @@
 "use client"
+
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
@@ -9,15 +10,17 @@ import { Loader2, Camera, AlertCircle, BookOpen, ChevronDown } from "lucide-reac
 import { toast } from "sonner"
 
 // Daftar Pilihan Mata Pelajaran
-const SUBJECT_OPTIONS = [
-  "Informatika",
+const MAPEL_OPTIONS = [
+  "Informatika / Pemrograman",
   "Matematika",
   "Bahasa Indonesia",
   "Bahasa Inggris",
   "Fisika",
   "Kimia",
   "Biologi",
-  "Ekonomi",
+  "Ekonomi / Akuntansi",
+  "Desain Grafis / DKV",
+  "Jaringan Komputer & Siber",
 ]
 
 export default function MentorProfilePage() {
@@ -25,11 +28,11 @@ export default function MentorProfilePage() {
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   
-  // Menambahkan field subject ke dalam formData
+  // Menggunakan field 'mapel' sesuai permintaan
   const [formData, setFormData] = useState({
     bio: "",
     specialization: "",
-    subject: "", 
+    mapel: "", 
   })
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -53,18 +56,17 @@ export default function MentorProfilePage() {
         })
         const data = await res.json()
         
-        // Load data mentor_profile jika sudah ada
         if (data.mentor_profile) {
           setFormData({
             bio: data.mentor_profile.bio || "",
             specialization: data.mentor_profile.specialization || "",
-            subject: data.mentor_profile.subject || data.mentor_profile.course || "",
+            mapel: data.mentor_profile.mapel || "", // Ambil data field mapel
           })
           setPreview(data.mentor_profile.photo)
         }
       } catch (error) {
         console.error("Gagal mengambil profil:", error)
-      } finally {
+      } finally { // PERBAIKAN: Mengganti 'font-bold' menjadi 'finally'
         setFetching(false)
       }
     }
@@ -86,7 +88,7 @@ export default function MentorProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.subject) {
+    if (!formData.mapel) {
       toast.error("Silakan pilih mata pelajaran terlebih dahulu!")
       return
     }
@@ -99,9 +101,7 @@ export default function MentorProfilePage() {
       
       data.append("bio", formData.bio)
       data.append("specialization", formData.specialization)
-      data.append("subject", formData.subject) // Mengirim mata pelajaran
-      
-      // Method Spoofing Laravel untuk Upload File
+      data.append("mapel", formData.mapel) // Mengirimkan field mapel ke Backend
       data.append("_method", "POST") 
 
       if (photo) {
@@ -184,22 +184,22 @@ export default function MentorProfilePage() {
 
             <div className="grid gap-6">
               
-              {/* PENAMBAHAN FIELD: MATA PELAJARAN */}
+              {/* FIELD MATA PELAJARAN (MAPEL) */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1 flex items-center gap-1.5">
-                  <BookOpen size={13} className="text-amber-500" /> Mata Pelajaran Diampu <span className="text-red-500">*</span>
+                  <BookOpen size={13} className="text-amber-500" /> Mata Pelajaran (Mapel) <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <select
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    value={formData.mapel}
+                    onChange={(e) => setFormData({ ...formData, mapel: e.target.value })}
                     required
                     className="w-full rounded-2xl border-zinc-100 h-16 bg-zinc-50/50 focus:bg-white text-sm font-bold text-zinc-800 px-4 pr-10 appearance-none focus:outline-none focus:ring-2 focus:ring-amber-500 border transition cursor-pointer"
                   >
                     <option value="" disabled>-- Pilih Mata Pelajaran --</option>
-                    {SUBJECT_OPTIONS.map((subj, idx) => (
-                      <option key={idx} value={subj}>
-                        {subj}
+                    {MAPEL_OPTIONS.map((item, idx) => (
+                      <option key={idx} value={item}>
+                        {item}
                       </option>
                     ))}
                   </select>
@@ -207,13 +207,13 @@ export default function MentorProfilePage() {
                 </div>
               </div>
 
-              {/* FIELD: KEAHLIAN UTAMA */}
+              {/* KEAHLIAN UTAMA */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1">
                   Keahlian Utama / Gelar
                 </label>
                 <Input 
-                  placeholder="Misal: Senior Laravel & Next.js Developer" 
+                  placeholder="Misal: Senior Laravel Developer" 
                   className="rounded-2xl border-zinc-100 h-16 bg-zinc-50/50 focus:bg-white text-sm font-bold"
                   value={formData.specialization}
                   onChange={(e) => setFormData({...formData, specialization: e.target.value})}
@@ -221,13 +221,13 @@ export default function MentorProfilePage() {
                 />
               </div>
 
-              {/* FIELD: BIOGRAFI */}
+              {/* BIOGRAFI */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1">
                   Biografi Profesional
                 </label>
                 <Textarea 
-                  placeholder="Ceritakan rekam jejak pengajaran dan pengalaman Anda..." 
+                  placeholder="Ceritakan rekam jejak pengajaran Anda..." 
                   className="rounded-[2.5rem] border-zinc-100 min-h-[160px] bg-zinc-50/50 focus:bg-white p-6 text-sm font-medium leading-relaxed"
                   value={formData.bio}
                   onChange={(e) => setFormData({...formData, bio: e.target.value})}
@@ -236,7 +236,7 @@ export default function MentorProfilePage() {
               </div>
             </div>
 
-            {/* TOMBOL SUBMIT */}
+            {/* SUBMIT BUTTON */}
             <Button 
               type="submit" 
               disabled={loading}
