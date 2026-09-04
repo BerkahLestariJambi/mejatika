@@ -30,6 +30,7 @@ export default function StudentDashboard() {
   const [taskTitle, setTaskTitle] = useState("Tugas 1")
   const [taskMapel, setTaskMapel] = useState("Matematika")
   const [taskDescription, setTaskDescription] = useState("")
+  const [taskKelas, setTaskKelas] = useState("")
   const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
@@ -152,6 +153,7 @@ export default function StudentDashboard() {
       const formData = new FormData()
       formData.append("title", taskTitle)
       formData.append("mapel", taskMapel)
+      formData.append("kelas", taskKelas)
       if (taskDescription) formData.append("description", taskDescription)
       
       if (taskFile) {
@@ -343,8 +345,8 @@ export default function StudentDashboard() {
                   </label>
                   <div className="relative">
                     <select
-                      value={taskMapel}
-                      onChange={(e) => setTaskMapel(e.target.value)}
+                      value={taskKelas}
+                      onChange={(e) => setTaskKelas(e.target.value)}
                       required
                       className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
                     >
