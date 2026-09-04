@@ -120,6 +120,7 @@ export default function MentorTasksPage() {
   const [filterKelas, setFilterKelas] = useState("Semua")
   
   const [isSubmittingGrade, setIsSubmittingGrade] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
   const [zoomScale, setZoomScale] = useState<number>(1)
 
   const API_URL = "https://backend.mejatika.com/api"
@@ -258,35 +259,71 @@ export default function MentorTasksPage() {
     return (task.kelas || "X A") === filterKelas
   })
 
-  const handlePrint = () => {
-    window.print()
+  // FUNGSI PRINT DENGAN PRE-LOAD GAMBAR
+  const handlePrint = async () => {
+    setIsPrinting(true)
+
+    // Cari semua URL gambar pada tasks terfilter
+    const imageUrls = filteredTasks
+      .map(task => task.file_path || task.file_url)
+      .filter(url => url && getFileType(url) === 'image')
+
+    // Preload semua gambar
+    const loadImages = imageUrls.map(url => {
+      return new Promise((resolve) => {
+        const img = new Image()
+        img.crossOrigin = "anonymous"
+        img.src = url
+        img.onload = () => resolve(true)
+        img.onerror = () => resolve(false)
+      })
+    })
+
+    await Promise.all(loadImages)
+
+    // Beri jeda kecil agar DOM memperbarui render gambar
+    setTimeout(() => {
+      setIsPrinting(false)
+      window.print()
+    }, 300)
   }
 
   return (
     <>
-      {/* CSS CETAK */}
+      {/* CSS KHUSUS CETAK/PRINT */}
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          #print-area, #print-area * {
-            visibility: visible;
-          }
-          #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
+          /* Sembunyikan elemen utama di luar area print */
+          body > *:not(#print-area-wrapper) {
+            display: none !important;
           }
           .no-print {
             display: none !important;
           }
+          
+          #print-area-wrapper {
+            display: block !important;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            background: #fff;
+          }
+
+          /* Pastikan gambar dicetak penuh dan tidak terpotong */
+          img {
+            max-width: 100% !important;
+            page-break-inside: avoid;
+          }
+
+          tr {
+            page-break-inside: avoid;
+          }
         }
       `}</style>
 
-      <div className="space-y-6 animate-in fade-in duration-500">
-        {/* MODAL / HALAMAN PENILAIAN */}
+      {/* MODAL / HALAMAN PENILAIAN & DAFTAR UTAMA (Akan Disembunyikan Saat Print) */}
+      <div className="space-y-6 animate-in fade-in duration-500 no-print">
         {activeTask ? (
           <div className="space-y-4">
             <div className="flex justify-between items-center bg-white p-4 lg:px-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -384,7 +421,6 @@ export default function MentorTasksPage() {
                       </div>
                     )}
 
-                    {/* SELECT KELAS */}
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
                         Kelas <span className="text-red-500">*</span>
@@ -405,7 +441,6 @@ export default function MentorTasksPage() {
                       </div>
                     </div>
 
-                    {/* INPUT NILAI */}
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
                         Nilai (0 - 100) <span className="text-red-500">*</span>
@@ -422,7 +457,6 @@ export default function MentorTasksPage() {
                       />
                     </div>
 
-                    {/* TEXTAREA FEEDBACK */}
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
                         Feedback / Catatan Mentor
@@ -457,7 +491,6 @@ export default function MentorTasksPage() {
             </div>
           </div>
         ) : (
-          /* DAFTAR TUGAS */
           <>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -483,9 +516,11 @@ export default function MentorTasksPage() {
 
                 <Button 
                   onClick={handlePrint}
+                  disabled={isPrinting}
                   className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs h-10 px-4 rounded-xl flex items-center gap-2 shadow-sm"
                 >
-                  <Printer size={16} /> Cetak Laporan
+                  {isPrinting ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />} 
+                  {isPrinting ? "Menyiapkan Gambaran..." : "Cetak Laporan"}
                 </Button>
               </div>
             </div>
@@ -582,8 +617,8 @@ export default function MentorTasksPage() {
         )}
       </div>
 
-      {/* STRUKTUR TABEL PRINT OUT LENGKAP */}
-      <div id="print-area" className="hidden print:block p-8 bg-white font-sans text-black">
+      {/* AREA UNTUK CETAK (PRINT) LAPORAN */}
+      <div id="print-area-wrapper" className="hidden print:block p-8 bg-white font-sans text-black">
         <div className="text-center mb-6 border-b-2 border-black pb-4">
           <h1 className="text-2xl font-bold uppercase">Laporan Penilaian Tugas Siswa</h1>
           <p className="text-sm font-semibold mt-1">Kelas: {filterKelas}</p>
@@ -619,7 +654,6 @@ export default function MentorTasksPage() {
                     <td className="border border-black p-2 text-center align-top">{index + 1}</td>
                     <td className="border border-black p-2 font-medium align-top">{studentName}</td>
                     
-                    {/* HASH/MAPPING BERKAS GAMBAR BARU */}
                     <td className="border border-black p-2 align-top">
                       {task.description && (
                         <p className="mb-2 italic text-[11px] text-gray-700">"{task.description}"</p>
@@ -631,7 +665,8 @@ export default function MentorTasksPage() {
                             <img 
                               src={fileUrl} 
                               alt="Jawaban Siswa" 
-                              className="max-h-36 max-w-[180px] object-contain rounded border border-gray-300"
+                              crossOrigin="anonymous"
+                              className="max-h-48 max-w-[200px] object-contain rounded border border-gray-300"
                             />
                           </div>
                         ) : (
