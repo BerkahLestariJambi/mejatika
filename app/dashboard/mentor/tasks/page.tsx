@@ -123,6 +123,9 @@ export default function MentorTasksPage() {
   const [isPrinting, setIsPrinting] = useState(false)
   const [zoomScale, setZoomScale] = useState<number>(1)
 
+  // Map penyimpan gambar Base64 untuk cetak
+  const [base64Images, setBase64Images] = useState<{ [key: string]: string }>({})
+
   const API_URL = "https://backend.mejatika.com/api"
 
   const fetchMentorTasks = useCallback(async () => {
@@ -259,65 +262,80 @@ export default function MentorTasksPage() {
     return (task.kelas || "X A") === filterKelas
   })
 
-  // FUNGSI PRINT DENGAN PRE-LOAD GAMBAR
+  // FUNGSI KONVERSI GAMBAR URL KE BASE64
+  const fetchImageAsBase64 = async (url: string): Promise<string | null> => {
+    try {
+      const response = await fetch(url)
+      const blob = await response.blob()
+      return new Promise((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.onerror = () => resolve(null)
+        reader.readAsDataURL(blob)
+      })
+    } catch (error) {
+      console.error("Gagal mengunduh gambar untuk dicetak:", error)
+      return null
+    }
+  }
+
+  // FUNGSI PRINT DENGAN KONVERSI GAMBAR BASE64
   const handlePrint = async () => {
     setIsPrinting(true)
+    const imageMap: { [key: string]: string } = {}
 
-    // Filter URL Gambar
-    const imageUrls = filteredTasks
-      .map(task => task.file_path || task.file_url)
-      .filter(url => url && getFileType(url) === 'image')
+    // Ambil daftar URL gambar
+    const tasksWithImages = filteredTasks.filter(task => {
+      const url = task.file_path || task.file_url
+      return url && getFileType(url) === 'image'
+    })
 
-    // Preload Gambar
-    if (imageUrls.length > 0) {
-      const loadImages = imageUrls.map(url => {
-        return new Promise((resolve) => {
-          const img = new Image()
-          img.crossOrigin = "anonymous"
-          img.src = url
-          img.onload = () => resolve(true)
-          img.onerror = () => resolve(false)
-        })
-      })
-
-      await Promise.all(loadImages)
+    // Unduh semua gambar dan ubah ke Base64
+    for (const task of tasksWithImages) {
+      const url = task.file_path || task.file_url
+      if (url && !base64Images[url]) {
+        const base64 = await fetchImageAsBase64(url)
+        if (base64) {
+          imageMap[url] = base64
+        }
+      }
     }
 
+    setBase64Images(prev => ({ ...prev, ...imageMap }))
+
+    // Tunggu DOM merender ulang gambar Base64
     setTimeout(() => {
       setIsPrinting(false)
       window.print()
-    }, 500)
+    }, 400)
   }
 
   return (
     <>
-      {/* CSS CETAK TERISOLASI */}
+      {/* CSS CETAK TERISOLASI BERDASARKAN KELAS KHUSUS */}
       <style jsx global>{`
         @media print {
-          /* Sembunyikan seluruh elemen bawaan DOM */
-          body * {
-            visibility: hidden !important;
-          }
-          
-          /* Hanya tampilkan elemen khusus print ini beserta isinya */
-          #print-area-wrapper, #print-area-wrapper * {
-            visibility: visible !important;
+          /* Sembunyikan elemen utama halaman Next.js */
+          body > *:not(#print-area-wrapper) {
+            display: none !important;
           }
 
+          /* Tampilkan wrapper cetak di posisi paling atas */
           #print-area-wrapper {
+            display: block !important;
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            margin: 0 !important;
-            padding: 20px !important;
             background: #ffffff !important;
+            color: #000000 !important;
           }
 
-          /* Cegah gambar terpotong antar halaman */
+          /* Memastikan gambar dicetak utuh */
           img {
             max-width: 100% !important;
             page-break-inside: avoid !important;
+            display: block !important;
           }
 
           tr {
@@ -524,7 +542,7 @@ export default function MentorTasksPage() {
                   className="bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs h-10 px-4 rounded-xl flex items-center gap-2 shadow-sm"
                 >
                   {isPrinting ? <Loader2 className="animate-spin" size={16} /> : <Printer size={16} />} 
-                  {isPrinting ? "Menyiapkan Gambaran..." : "Cetak Laporan"}
+                  {isPrinting ? "Menyiapkan Gambar..." : "Cetak Laporan"}
                 </Button>
               </div>
             </div>
@@ -621,8 +639,8 @@ export default function MentorTasksPage() {
         )}
       </div>
 
-      {/* STRUKTUR LAPORAN CETAK */}
-      <div id="print-area-wrapper" className="hidden print:block text-black">
+      {/* AREA MODUL CETAK DENGAN GAMBAR BASE64 */}
+      <div id="print-area-wrapper" className="hidden print:block p-8 bg-white text-black font-sans">
         <div className="text-center mb-6 border-b-2 border-black pb-4">
           <h1 className="text-2xl font-bold uppercase">Laporan Penilaian Tugas Siswa</h1>
           <p className="text-sm font-semibold mt-1">Kelas: {filterKelas}</p>
@@ -653,6 +671,9 @@ export default function MentorTasksPage() {
                 const currentFeedback = task.feedback ?? task.catatan ?? "-"
                 const currentScore = task.nilai ?? task.score ?? "-"
 
+                // Menggunakan versi Base64 jika tersedia
+                const displaySrc = base64Images[fileUrl] || fileUrl
+
                 return (
                   <tr key={task.id || index}>
                     <td className="border border-black p-2 text-center align-top">{index + 1}</td>
@@ -667,9 +688,8 @@ export default function MentorTasksPage() {
                         fileType === 'image' ? (
                           <div className="flex justify-center my-1">
                             <img 
-                              src={fileUrl} 
+                              src={displaySrc} 
                               alt="Jawaban Siswa" 
-                              crossOrigin="anonymous"
                               className="max-h-48 max-w-[200px] object-contain rounded border border-gray-300"
                             />
                           </div>
