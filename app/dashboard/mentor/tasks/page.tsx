@@ -263,67 +263,71 @@ export default function MentorTasksPage() {
   const handlePrint = async () => {
     setIsPrinting(true)
 
-    // Cari semua URL gambar pada tasks terfilter
+    // Filter URL Gambar
     const imageUrls = filteredTasks
       .map(task => task.file_path || task.file_url)
       .filter(url => url && getFileType(url) === 'image')
 
-    // Preload semua gambar
-    const loadImages = imageUrls.map(url => {
-      return new Promise((resolve) => {
-        const img = new Image()
-        img.crossOrigin = "anonymous"
-        img.src = url
-        img.onload = () => resolve(true)
-        img.onerror = () => resolve(false)
+    // Preload Gambar
+    if (imageUrls.length > 0) {
+      const loadImages = imageUrls.map(url => {
+        return new Promise((resolve) => {
+          const img = new Image()
+          img.crossOrigin = "anonymous"
+          img.src = url
+          img.onload = () => resolve(true)
+          img.onerror = () => resolve(false)
+        })
       })
-    })
 
-    await Promise.all(loadImages)
+      await Promise.all(loadImages)
+    }
 
-    // Beri jeda kecil agar DOM memperbarui render gambar
     setTimeout(() => {
       setIsPrinting(false)
       window.print()
-    }, 300)
+    }, 500)
   }
 
   return (
     <>
-      {/* CSS KHUSUS CETAK/PRINT */}
-      <style>{`
+      {/* CSS CETAK TERISOLASI */}
+      <style jsx global>{`
         @media print {
-          /* Sembunyikan elemen utama di luar area print */
-          body > *:not(#print-area-wrapper) {
-            display: none !important;
-          }
-          .no-print {
-            display: none !important;
+          /* Sembunyikan seluruh elemen bawaan DOM */
+          body * {
+            visibility: hidden !important;
           }
           
-          #print-area-wrapper {
-            display: block !important;
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            background: #fff;
+          /* Hanya tampilkan elemen khusus print ini beserta isinya */
+          #print-area-wrapper, #print-area-wrapper * {
+            visibility: visible !important;
           }
 
-          /* Pastikan gambar dicetak penuh dan tidak terpotong */
+          #print-area-wrapper {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 20px !important;
+            background: #ffffff !important;
+          }
+
+          /* Cegah gambar terpotong antar halaman */
           img {
             max-width: 100% !important;
-            page-break-inside: avoid;
+            page-break-inside: avoid !important;
           }
 
           tr {
-            page-break-inside: avoid;
+            page-break-inside: avoid !important;
           }
         }
       `}</style>
 
-      {/* MODAL / HALAMAN PENILAIAN & DAFTAR UTAMA (Akan Disembunyikan Saat Print) */}
-      <div className="space-y-6 animate-in fade-in duration-500 no-print">
+      {/* DASHBOARD UTAMA */}
+      <div className="space-y-6 animate-in fade-in duration-500">
         {activeTask ? (
           <div className="space-y-4">
             <div className="flex justify-between items-center bg-white p-4 lg:px-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -617,8 +621,8 @@ export default function MentorTasksPage() {
         )}
       </div>
 
-      {/* AREA UNTUK CETAK (PRINT) LAPORAN */}
-      <div id="print-area-wrapper" className="hidden print:block p-8 bg-white font-sans text-black">
+      {/* STRUKTUR LAPORAN CETAK */}
+      <div id="print-area-wrapper" className="hidden print:block text-black">
         <div className="text-center mb-6 border-b-2 border-black pb-4">
           <h1 className="text-2xl font-bold uppercase">Laporan Penilaian Tugas Siswa</h1>
           <p className="text-sm font-semibold mt-1">Kelas: {filterKelas}</p>
