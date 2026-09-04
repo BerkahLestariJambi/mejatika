@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   ChevronDown, Loader2, Zap, UploadCloud, Paperclip, Menu,
-  Upload, Eye, CheckCircle2, AlertCircle, Check
+  Upload, Eye, CheckCircle2, AlertCircle, Check, User as UserIcon, Camera
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -30,13 +30,21 @@ export default function StudentDashboard() {
   const [taskTitle, setTaskTitle] = useState("Tugas 1")
   const [taskMapel, setTaskMapel] = useState("Matematika")
   const [taskDescription, setTaskDescription] = useState("")
-  const [taskKelas, setTaskKelas] = useState("")
+  const [taskKelas, setTaskKelas] = useState("X A")
   const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
   // State Daftar Tugas Terkirim
   const [submittedTasks, setSubmittedTasks] = useState<any[]>([])
   const [loadingTasks, setLoadingTasks] = useState(false)
+
+  // State Update Profil
+  const [profileName, setProfileName] = useState("")
+  const [profileEmail, setProfileEmail] = useState("")
+  const [profilePassword, setProfilePassword] = useState("")
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false)
 
   const API_URL = "https://backend.mejatika.com/api"
 
@@ -46,6 +54,15 @@ export default function StudentDashboard() {
   const handleTaskFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
     setTaskFile(file)
+  }
+
+  // Handle Perubahan Input Foto Profil
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    if (file) {
+      setProfilePhoto(file)
+      setPhotoPreview(URL.createObjectURL(file))
+    }
   }
 
   const fetchData = useCallback(async () => {
@@ -64,13 +81,17 @@ export default function StudentDashboard() {
       const dataAll = await resAll.json()
       const dataCert = await resCert.json()
 
+      const userData = dataUser.data || dataUser
+      setUser(userData)
+      setProfileName(userData.name || "")
+      setProfileEmail(userData.email || "")
+
       setRegistrations(Array.isArray(dataReg) ? dataReg : dataReg.data || [])
-      setUser(dataUser)
       setAvailableCourses(Array.isArray(dataAll) ? dataAll : dataAll.data || [])
       setMyCertificates(Array.isArray(dataCert) ? dataCert : dataCert.data || [])
     } catch (err) { 
       console.error("Fetch Error:", err) 
-    } finally { 
+    } fontinally { 
       setLoading(false) 
     }
   }, [router])
@@ -187,6 +208,49 @@ export default function StudentDashboard() {
     }
   }
 
+  // Submit Update Profil
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsUpdatingProfile(true)
+    const token = localStorage.getItem("token")
+
+    try {
+      const formData = new FormData()
+      formData.append("_method", "PUT") // Laravel spoofing method untuk upload multipart/form-data
+      formData.append("name", profileName)
+      formData.append("email", profileEmail)
+      if (profilePassword) {
+        formData.append("password", profilePassword)
+      }
+      if (profilePhoto) {
+        formData.append("photo", profilePhoto)
+      }
+
+      const res = await fetch(`${API_URL}/users/${user.id}`, {
+        method: "POST", // Menggunakan POST dengan _method: PUT agar mendukung berkas foto
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        },
+        body: formData
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        Swal.fire("Berhasil!", "Profil kamu berhasil diperbarui.", "success")
+        setUser(data.data || data)
+        setProfilePassword("")
+      } else {
+        throw new Error(data.message || "Gagal memperbarui profil.")
+      }
+    } catch (err: any) {
+      Swal.fire("Gagal", err.message || "Terjadi kesalahan sistem.", "error")
+    } finally {
+      setIsUpdatingProfile(false)
+    }
+  }
+
   if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
 
   return (
@@ -222,6 +286,11 @@ export default function StudentDashboard() {
           <button onClick={() => { setActiveMenu("certificates"); setSidebarOpen(false); }} 
             className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "certificates" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
             <Award size={20} /> Sertifikat
+          </button>
+
+          <button onClick={() => { setActiveMenu("profile"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "profile" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <UserIcon size={20} /> Profil Saya
           </button>
         </nav>
         <div className="p-6 border-t border-slate-100">
@@ -339,7 +408,8 @@ export default function StudentDashboard() {
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
                   </div>
                 </div>
-  <div>
+
+                <div>
                   <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                     Kelas <span className="text-red-500">*</span>
                   </label>
@@ -358,6 +428,7 @@ export default function StudentDashboard() {
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
                   </div>
                 </div>
+
                 {/* PILIHAN TUGAS 1 - 10 (GRID BUTTONS) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
@@ -422,7 +493,7 @@ export default function StudentDashboard() {
                       <div className="flex flex-col items-center space-y-2 text-slate-400">
                         <UploadCloud size={36} className="text-indigo-500" />
                         <span className="text-xs font-bold text-slate-600">Pilih file untuk diunggah</span>
-                        <span className="text-[10px] text-slate-400">PNG, JPG, Bitmap</span>
+                        <span className="text-[10px] text-slate-400">PNG, JPG, PDF, ZIP</span>
                       </div>
                     )}
                     <input type="file" onChange={handleTaskFileChange} className="hidden" />
@@ -505,6 +576,94 @@ export default function StudentDashboard() {
         {activeMenu === "certificates" && (
           <div className="p-8 text-center text-slate-500">
             Daftar sertifikat kamu.
+          </div>
+        )}
+
+        {/* --- MENU EDIT PROFIL --- */}
+        {activeMenu === "profile" && (
+          <div className="space-y-8 animate-in fade-in duration-500 max-w-2xl">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-800">Profil Saya</h2>
+              <p className="text-slate-500 font-medium">Kelola data profil dan foto akun milikmu.</p>
+            </div>
+
+            <form onSubmit={handleProfileSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+              
+              {/* Unggah Foto Profil */}
+              <div className="flex flex-col items-center gap-4">
+                <div className="relative">
+                  <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-100 border-4 border-white shadow-lg flex items-center justify-center">
+                    {photoPreview ? (
+                      <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                    ) : user?.photo ? (
+                      <img 
+                        src={user.photo.startsWith('http') ? user.photo : `https://backend.mejatika.com/storage/${user.photo}`} 
+                        alt={user.name} 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <UserIcon size={48} className="text-slate-400" />
+                    )}
+                  </div>
+                  
+                  <label className="absolute bottom-0 right-0 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full cursor-pointer shadow-md transition-all">
+                    <Camera size={18} />
+                    <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                  </label>
+                </div>
+                <p className="text-xs text-slate-400">Format: JPG, PNG, WEBP (Maks. 2MB)</p>
+              </div>
+
+              {/* Nama Lengkap */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                  Nama Lengkap <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  value={profileName} 
+                  onChange={(e) => setProfileName(e.target.value)} 
+                  required 
+                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800" 
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                  Alamat Email <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  type="email" 
+                  value={profileEmail} 
+                  onChange={(e) => setProfileEmail(e.target.value)} 
+                  required 
+                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800" 
+                />
+              </div>
+
+              {/* Password Baru */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                  Password Baru <span className="text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span>
+                </label>
+                <input 
+                  type="password" 
+                  value={profilePassword} 
+                  onChange={(e) => setProfilePassword(e.target.value)} 
+                  placeholder="••••••••" 
+                  className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800" 
+                />
+              </div>
+
+              <Button 
+                type="submit" 
+                disabled={isUpdatingProfile} 
+                className="w-full h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 transition-all disabled:opacity-50"
+              >
+                {isUpdatingProfile ? <Loader2 className="animate-spin" /> : "Simpan Perubahan Profil"}
+              </Button>
+            </form>
           </div>
         )}
 
