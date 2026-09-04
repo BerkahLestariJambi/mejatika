@@ -65,7 +65,7 @@ export default function StudioHybridPresenter() {
   const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const slideCanvasCache = useRef<HTMLCanvasElement | null>(null);
   const slideAnimId = useRef<number | null>(null);
-  const renderTaskRef = useRef<any>(null); // Ref untuk pembatalan render PDF
+  const renderTaskRef = useRef<any>(null);
 
   const [animatedSlides, setAnimatedSlides] = useState<ExtractedSlideData[]>([
     {
@@ -91,7 +91,11 @@ export default function StudioHybridPresenter() {
 
   const [wbPos, setWbPos] = useState({ x: 50, y: 120, w: 560, h: 360 });
   const [isDraggingWb, setIsDraggingWb] = useState(false);
-  const [camPos, setCamPos] = useState({ x: 980, y: 500 });
+
+  // Ukuran kamera diperbesar menjadi 320x240
+  const CAM_WIDTH = 320;
+  const CAM_HEIGHT = 240;
+  const [camPos, setCamPos] = useState({ x: 920, y: 430 });
   const [isDraggingCam, setIsDraggingCam] = useState(false);
 
   const dragStartRef = useRef({ x: 0, y: 0 });
@@ -230,7 +234,6 @@ export default function StudioHybridPresenter() {
     }
   };
 
-  // Safe Rendering PDF (Menghindari error Multiple render() operations)
   useEffect(() => {
     if (!pdfDoc || sourceMode !== 'pdf') return;
 
@@ -253,7 +256,6 @@ export default function StudioHybridPresenter() {
       cacheCanvas.width = viewport.width;
       cacheCanvas.height = viewport.height;
 
-      // Batalkan proses render PDF sebelumnya jika masih aktif
       if (renderTaskRef.current) {
         try {
           await renderTaskRef.current.cancel();
@@ -341,7 +343,7 @@ export default function StudioHybridPresenter() {
     };
   };
 
-  // Main Render Loop dengan Kamera Melingkar & Footer Hak Cipta
+  // Main Render Loop Canvas
   useEffect(() => {
     const mainCanvas = mainCanvasRef.current;
     if (!mainCanvas) return;
@@ -439,26 +441,45 @@ export default function StudioHybridPresenter() {
         ctx.drawImage(whiteboardCanvasRef.current, wbPosRef.current.x, wbPosRef.current.y, wbPosRef.current.w, wbPosRef.current.h);
       }
 
-      // --- 3. RENDER KAMERA MELINGKAR (MANUSIA SAJA) ---
+      // --- 3. RENDER KAMERA PERSEGI PANJANG BIASA (LEBIH BESAR) ---
       if (webcamVideoRef.current && isCamOn && webcamVideoRef.current.readyState >= 2) {
-        ctx.save();
-        const camWidth = 220;
-        const camHeight = 220;
         const camX = camPosRef.current.x;
         const camY = camPosRef.current.y;
+        const radius = 16; // Sudut rounded
 
+        ctx.save();
+        
+        // Buat path rounded rectangle untuk video
         ctx.beginPath();
-        ctx.arc(camX + camWidth / 2, camY + camHeight / 2, camWidth / 2, 0, Math.PI * 2);
+        ctx.moveTo(camX + radius, camY);
+        ctx.lineTo(camX + CAM_WIDTH - radius, camY);
+        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY, camX + CAM_WIDTH, camY + radius);
+        ctx.lineTo(camX + CAM_WIDTH, camY + CAM_HEIGHT - radius);
+        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY + CAM_HEIGHT, camX + CAM_WIDTH - radius, camY + CAM_HEIGHT);
+        ctx.lineTo(camX + radius, camY + CAM_HEIGHT);
+        ctx.quadraticCurveTo(camX, camY + CAM_HEIGHT, camX, camY + CAM_HEIGHT - radius);
+        ctx.lineTo(camX, camY + radius);
+        ctx.quadraticCurveTo(camX, camY, camX + radius, camY);
         ctx.closePath();
-        ctx.clip(); // Masking oval melingkar untuk fokus tubuh/wajah pengajar
-
-        ctx.drawImage(webcamVideoRef.current, camX, camY, camWidth, camHeight);
+        
+        ctx.clip();
+        ctx.drawImage(webcamVideoRef.current, camX, camY, CAM_WIDTH, CAM_HEIGHT);
         ctx.restore();
 
-        // Border Biru Kamera
+        // Border Biru Kamera Rounded
         ctx.save();
         ctx.beginPath();
-        ctx.arc(camX + camWidth / 2, camY + camHeight / 2, camWidth / 2, 0, Math.PI * 2);
+        ctx.moveTo(camX + radius, camY);
+        ctx.lineTo(camX + CAM_WIDTH - radius, camY);
+        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY, camX + CAM_WIDTH, camY + radius);
+        ctx.lineTo(camX + CAM_WIDTH, camY + CAM_HEIGHT - radius);
+        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY + CAM_HEIGHT, camX + CAM_WIDTH - radius, camY + CAM_HEIGHT);
+        ctx.lineTo(camX + radius, camY + CAM_HEIGHT);
+        ctx.quadraticCurveTo(camX, camY + CAM_HEIGHT, camX, camY + CAM_HEIGHT - radius);
+        ctx.lineTo(camX, camY + radius);
+        ctx.quadraticCurveTo(camX, camY, camX + radius, camY);
+        ctx.closePath();
+        
         ctx.strokeStyle = "#3b82f6";
         ctx.lineWidth = 4;
         ctx.stroke();
@@ -648,13 +669,10 @@ export default function StudioHybridPresenter() {
       setWbPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - p.w, p.x + deltaX)), y: Math.max(0, Math.min(720 - p.h, p.y + deltaY)) }));
     }
     if (isDraggingCam) {
-      setCamPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - 220, p.x + deltaX)), y: Math.max(0, Math.min(720 - 220, p.y + deltaY)) }));
+      setCamPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - CAM_WIDTH, p.x + deltaX)), y: Math.max(0, Math.min(720 - CAM_HEIGHT, p.y + deltaY)) }));
     }
   };
 
-  // =======================================================
-  // REKAMAN FORMAT MP4 + FIX DROIDCAM/H264
-  // =======================================================
   const startRecording = async () => {
     try {
       chunksRef.current = [];
@@ -663,7 +681,6 @@ export default function StudioHybridPresenter() {
 
       const ctx = mainCanvas.getContext("2d");
 
-      // Interval pancingan render frame
       const forceRenderInterval = setInterval(() => {
         if (ctx && mainCanvas) {
           ctx.fillStyle = "rgba(255, 255, 255, 0.001)";
@@ -676,7 +693,6 @@ export default function StudioHybridPresenter() {
 
       canvasStream.getVideoTracks().forEach((track) => outputStream.addTrack(track));
 
-      // Gabungkan audio mic
       try {
         const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         audioStream.getAudioTracks().forEach((track) => outputStream.addTrack(track));
@@ -684,7 +700,6 @@ export default function StudioHybridPresenter() {
         console.warn("Merekam tanpa suara audio mic.");
       }
 
-      // PAKSA UTAMAKAN MP4 CODEC
       const supportedMimeTypes = [
         "video/mp4;codecs=h264,aac",
         "video/mp4;codecs=avc1,mp4a.40.2",
@@ -898,10 +913,11 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
-          <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: "17.1%", height: "30.5%" }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-full overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
+          {/* Overlay Kamera Persegi Panjang Biasa (Lebih Besar) */}
+          <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: `${(CAM_WIDTH / 1280) * 100}%`, height: `${(CAM_HEIGHT / 720) * 100}%` }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
             {isCamOn ? (
               <div className="w-full h-full relative">
-                <video ref={webcamVideoRef} className="w-full h-full object-cover pointer-events-none rounded-full" autoPlay playsInline muted />
+                <video ref={webcamVideoRef} className="w-full h-full object-cover pointer-events-none rounded-2xl" autoPlay playsInline muted />
               </div>
             ) : (
               <div className="text-center p-2 text-slate-500 text-[10px]">📷 Kamera Off</div>
