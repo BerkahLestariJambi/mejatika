@@ -2,11 +2,10 @@
 
 import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { 
   Loader2, FileText, Paperclip, Send, Eye, Trash2, 
-  Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink, ArrowLeft, MessageSquare, ChevronDown, Printer 
+  Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink, ArrowLeft, ChevronDown, Printer 
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -562,91 +561,86 @@ export default function MentorTasksPage() {
           </div>
 
           {loadingTasks ? (
-            <div className="p-12 text-center text-amber-500 font-bold flex items-center justify-center gap-2">
+            <div className="p-12 text-center text-amber-500 font-bold flex items-center justify-center gap-2 bg-white rounded-3xl border border-slate-100 shadow-sm">
               <Loader2 className="animate-spin" size={24} /> Memuat daftar tugas...
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="bg-white p-12 rounded-[2.5rem] text-center border border-slate-100 shadow-sm">
+            <div className="bg-white p-12 rounded-3xl text-center border border-slate-100 shadow-sm">
               <FileText className="mx-auto text-slate-300 mb-3" size={48} />
               <p className="text-slate-500 font-medium">Belum ada tugas siswa untuk kelas ini.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredTasks.map((task) => {
-                const currentScore = task.nilai ?? task.score
-                const currentFeedback = task.feedback ?? task.catatan
-                const isGraded = currentScore !== null && currentScore !== undefined && currentScore !== ""
+            /* TABEL TAMPILAN SISWA */
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase font-bold tracking-wider">
+                      <th className="p-4 text-center w-12">No</th>
+                      <th className="p-4">Nama Siswa</th>
+                      <th className="p-4">Judul / Mapel</th>
+                      <th className="p-4 text-center">Kelas</th>
+                      <th className="p-4 text-center">Status</th>
+                      <th className="p-4 text-center">Nilai</th>
+                      <th className="p-4 text-center w-40">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredTasks.map((task, index) => {
+                      const studentName = task.user?.name || task.student?.name || task.student_name || "Siswa"
+                      const currentScore = task.nilai ?? task.score
+                      const isGraded = currentScore !== null && currentScore !== undefined && currentScore !== ""
 
-                return (
-                  <Card key={task.id} className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6 lg:p-8 flex flex-col lg:flex-row justify-between lg:items-center gap-6">
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-bold rounded-full">
-                          {task.course?.title || task.mapel || "Kursus"}
-                        </span>
-                        <span className="px-3 py-1 bg-slate-100 text-slate-700 text-xs font-bold rounded-full">
-                          Kelas: {task.kelas || "X A"}
-                        </span>
-                        <span className={`px-3 py-1 text-xs font-bold rounded-full ${isGraded ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-100 text-amber-700'}`}>
-                          {isGraded ? 'Sudah Dinilai' : 'Perlu Dinilai'}
-                        </span>
-                      </div>
-                      
-                      <div>
-                        <h3 className="text-xl font-bold text-slate-800">{task.title || task.name}</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          Siswa: <span className="font-bold text-slate-700">{task.user?.name || task.student?.name || task.student_name || "Siswa"}</span>
-                        </p>
-                      </div>
-
-                      {task.description && (
-                        <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-xl line-clamp-2">
-                          <span className="font-bold text-slate-500">Catatan Siswa: </span>"{task.description}"
-                        </p>
-                      )}
-
-                      {isGraded && currentFeedback && (
-                        <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl flex items-start gap-3">
-                          <MessageSquare className="text-amber-600 shrink-0 mt-0.5" size={16} />
-                          <div className="text-xs space-y-1 w-full overflow-hidden">
-                            <span className="font-bold text-amber-900 block">Feedback dari Guru Mata Pelajaran:</span>
-                            <p className="text-amber-800 whitespace-pre-line break-words leading-relaxed">
-                              {currentFeedback}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-col items-end gap-3 min-w-[200px]">
-                      {isGraded && (
-                        <div className="text-right bg-emerald-50/60 px-4 py-2 rounded-2xl border border-emerald-100 w-full lg:w-auto text-center lg:text-right">
-                          <span className="text-[10px] font-bold text-emerald-600 uppercase block">Nilai Akhir</span>
-                          <span className="text-3xl font-black text-emerald-600">{currentScore}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex gap-2 w-full">
-                        <Button 
-                          onClick={() => handleOpenPreviewAndGrade(task)} 
-                          className={`flex-1 rounded-2xl font-bold text-xs h-12 flex items-center justify-center gap-2 ${isGraded ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
-                        >
-                          <Eye size={16} /> {isGraded ? "Edit Nilai / Berkas" : "Periksa & Dinilai"}
-                        </Button>
-                        
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="p-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-2xl transition flex items-center justify-center"
-                          title="Hapus Tugas"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </div>
-                  </Card>
-                )
-              })}
+                      return (
+                        <tr key={task.id} className="hover:bg-slate-50/80 transition-colors">
+                          <td className="p-4 text-center font-bold text-slate-400">{index + 1}</td>
+                          <td className="p-4 font-bold text-slate-800">{studentName}</td>
+                          <td className="p-4">
+                            <p className="font-bold text-slate-700 text-sm">{task.title || task.name}</p>
+                            <span className="text-[10px] text-amber-600 font-semibold">{task.course?.title || task.mapel || "Kursus"}</span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold rounded-lg text-[11px]">
+                              {task.kelas || "X A"}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full inline-block ${isGraded ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-amber-50 text-amber-600 border border-amber-100'}`}>
+                              {isGraded ? 'Sudah Dinilai' : 'Perlu Dinilai'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-center">
+                            {isGraded ? (
+                              <span className="text-base font-black text-emerald-600">{currentScore}</span>
+                            ) : (
+                              <span className="text-slate-300 font-bold">-</span>
+                            )}
+                          </td>
+                          <td className="p-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Button 
+                                onClick={() => handleOpenPreviewAndGrade(task)} 
+                                className={`h-8 px-3 rounded-xl font-bold text-[11px] flex items-center gap-1 ${isGraded ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-amber-500 text-white hover:bg-amber-600'}`}
+                              >
+                                <Eye size={14} /> {isGraded ? "Edit" : "Periksa"}
+                              </Button>
+                              
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition"
+                                title="Hapus Tugas"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </>
