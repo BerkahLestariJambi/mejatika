@@ -4,7 +4,10 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink, ArrowLeft, MessageSquare } from "lucide-react"
+import { 
+  Loader2, FileText, Paperclip, Send, Eye, X, Download, Trash2, 
+  Award, ZoomIn, ZoomOut, RotateCcw, ExternalLink, ArrowLeft, MessageSquare, ChevronDown 
+} from "lucide-react"
 import Swal from 'sweetalert2'
 
 // KOMPONEN RENDER PDF KE CANVAS GAMBAR
@@ -109,10 +112,13 @@ export default function MentorTasksPage() {
   const [loadingTasks, setLoadingTasks] = useState(true)
 
   const [activeTask, setActiveTask] = useState<any | null>(null)
+  
+  // FIXED: State untuk Penilaian & Kelas diseragamkan
   const [score, setScore] = useState<number | string>("")
   const [feedback, setFeedback] = useState("")
+  const [kelas, setKelas] = useState("X A") 
+  
   const [isSubmittingGrade, setIsSubmittingGrade] = useState(false)
-
   const [zoomScale, setZoomScale] = useState<number>(1)
 
   const API_URL = "https://backend.mejatika.com/api"
@@ -191,7 +197,7 @@ export default function MentorTasksPage() {
 
   const handleOpenPreviewAndGrade = (task: any) => {
     setActiveTask(task)
-    setKelas(task.kelas ?? task.kelas ?? "")
+    setKelas(task.kelas || "X A")
     setScore(task.nilai ?? task.score ?? "")
     setFeedback(task.feedback ?? task.catatan ?? "")
     setZoomScale(1)
@@ -224,7 +230,7 @@ export default function MentorTasksPage() {
       })
 
       if (res.ok) {
-        Swal.fire("Berhasil!", "Nilai dan feedback berhasil disimpan.", "success")
+        Swal.fire("Berhasil!", "Nilai, kelas, dan feedback berhasil disimpan.", "success")
         setActiveTask(null)
         fetchMentorTasks()
       } else {
@@ -333,8 +339,8 @@ export default function MentorTasksPage() {
 
             <div className="lg:col-span-5 p-6 bg-white flex flex-col justify-between overflow-y-auto h-full">
               <form onSubmit={handleGradeSubmit} className="space-y-4 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-2 mb-4 text-amber-600 font-bold border-b border-slate-100 pb-3">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2 text-amber-600 font-bold border-b border-slate-100 pb-3">
                     <Award size={20} />
                     <h4 className="text-base">Penilaian & Catatan Mentor</h4>
                   </div>
@@ -345,53 +351,56 @@ export default function MentorTasksPage() {
                       <p className="text-xs text-slate-700 italic">"{activeTask.description}"</p>
                     </div>
                   )}
- <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
-                    Kelas <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <select
-                      value={taskKelas}
-                      onChange={(e) => setTaskKelas(e.target.value)}
-                      required
-                      className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
-                    >
-                      <option value="X A">X A</option>
-                      <option value="X B">X B</option>
-                      <option value="XI">XI</option>
-                      <option value="XII">XII</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
-                  </div>
-                </div>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
-                        Nilai (0 - 100) <span className="text-red-500">*</span>
-                      </label>
-                      <input 
-                        type="number" 
-                        min="0"
-                        max="100"
-                        value={score} 
-                        onChange={(e) => setScore(e.target.value)} 
-                        placeholder="Nilai angka (misal: 85)"
-                        required
-                        className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-lg font-black text-slate-800"
-                      />
-                    </div>
 
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
-                        Feedback / Catatan Mentor
-                      </label>
-                      <textarea 
-                        value={feedback} 
-                        onChange={(e) => setFeedback(e.target.value)} 
-                        placeholder="Tuliskan umpan balik atau arahan perbaikan untuk siswa..."
-                        className="w-full h-32 p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs font-medium resize-none"
-                      />
+                  {/* SELECT KELAS */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase tracking-wider">
+                      Kelas <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={kelas}
+                        onChange={(e) => setKelas(e.target.value)}
+                        required
+                        className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
+                      >
+                        <option value="X A">X A</option>
+                        <option value="X B">X B</option>
+                        <option value="XI">XI</option>
+                        <option value="XII">XII</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                     </div>
+                  </div>
+
+                  {/* INPUT NILAI */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
+                      Nilai (0 - 100) <span className="text-red-500">*</span>
+                    </label>
+                    <input 
+                      type="number" 
+                      min="0"
+                      max="100"
+                      value={score} 
+                      onChange={(e) => setScore(e.target.value)} 
+                      placeholder="Nilai angka (misal: 85)"
+                      required
+                      className="w-full p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-lg font-black text-slate-800"
+                    />
+                  </div>
+
+                  {/* TEXTAREA FEEDBACK */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
+                      Feedback / Catatan Mentor
+                    </label>
+                    <textarea 
+                      value={feedback} 
+                      onChange={(e) => setFeedback(e.target.value)} 
+                      placeholder="Tuliskan umpan balik atau arahan perbaikan untuk siswa..."
+                      className="w-full h-28 p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs font-medium resize-none"
+                    />
                   </div>
                 </div>
 
@@ -464,19 +473,18 @@ export default function MentorTasksPage() {
                         </p>
                       )}
 
-                      {/* MENAMPILKAN FEEDBACK MENTOR DI CARD */}
-                    {/* MENAMPILKAN FEEDBACK MENTOR SECARA UTUH */}
-{isGraded && currentFeedback && (
-  <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl flex items-start gap-3">
-    <MessageSquare className="text-amber-600 shrink-0 mt-0.5" size={16} />
-    <div className="text-xs space-y-1 w-full overflow-hidden">
-      <span className="font-bold text-amber-900 block">Feedback dari Guru Mata Pelajaran:</span>
-      <p className="text-amber-800 whitespace-pre-line break-words leading-relaxed">
-        {currentFeedback}
-      </p>
-    </div>
-  </div>
-)}
+                      {/* MENAMPILKAN FEEDBACK MENTOR SECARA UTUH */}
+                      {isGraded && currentFeedback && (
+                        <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl flex items-start gap-3">
+                          <MessageSquare className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                          <div className="text-xs space-y-1 w-full overflow-hidden">
+                            <span className="font-bold text-amber-900 block">Feedback dari Guru Mata Pelajaran:</span>
+                            <p className="text-amber-800 whitespace-pre-line break-words leading-relaxed">
+                              {currentFeedback}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-col items-end gap-3 min-w-[200px]">
