@@ -113,11 +113,11 @@ export default function MentorTasksPage() {
 
   const [activeTask, setActiveTask] = useState<any | null>(null)
   
-  // State untuk Penilaian & Cetak Laporan Kelas
+  // State Penilaian & Filter Laporan
   const [score, setScore] = useState<number | string>("")
   const [feedback, setFeedback] = useState("")
   const [kelas, setKelas] = useState("X A") 
-  const [filterKelas, setFilterKelas] = useState("Semua") // State filter kelas untuk cetak
+  const [filterKelas, setFilterKelas] = useState("Semua")
   
   const [isSubmittingGrade, setIsSubmittingGrade] = useState(false)
   const [zoomScale, setZoomScale] = useState<number>(1)
@@ -253,20 +253,18 @@ export default function MentorTasksPage() {
     return 'other'
   }
 
-  // Filter tugas berdasarkan pilihan kelas
   const filteredTasks = tasks.filter(task => {
     if (filterKelas === "Semua") return true
     return (task.kelas || "X A") === filterKelas
   })
 
-  // Fungsi Pemicu Cetak Halaman
   const handlePrint = () => {
     window.print()
   }
 
   return (
     <>
-      {/* CSS KHUSUS UNTUK SCRIPT PRINT OUT */}
+      {/* CSS CETAK */}
       <style>{`
         @media print {
           body * {
@@ -288,7 +286,7 @@ export default function MentorTasksPage() {
       `}</style>
 
       <div className="space-y-6 animate-in fade-in duration-500">
-        {/* JIKA TUGAS DIPILIH, TAMPILKAN PENILAIAN FRAME UTAMA */}
+        {/* MODAL / HALAMAN PENILAIAN */}
         {activeTask ? (
           <div className="space-y-4">
             <div className="flex justify-between items-center bg-white p-4 lg:px-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -365,7 +363,7 @@ export default function MentorTasksPage() {
                       rel="noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-white text-xs font-bold rounded-xl hover:bg-amber-600 transition"
                     >
-                      <Download size={14} /> Unduh Berkas
+                      <FileText size={14} /> Unduh Berkas
                     </a>
                   </div>
                 )}
@@ -459,7 +457,7 @@ export default function MentorTasksPage() {
             </div>
           </div>
         ) : (
-          /* DAFTAR TUGAS BESERTA DISPLAY FEEDBACK */
+          /* DAFTAR TUGAS */
           <>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -467,7 +465,6 @@ export default function MentorTasksPage() {
                 <p className="text-slate-500 font-medium">Periksa berkas tugas, berikan nilai, dan kelola tugas masuk.</p>
               </div>
 
-              {/* FILTER KELAS & TOMBOL PRINT */}
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <select
@@ -585,7 +582,7 @@ export default function MentorTasksPage() {
         )}
       </div>
 
-      {/* STRUKTUR TABEL RAPI YANG HANYA TAMPIL SAAT CETAK (PRINT-ONLY) */}
+      {/* STRUKTUR TABEL PRINT OUT LENGKAP */}
       <div id="print-area" className="hidden print:block p-8 bg-white font-sans text-black">
         <div className="text-center mb-6 border-b-2 border-black pb-4">
           <h1 className="text-2xl font-bold uppercase">Laporan Penilaian Tugas Siswa</h1>
@@ -613,19 +610,42 @@ export default function MentorTasksPage() {
               filteredTasks.map((task, index) => {
                 const studentName = task.user?.name || task.student?.name || task.student_name || "-"
                 const fileUrl = task.file_path || task.file_url
-                const taskAnswer = fileUrl 
-                  ? `${task.description ? task.description + " | " : ""}File: ${fileUrl}`
-                  : task.description || "Tidak ada berkas/jawaban"
+                const fileType = getFileType(fileUrl)
                 const currentFeedback = task.feedback ?? task.catatan ?? "-"
                 const currentScore = task.nilai ?? task.score ?? "-"
 
                 return (
                   <tr key={task.id || index}>
-                    <td className="border border-black p-2 text-center">{index + 1}</td>
-                    <td className="border border-black p-2 font-medium">{studentName}</td>
-                    <td className="border border-black p-2 break-all">{taskAnswer}</td>
-                    <td className="border border-black p-2 whitespace-pre-line">{currentFeedback}</td>
-                    <td className="border border-black p-2 text-center font-bold">{currentScore}</td>
+                    <td className="border border-black p-2 text-center align-top">{index + 1}</td>
+                    <td className="border border-black p-2 font-medium align-top">{studentName}</td>
+                    
+                    {/* HASH/MAPPING BERKAS GAMBAR BARU */}
+                    <td className="border border-black p-2 align-top">
+                      {task.description && (
+                        <p className="mb-2 italic text-[11px] text-gray-700">"{task.description}"</p>
+                      )}
+
+                      {fileUrl ? (
+                        fileType === 'image' ? (
+                          <div className="flex justify-center my-1">
+                            <img 
+                              src={fileUrl} 
+                              alt="Jawaban Siswa" 
+                              className="max-h-36 max-w-[180px] object-contain rounded border border-gray-300"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-blue-600 underline break-all block">
+                            {fileUrl}
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-gray-400 italic">Tidak ada berkas</span>
+                      )}
+                    </td>
+
+                    <td className="border border-black p-2 whitespace-pre-line align-top">{currentFeedback}</td>
+                    <td className="border border-black p-2 text-center font-bold align-top">{currentScore}</td>
                   </tr>
                 )
               })
@@ -635,7 +655,7 @@ export default function MentorTasksPage() {
 
         <div className="mt-8 flex justify-end">
           <div className="text-center text-xs">
-            <p className="mb-12">Guru / Tutor Mata Pelajaran</p>
+            <p className="mb-12">Guru Mata Pelajaran</p>
             <p className="font-bold underline">(.......................................)</p>
           </div>
         </div>
