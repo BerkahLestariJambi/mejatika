@@ -5,16 +5,31 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { Loader2, Camera, AlertCircle } from "lucide-react"
+import { Loader2, Camera, AlertCircle, BookOpen, ChevronDown } from "lucide-react"
 import { toast } from "sonner"
+
+// Daftar Pilihan Mata Pelajaran
+const SUBJECT_OPTIONS = [
+  "Informatika",
+  "Matematika",
+  "Bahasa Indonesia",
+  "Bahasa Inggris",
+  "Fisika",
+  "Kimia",
+  "Biologi",
+  "Ekonomi",
+]
 
 export default function MentorProfilePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
+  
+  // Menambahkan field subject ke dalam formData
   const [formData, setFormData] = useState({
     bio: "",
     specialization: "",
+    subject: "", 
   })
   const [photo, setPhoto] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
@@ -43,12 +58,13 @@ export default function MentorProfilePage() {
           setFormData({
             bio: data.mentor_profile.bio || "",
             specialization: data.mentor_profile.specialization || "",
+            subject: data.mentor_profile.subject || data.mentor_profile.course || "",
           })
           setPreview(data.mentor_profile.photo)
         }
       } catch (error) {
         console.error("Gagal mengambil profil:", error)
-      } finally {
+      } font-bold {
         setFetching(false)
       }
     }
@@ -69,6 +85,12 @@ export default function MentorProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!formData.subject) {
+      toast.error("Silakan pilih mata pelajaran terlebih dahulu!")
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -77,8 +99,9 @@ export default function MentorProfilePage() {
       
       data.append("bio", formData.bio)
       data.append("specialization", formData.specialization)
+      data.append("subject", formData.subject) // Mengirim mata pelajaran
       
-      // SOLUSI UTAMA: Laravel butuh _method POST/PUT di FormData jika mengunggah file
+      // Method Spoofing Laravel untuk Upload File
       data.append("_method", "POST") 
 
       if (photo) {
@@ -90,7 +113,6 @@ export default function MentorProfilePage() {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Accept": "application/json",
-          // JANGAN tambahkan Content-Type di sini, biarkan fetch yang mengaturnya otomatis
         },
         body: data,
       })
@@ -99,10 +121,9 @@ export default function MentorProfilePage() {
 
       if (res.ok) {
         toast.success("Profil berhasil diperbarui!")
-        router.refresh() // Memperbarui cache data
+        router.refresh()
         setTimeout(() => router.push("/dashboard/mentor"), 1500)
       } else {
-        // Tangkap pesan error dari Laravel (Validation atau Exception)
         const errorMsg = result.errors 
           ? Object.values(result.errors).flat().join(", ") 
           : result.message
@@ -136,9 +157,10 @@ export default function MentorProfilePage() {
 
       <Card className="border-none shadow-2xl rounded-[3rem] overflow-hidden bg-white border-t-8 border-t-amber-500">
         <CardContent className="p-8 md:p-12">
-          <form onSubmit={handleSubmit} className="space-y-10">
+          <form onSubmit={handleSubmit} className="space-y-8">
             
-            <div className="flex flex-col items-center justify-center space-y-6">
+            {/* UNGGAH FOTO */}
+            <div className="flex flex-col items-center justify-center space-y-4">
               <div className="relative group">
                 <div className="w-40 h-40 rounded-[2.5rem] overflow-hidden bg-zinc-100 border-[10px] border-zinc-50 shadow-2xl relative">
                   {preview ? (
@@ -160,11 +182,38 @@ export default function MentorProfilePage() {
               </div>
             </div>
 
-            <div className="grid gap-8">
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1">Keahlian Utama</label>
+            <div className="grid gap-6">
+              
+              {/* PENAMBAHAN FIELD: MATA PELAJARAN */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1 flex items-center gap-1.5">
+                  <BookOpen size={13} className="text-amber-500" /> Mata Pelajaran Diampu <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={formData.subject}
+                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                    required
+                    className="w-full rounded-2xl border-zinc-100 h-16 bg-zinc-50/50 focus:bg-white text-sm font-bold text-zinc-800 px-4 pr-10 appearance-none focus:outline-none focus:ring-2 focus:ring-amber-500 border transition cursor-pointer"
+                  >
+                    <option value="" disabled>-- Pilih Mata Pelajaran --</option>
+                    {SUBJECT_OPTIONS.map((subj, idx) => (
+                      <option key={idx} value={subj}>
+                        {subj}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" size={18} />
+                </div>
+              </div>
+
+              {/* FIELD: KEAHLIAN UTAMA */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1">
+                  Keahlian Utama / Gelar
+                </label>
                 <Input 
-                  placeholder="Misal: Senior Laravel Developer" 
+                  placeholder="Misal: Senior Laravel & Next.js Developer" 
                   className="rounded-2xl border-zinc-100 h-16 bg-zinc-50/50 focus:bg-white text-sm font-bold"
                   value={formData.specialization}
                   onChange={(e) => setFormData({...formData, specialization: e.target.value})}
@@ -172,11 +221,14 @@ export default function MentorProfilePage() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1">Biografi Profesional</label>
+              {/* FIELD: BIOGRAFI */}
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 px-1">
+                  Biografi Profesional
+                </label>
                 <Textarea 
-                  placeholder="Ceritakan pengalaman Anda..." 
-                  className="rounded-[2.5rem] border-zinc-100 min-h-[180px] bg-zinc-50/50 focus:bg-white p-6 text-sm font-medium leading-relaxed"
+                  placeholder="Ceritakan rekam jejak pengajaran dan pengalaman Anda..." 
+                  className="rounded-[2.5rem] border-zinc-100 min-h-[160px] bg-zinc-50/50 focus:bg-white p-6 text-sm font-medium leading-relaxed"
                   value={formData.bio}
                   onChange={(e) => setFormData({...formData, bio: e.target.value})}
                   required
@@ -184,6 +236,7 @@ export default function MentorProfilePage() {
               </div>
             </div>
 
+            {/* TOMBOL SUBMIT */}
             <Button 
               type="submit" 
               disabled={loading}
