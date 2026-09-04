@@ -191,6 +191,7 @@ export default function MentorTasksPage() {
 
   const handleOpenPreviewAndGrade = (task: any) => {
     setActiveTask(task)
+    setKelas(task.kelas ?? task.kelas ?? "")
     setScore(task.nilai ?? task.score ?? "")
     setFeedback(task.feedback ?? task.catatan ?? "")
     setZoomScale(1)
@@ -217,7 +218,8 @@ export default function MentorTasksPage() {
         },
         body: JSON.stringify({
           score: Number(score),
-          feedback: feedback
+          feedback: feedback,
+          kelas: kelas
         })
       })
 
@@ -343,7 +345,25 @@ export default function MentorTasksPage() {
                       <p className="text-xs text-slate-700 italic">"{activeTask.description}"</p>
                     </div>
                   )}
-
+ <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Kelas <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={taskKelas}
+                      onChange={(e) => setTaskKelas(e.target.value)}
+                      required
+                      className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
+                    >
+                      <option value="X A">X A</option>
+                      <option value="X B">X B</option>
+                      <option value="XI">XI</option>
+                      <option value="XII">XII</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
+                  </div>
+                </div>
                   <div className="space-y-4">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-700 mb-1 uppercase">
