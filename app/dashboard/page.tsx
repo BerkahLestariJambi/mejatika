@@ -1,939 +1,515 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import * as pdfjsLib from "pdfjs-dist"
+import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { 
+  LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
+  ChevronDown, Loader2, Zap, UploadCloud, Paperclip, Menu,
+  Upload, Eye, CheckCircle2, AlertCircle, Check
+} from "lucide-react"
+import Swal from 'sweetalert2'
 
-interface RecordingHistory {
-  id: string;
-  blob: Blob;
-  url: string;
-  timestamp: string;
-  uploadStatus?: "idle" | "uploading" | "success" | "error"
-}
+export default function StudentDashboard() {
+  const router = useRouter()
+  const [activeMenu, setActiveMenu] = useState("dashboard")
+  
+  // Sub-menu khusus Tugas ("upload" | "list")
+  const [taskSubMenu, setTaskSubMenu] = useState<"upload" | "list">("upload")
 
-if (typeof window !== "undefined") {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = String(
-    "/pdf.worker.min.mjs"
-  );
-}
+  const [registrations, setRegistrations] = useState<any[]>([])
+  const [availableCourses, setAvailableCourses] = useState<any[]>([])
+  const [myCertificates, setMyCertificates] = useState<any[]>([]) 
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-interface ExtractedSlideData {
-  title: string;
-  subtitle: string;
-  bullets: string[];
-}
+  // State Form Tugas
+  const [taskTitle, setTaskTitle] = useState("Tugas 1")
+  const [taskMapel, setTaskMapel] = useState("Matematika")
+  const [taskDescription, setTaskDescription] = useState("")
+  const [taskFile, setTaskFile] = useState<File | null>(null)
+  const [isSubmittingTask, setIsSubmittingTask] = useState(false)
 
-interface StudioTheme {
-  id: string;
-  name: string;
-  bgGradientStart?: string;
-  bgGradientEnd?: string;
-  accentColor: string;
-  textColor: string;
-  subtitleColor: string;
-  bulletColor: string;
-  customImage?: HTMLImageElement | null;
-}
+  // State Daftar Tugas Terkirim
+  const [submittedTasks, setSubmittedTasks] = useState<any[]>([])
+  const [loadingTasks, setLoadingTasks] = useState(false)
 
-const STUDIO_THEMES: StudioTheme[] = [
-  { id: "dark-indigo", name: "Default Indigo", bgGradientStart: "#0f172a", bgGradientEnd: "#1e1b4b", accentColor: "#3b82f6", textColor: "#ffffff", subtitleColor: "#94a3b8", bulletColor: "#e2e8f0" },
-  { id: "elegant-blue", name: "Elegant Blue", bgGradientStart: "#0a192f", bgGradientEnd: "#172a45", accentColor: "#64ffda", textColor: "#f8fafc", subtitleColor: "#8892b0", bulletColor: "#ccd6f6" },
-  { id: "emerald-garden", name: "Emerald Garden", bgGradientStart: "#064e3b", bgGradientEnd: "#022c22", accentColor: "#34d399", textColor: "#f0fdf4", subtitleColor: "#a7f3d0", bulletColor: "#e6f4ea" },
-  { id: "warm-charcoal", name: "Warm Charcoal", bgGradientStart: "#1c1917", bgGradientEnd: "#292524", accentColor: "#f59e0b", textColor: "#fafaf9", subtitleColor: "#a8a29e", bulletColor: "#e7e5e4" }
-];
+  const API_URL = "https://backend.mejatika.com/api"
 
-const DB_NAME = "StudioPresenterDB";
-const STORE_NAME = "recordings";
-const DB_VERSION = 1;
-const BACKEND_URL = "https://backend.mejatika.com/api/upload";
+  // Daftar 10 Tugas
+  const TASK_OPTIONS = Array.from({ length: 10 }, (_, i) => `Tugas ${i + 1}`)
 
-export default function StudioHybridPresenter() {
-  const [recording, setRecording] = useState(false);
-  const [recordingsList, setRecordingsList] = useState<RecordingHistory[]>([]);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [selectedCamera, setSelectedCamera] = useState("");
-  const [sourceMode, setSourceMode] = useState<'pdf' | 'screen' | 'pdf-animation'>('pdf');
-  const [activeTheme, setActiveTheme] = useState<StudioTheme>(STUDIO_THEMES[0]);
-  const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
+  const handleTaskFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setTaskFile(file)
+  }
 
-  const [isCamOn, setIsCamOn] = useState<boolean>(false);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
-  const [currentSlide, setCurrentSlide] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
-  const pdfCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const slideCanvasCache = useRef<HTMLCanvasElement | null>(null);
-  const slideAnimId = useRef<number | null>(null);
-  const renderTaskRef = useRef<any>(null);
-
-  const [animatedSlides, setAnimatedSlides] = useState<ExtractedSlideData[]>([
-    {
-      title: "Silakan Unggah PDF Anda",
-      subtitle: "Teks akan otomatis diekstrak menjadi animasi studio",
-      bullets: ["1. Unggah file PDF di panel kanan", "2. Sistem memindai teks dokumen", "3. Pilih Mode Teks untuk melihat hasil animasi"]
-    }
-  ]);
-  const [textSlideIndex, setTextSlideIndex] = useState<number>(0);
-  const textAnimProgress = useRef<number>(0);
-
-  const [isSharing, setIsSharing] = useState(false);
-  const screenStreamRef = useRef<MediaStream | null>(null);
-  const screenVideoRef = useRef<HTMLVideoElement | null>(null);
-
-  const [showWhiteboard, setShowWhiteboard] = useState(false);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [penColor] = useState("#ef4444");
-  const [penWidth] = useState(4);
-  const [isEraser, setIsEraser] = useState(false);
-
-  const [isToolbarVisible, setIsToolbarVisible] = useState(true);
-
-  const [wbPos, setWbPos] = useState({ x: 50, y: 120, w: 560, h: 360 });
-  const [isDraggingWb, setIsDraggingWb] = useState(false);
-
-  // Ukuran kamera diperbesar menjadi 320x240
-  const CAM_WIDTH = 320;
-  const CAM_HEIGHT = 240;
-  const [camPos, setCamPos] = useState({ x: 920, y: 430 });
-  const [isDraggingCam, setIsDraggingCam] = useState(false);
-
-  const dragStartRef = useRef({ x: 0, y: 0 });
-
-  const mainCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const whiteboardCanvasRef = useRef<HTMLCanvasElement | null>(null);
-  const webcamVideoRef = useRef<HTMLVideoElement | null>(null);
-  const frameContainerRef = useRef<HTMLDivElement | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-
-  const wbPosRef = useRef(wbPos);
-  const camPosRef = useRef(camPos);
-  useEffect(() => { wbPosRef.current = wbPos; }, [wbPos]);
-  useEffect(() => { camPosRef.current = camPos; }, [camPos]);
-
-  const triggerTextAnimation = () => {
-    textAnimProgress.current = 0;
-  };
-
-  useEffect(() => {
-    if (sourceMode === 'pdf-animation') {
-      triggerTextAnimation();
-    }
-  }, [textSlideIndex, animatedSlides, sourceMode]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-
-      slideCanvasCache.current = document.createElement("canvas");
-      screenVideoRef.current = document.createElement("video");
-      screenVideoRef.current.autoplay = true;
-      screenVideoRef.current.playsInline = true;
-      screenVideoRef.current.muted = true;
+  const fetchData = useCallback(async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return router.push("/login")
+    try {
+      const [resReg, resUser, resAll, resCert] = await Promise.all([
+        fetch(`${API_URL}/registrations`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${API_URL}/me`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${API_URL}/courses`, { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${API_URL}/my-certificates`, { headers: { "Authorization": `Bearer ${token}` } })
+      ])
       
-      pdfCanvasRef.current = document.createElement("canvas");
+      const dataReg = await resReg.json()
+      const dataUser = await resUser.json()
+      const dataAll = await resAll.json()
+      const dataCert = await resCert.json()
 
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = (event: any) => {
-        const db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      };
-      request.onsuccess = (event: any) => {
-        const db = event.target.result;
-        const transaction = db.transaction(STORE_NAME, "readonly");
-        const store = transaction.objectStore(STORE_NAME);
-        const getAllRequest = store.getAll();
-        getAllRequest.onsuccess = () => {
-          const items = getAllRequest.result || [];
-          const formattedItems = items.map((item: any) => ({
-            id: item.id, blob: item.blob, url: URL.createObjectURL(item.blob), timestamp: item.timestamp, uploadStatus: "idle" as const,
-          }));
-          setRecordingsList(formattedItems.sort((a: any, b: any) => b.id.localeCompare(a.id)));
-        };
-      };
+      setRegistrations(Array.isArray(dataReg) ? dataReg : dataReg.data || [])
+      setUser(dataUser)
+      setAvailableCourses(Array.isArray(dataAll) ? dataAll : dataAll.data || [])
+      setMyCertificates(Array.isArray(dataCert) ? dataCert : dataCert.data || [])
+    } catch (err) { 
+      console.error("Fetch Error:", err) 
+    } finally { 
+      setLoading(false) 
     }
-  }, []);
+  }, [router])
 
-  useEffect(() => {
-    const initDevices = async () => {
-      try {
-        await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const cameras = devices.filter((d) => d.kind === "videoinput");
-        setVideoDevices(cameras);
-
-        const droidCam = cameras.find((d) => d.label.toLowerCase().includes("droid"));
-        if (droidCam) {
-          setSelectedCamera(droidCam.deviceId);
-          startCamera(droidCam.deviceId);
-        } else if (cameras[0]) {
-          setSelectedCamera(cameras[0].deviceId);
-          startCamera(cameras[0].deviceId);
-        }
-      } catch (err) {
-        console.error("Gagal inisialisasi perangkat:", err);
-      }
-    };
-
-    initDevices();
-
-    return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isCamOn && streamRef.current && webcamVideoRef.current) {
-      webcamVideoRef.current.srcObject = streamRef.current;
-      webcamVideoRef.current.play().catch(() => {});
-    }
-  }, [isCamOn]);
-
-  const toggleCamera = () => {
-    if (!isCamOn) {
-      startCamera(selectedCamera);
-    } else if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
-      streamRef.current = null;
-      setIsCamOn(false);
-    }
-  };
-
-  const startCamera = async (deviceId?: string) => {
+  // Fungsi mengambil daftar tugas milik siswa
+  const fetchSubmittedTasks = useCallback(async () => {
+    const token = localStorage.getItem("token")
+    if (!token) return
+    setLoadingTasks(true)
     try {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+      let res = await fetch(`${API_URL}/my-tasks`, {
+        headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+      })
+
+      if (!res.ok) {
+        res = await fetch(`${API_URL}/tasks`, {
+          headers: { "Authorization": `Bearer ${token}`, "Accept": "application/json" }
+        })
       }
 
-      const constraints: MediaStreamConstraints = {
-        video: deviceId ? { deviceId: { exact: deviceId } } : true,
-        audio: true,
-      };
+      const data = await res.json()
+      const rawList = Array.isArray(data) ? data : data.data || []
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-
-      if (webcamVideoRef.current) {
-        webcamVideoRef.current.srcObject = stream;
-        await webcamVideoRef.current.play();
-      }
-      setIsCamOn(true);
-    } catch (err) {
-      console.error("Gagal membuka kamera:", err);
-      setIsCamOn(false);
-    }
-  };
-
-  const handleCameraChange = (deviceId: string) => {
-    setSelectedCamera(deviceId);
-    if (isCamOn) {
-      startCamera(deviceId);
-    }
-  };
-
-  useEffect(() => {
-    if (!pdfDoc || sourceMode !== 'pdf') return;
-
-    let isCancelled = false;
-
-    pdfDoc.getPage(currentSlide).then(async (page: any) => {
-      if (isCancelled) return;
-
-      const hiddenPdfCanvas = pdfCanvasRef.current;
-      const cacheCanvas = slideCanvasCache.current;
-      if (!hiddenPdfCanvas || !cacheCanvas) return;
-
-      const pdfCtx = hiddenPdfCanvas.getContext("2d");
-      const cacheCtx = cacheCanvas.getContext("2d");
-      if (!pdfCtx || !cacheCtx) return;
-
-      const viewport = page.getViewport({ scale: 1.5 });
-      hiddenPdfCanvas.width = viewport.width;
-      hiddenPdfCanvas.height = viewport.height;
-      cacheCanvas.width = viewport.width;
-      cacheCanvas.height = viewport.height;
-
-      if (renderTaskRef.current) {
-        try {
-          await renderTaskRef.current.cancel();
-        } catch (e) {}
-      }
-
-      const renderTask = page.render({ canvasContext: cacheCtx, viewport });
-      renderTaskRef.current = renderTask;
-
-      try {
-        await renderTask.promise;
-        renderTaskRef.current = null;
-
-        if (slideAnimId.current) cancelAnimationFrame(slideAnimId.current);
-        
-        let opacity = 0;
-        const animateSlide = () => {
-          opacity += 0.08;
-          if (opacity > 1) opacity = 1;
-
-          pdfCtx.clearRect(0, 0, hiddenPdfCanvas.width, hiddenPdfCanvas.height);
-          pdfCtx.globalAlpha = opacity;
-          pdfCtx.drawImage(cacheCanvas, 0, 0);
-
-          if (opacity < 1) {
-            slideAnimId.current = requestAnimationFrame(animateSlide);
-          }
-        };
-        animateSlide();
-      } catch (err: any) {
-        if (err?.name !== "RenderingCancelledException") {
-          console.error("Error render PDF:", err);
-        }
-      }
-    });
-
-    return () => {
-      isCancelled = true;
-      if (slideAnimId.current) cancelAnimationFrame(slideAnimId.current);
-    };
-  }, [pdfDoc, currentSlide, sourceMode]);
-
-  const startShareScreen = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { displaySurface: "window" },
-        audio: false
-      });
-      screenStreamRef.current = stream;
-      if (screenVideoRef.current) screenVideoRef.current.srcObject = stream;
-      setIsSharing(true);
-      setSourceMode('screen');
-
-      stream.getVideoTracks()[0].onended = () => stopShareScreen();
-    } catch (err) {
-      console.error("Gagal share screen:", err);
-    }
-  };
-
-  const stopShareScreen = () => {
-    if (screenStreamRef.current) {
-      screenStreamRef.current.getTracks().forEach(track => track.stop());
-      screenStreamRef.current = null;
-    }
-    setIsSharing(false);
-  };
-
-  const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const img = new Image();
-    img.src = URL.createObjectURL(file);
-    img.onload = () => {
-      setCustomBgUrl(img.src);
-      setActiveTheme({
-        id: "custom-image",
-        name: "Gambar Kustom",
-        accentColor: "#3b82f6",
-        textColor: "#ffffff",
-        subtitleColor: "#cbd5e1",
-        bulletColor: "#f1f5f9",
-        customImage: img
-      });
-    };
-  };
-
-  // Main Render Loop Canvas
-  useEffect(() => {
-    const mainCanvas = mainCanvasRef.current;
-    if (!mainCanvas) return;
-    const ctx = mainCanvas.getContext("2d");
-    let loopId: number;
-
-    const renderStudioFrame = () => {
-      if (!ctx || !mainCanvas) return;
-      ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
-
-      // --- 1. RENDER MATERI ---
-      if (sourceMode === 'pdf' && pdfCanvasRef.current && pdfDoc) {
-        ctx.fillStyle = "#1e293b";
-        ctx.fillRect(0, 0, 1280, 720);
-        ctx.drawImage(pdfCanvasRef.current, 0, 0, 1280, 720);
-      } else if (sourceMode === 'screen' && isSharing && screenVideoRef.current) {
-        ctx.drawImage(screenVideoRef.current, 0, 0, 1280, 720);
-      } else if (sourceMode === 'pdf-animation') {
-        if (activeTheme.id === "custom-image" && activeTheme.customImage) {
-          ctx.drawImage(activeTheme.customImage, 0, 0, 1280, 720);
-          ctx.fillStyle = "rgba(15, 23, 42, 0.65)";
-          ctx.fillRect(0, 0, 1280, 720);
-        } else if (activeTheme.bgGradientStart && activeTheme.bgGradientEnd) {
-          const gradient = ctx.createLinearGradient(0, 0, 1280, 720);
-          gradient.addColorStop(0, activeTheme.bgGradientStart);
-          gradient.addColorStop(1, activeTheme.bgGradientEnd);
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, 1280, 720);
-
-          ctx.fillStyle = "rgba(255, 255, 255, 0.02)";
-          ctx.beginPath(); ctx.arc(100, 100, 250, 0, Math.PI * 2); ctx.fill();
-        }
-
-        if (textAnimProgress.current < 1) {
-          textAnimProgress.current += 0.02;
-        }
-        const progress = textAnimProgress.current;
-        const currentData = animatedSlides[textSlideIndex];
-
-        if (currentData) {
-          const safePaddingX = 120; 
-          const maxTextWidth = 1040;
-
-          ctx.save();
-          ctx.globalAlpha = Math.min(1, progress * 1.5);
-          
-          ctx.fillStyle = activeTheme.accentColor;
-          ctx.fillRect(safePaddingX, 155, 120 * Math.min(1, progress * 2), 6);
-          
-          ctx.font = "bold 44px sans-serif";
-          ctx.fillStyle = activeTheme.textColor;
-          ctx.textAlign = "left";
-          const titleY = 130 - (1 - Math.min(1, progress * 2)) * 10;
-          ctx.fillText(currentData.title, safePaddingX, titleY, maxTextWidth);
-          ctx.restore();
-
-          if (progress > 0.2) {
-            ctx.save();
-            ctx.globalAlpha = Math.min(1, (progress - 0.2) * 2);
-            ctx.font = "italic 22px sans-serif";
-            ctx.fillStyle = activeTheme.subtitleColor;
-            ctx.fillText(currentData.subtitle, safePaddingX, 200, maxTextWidth);
-            ctx.restore();
-          }
-
-          currentData.bullets.forEach((bullet, index) => {
-            const triggerDelay = 0.3 + index * 0.12;
-            if (progress > triggerDelay) {
-              ctx.save();
-              ctx.globalAlpha = Math.min(1, (progress - triggerDelay) * 3);
-              ctx.font = "24px sans-serif";
-              ctx.fillStyle = activeTheme.bulletColor;
-              
-              const bulletX = (safePaddingX + 30) + (1 - Math.min(1, (progress - triggerDelay) * 3)) * 15;
-              const maxChar = 75;
-              const displayText = bullet.length > maxChar ? bullet.substring(0, maxChar) + "..." : bullet;
-              ctx.fillText(displayText, bulletX, 280 + index * 55, maxTextWidth - 30);
-              ctx.restore();
-            }
-          });
-        }
+      if (user?.id) {
+        const filteredTasks = rawList.filter((item: any) => 
+          item.user_id === user.id || item.student_id === user.id
+        )
+        setSubmittedTasks(filteredTasks.length > 0 ? filteredTasks : rawList)
       } else {
-        ctx.fillStyle = "#0f172a";
-        ctx.fillRect(0, 0, 1280, 720);
-        ctx.font = "18px sans-serif";
-        ctx.fillStyle = "#64748b";
-        ctx.textAlign = "center";
-        ctx.fillText("Silakan unggah dokumen PDF atau hubungkan PPT Anda di panel kanan", 640, 360);
+        setSubmittedTasks(rawList)
       }
+    } catch (err) {
+      console.error("Error fetching tasks:", err)
+    } finally {
+      setLoadingTasks(false)
+    }
+  }, [user])
 
-      // --- 2. RENDER PAPAN TULIS ---
-      if (showWhiteboard && whiteboardCanvasRef.current) {
-        ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-        ctx.fillRect(wbPosRef.current.x, wbPosRef.current.y, wbPosRef.current.w, wbPosRef.current.h);
-        ctx.drawImage(whiteboardCanvasRef.current, wbPosRef.current.x, wbPosRef.current.y, wbPosRef.current.w, wbPosRef.current.h);
-      }
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
-      // --- 3. RENDER KAMERA PERSEGI PANJANG BIASA (LEBIH BESAR) ---
-      if (webcamVideoRef.current && isCamOn && webcamVideoRef.current.readyState >= 2) {
-        const camX = camPosRef.current.x;
-        const camY = camPosRef.current.y;
-        const radius = 16; // Sudut rounded
+  useEffect(() => {
+    fetchSubmittedTasks()
+  }, [fetchSubmittedTasks])
 
-        ctx.save();
-        
-        // Buat path rounded rectangle untuk video
-        ctx.beginPath();
-        ctx.moveTo(camX + radius, camY);
-        ctx.lineTo(camX + CAM_WIDTH - radius, camY);
-        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY, camX + CAM_WIDTH, camY + radius);
-        ctx.lineTo(camX + CAM_WIDTH, camY + CAM_HEIGHT - radius);
-        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY + CAM_HEIGHT, camX + CAM_WIDTH - radius, camY + CAM_HEIGHT);
-        ctx.lineTo(camX + radius, camY + CAM_HEIGHT);
-        ctx.quadraticCurveTo(camX, camY + CAM_HEIGHT, camX, camY + CAM_HEIGHT - radius);
-        ctx.lineTo(camX, camY + radius);
-        ctx.quadraticCurveTo(camX, camY, camX + radius, camY);
-        ctx.closePath();
-        
-        ctx.clip();
-        ctx.drawImage(webcamVideoRef.current, camX, camY, CAM_WIDTH, CAM_HEIGHT);
-        ctx.restore();
+  // Cek apakah suatu tugas pada mapel tertentu sudah dikirim
+  const isTaskSubmitted = (title: string) => {
+    return submittedTasks.some(
+      (task) => task.mapel === taskMapel && task.title === title
+    )
+  }
 
-        // Border Biru Kamera Rounded
-        ctx.save();
-        ctx.beginPath();
-        ctx.moveTo(camX + radius, camY);
-        ctx.lineTo(camX + CAM_WIDTH - radius, camY);
-        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY, camX + CAM_WIDTH, camY + radius);
-        ctx.lineTo(camX + CAM_WIDTH, camY + CAM_HEIGHT - radius);
-        ctx.quadraticCurveTo(camX + CAM_WIDTH, camY + CAM_HEIGHT, camX + CAM_WIDTH - radius, camY + CAM_HEIGHT);
-        ctx.lineTo(camX + radius, camY + CAM_HEIGHT);
-        ctx.quadraticCurveTo(camX, camY + CAM_HEIGHT, camX, camY + CAM_HEIGHT - radius);
-        ctx.lineTo(camX, camY + radius);
-        ctx.quadraticCurveTo(camX, camY, camX + radius, camY);
-        ctx.closePath();
-        
-        ctx.strokeStyle = "#3b82f6";
-        ctx.lineWidth = 4;
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      // --- 4. RENDER FOOTER HAK CIPTA ---
-      const footerH = 36;
-      ctx.fillStyle = "#020617";
-      ctx.fillRect(0, 720 - footerH, 1280, footerH);
-
-      ctx.font = "bold 13px sans-serif";
-      ctx.fillStyle = "#f8fafc";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        "Aplikasi Gratis Karya Siswa Sanpio Peminatan Informatika",
-        640,
-        720 - (footerH / 2)
-      );
-
-      loopId = requestAnimationFrame(renderStudioFrame);
-    };
-
-    loopId = requestAnimationFrame(renderStudioFrame);
-    return () => cancelAnimationFrame(loopId);
-  }, [sourceMode, pdfDoc, isSharing, showWhiteboard, isCamOn, animatedSlides, textSlideIndex, activeTheme]);
-
-  const saveToIndexedDB = (id: string, blob: Blob, timestamp: string) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onsuccess = (event: any) => {
-      const db = event.target.result;
-      db.transaction(STORE_NAME, "readwrite").objectStore(STORE_NAME).put({ id, blob, timestamp });
-    };
-  };
-
-  const deleteRecording = (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus hasil rekaman ini?")) return;
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
-    request.onsuccess = (event: any) => {
-      const db = event.target.result;
-      const transaction = db.transaction(STORE_NAME, "readwrite");
-      const store = transaction.objectStore(STORE_NAME);
-      store.delete(id).onsuccess = () => {
-        setRecordingsList((prev) => {
-          const matched = prev.find(item => item.id === id);
-          if (matched) URL.revokeObjectURL(matched.url);
-          return prev.filter((item) => item.id !== id);
-        });
-      };
-    };
-  };
-
-  const shareRecording = async (videoItem: RecordingHistory) => {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        const cleanTimestamp = videoItem.timestamp.replace(/:/g, "-");
-        const isMp4 = videoItem.blob.type.includes("mp4");
-        const ext = isMp4 ? "mp4" : "webm";
-        const file = new File([videoItem.blob], `Rekaman_${cleanTimestamp}.${ext}`, { type: videoItem.blob.type });
-        await navigator.share({
-          title: "Hasil Rekaman Kelas Studio",
-          text: `Halo, berikut hasil rekaman materi kelas jam: ${videoItem.timestamp}`,
-          files: [file],
-        });
-      } catch (err) {
-        console.log("Berbagi dibatalkan:", err);
-      }
+  // Auto select tugas pertama yang belum dikirim saat mapel berubah
+  useEffect(() => {
+    const firstAvailable = TASK_OPTIONS.find((t) => !isTaskSubmitted(t))
+    if (firstAvailable) {
+      setTaskTitle(firstAvailable)
     } else {
-      if (typeof navigator !== "undefined" && navigator.clipboard) {
-        navigator.clipboard.writeText(videoItem.url);
-        alert("Browser tidak mendukung Web Share. Tautan internal disalin!");
-      }
+      setTaskTitle("")
     }
-  };
+  }, [taskMapel, submittedTasks])
 
-  const uploadVideoToBackend = async (videoItem: RecordingHistory) => {
-    setRecordingsList((prev) => prev.map((item) => (item.id === videoItem.id ? { ...item, uploadStatus: "uploading" } : item)));
-    const formData = new FormData();
-    const isMp4 = videoItem.blob.type.includes("mp4");
-    const ext = isMp4 ? "mp4" : "webm";
-    formData.append("video", videoItem.blob, `Studio_Record_${videoItem.timestamp.replace(/:/g, "-")}.${ext}`);
-    try {
-      const response = await fetch(BACKEND_URL, { method: "POST", body: formData });
-      if (!response.ok) throw new Error();
-      setRecordingsList((prev) => prev.map((item) => (item.id === videoItem.id ? { ...item, uploadStatus: "success" } : item)));
-    } catch {
-      setRecordingsList((prev) => prev.map((item) => (item.id === videoItem.id ? { ...item, uploadStatus: "error" } : item)));
+  // Submit Tugas
+  const handleTaskSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!taskTitle) {
+      return Swal.fire("Peringatan", "Silakan pilih tugas yang akan diunggah.", "warning")
     }
-  };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    if (isTaskSubmitted(taskTitle)) {
+      return Swal.fire("Peringatan", `${taskTitle} untuk mata pelajaran ${taskMapel} sudah pernah dikirim.`, "warning")
+    }
+
+    setIsSubmittingTask(true)
+    const token = localStorage.getItem("token")
 
     try {
-      const pdfjs = await import("pdfjs-dist");
-      const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+      const formData = new FormData()
+      formData.append("title", taskTitle)
+      formData.append("mapel", taskMapel)
+      if (taskDescription) formData.append("description", taskDescription)
       
-      setPdfDoc(pdf);
-      setTotalPages(pdf.numPages);
-      setCurrentSlide(1);
-
-      const extractedSlides: ExtractedSlideData[] = [];
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const textContent = await page.getTextContent();
-        const lines: string[] = textContent.items
-          .map((item: any) => item.str.trim())
-          .filter((str: string) => str.length > 0);
-
-        if (lines.length > 0) {
-          const title = lines[0] || `Halaman ${i}`;
-          const subtitle = lines[1] && lines[1].length < 60 ? lines[1] : `Dokumen: ${file.name}`;
-          const rawBullets = lines.slice(subtitle === lines[1] ? 2 : 1, 8);
-          const bullets = rawBullets.map((b) => (b.startsWith("•") || b.match(/^\d+\./) ? b : `• ${b}`));
-
-          extractedSlides.push({
-            title: title.length > 45 ? title.substring(0, 45) + "..." : title,
-            subtitle,
-            bullets: bullets.length > 0 ? bullets : ["(Tidak ada sub-teks terdeteksi)"]
-          });
-        }
+      if (taskFile) {
+        formData.append("file_path", taskFile)
+        formData.append("file", taskFile) 
       }
 
-      if (extractedSlides.length > 0) {
-        setAnimatedSlides(extractedSlides);
-        setTextSlideIndex(0);
+      const res = await fetch(`${API_URL}/tasks`, {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        },
+        body: formData
+      })
+
+      if (res.ok) {
+        Swal.fire("Berhasil!", "Tugas berhasil dikirim.", "success")
+        setTaskDescription("")
+        setTaskFile(null)
+        await fetchSubmittedTasks()
+        setTaskSubMenu("list")
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || "Gagal menyimpan tugas.")
       }
-
-      setSourceMode('pdf');
-    } catch (err) {
-      console.error("Gagal memproses dokumen PDF:", err);
+    } catch (err: any) {
+      Swal.fire("Gagal", err.message || "Terjadi kesalahan saat mengunggah tugas.", "error")
+    } finally {
+      setIsSubmittingTask(false)
     }
-  };
+  }
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
-    const ctx = whiteboardCanvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    const rect = whiteboardCanvasRef.current!.getBoundingClientRect();
-    ctx.beginPath();
-    ctx.moveTo(
-      (e.clientX - rect.left) * (whiteboardCanvasRef.current!.width / rect.width),
-      (e.clientY - rect.top) * (whiteboardCanvasRef.current!.height / rect.height)
-    );
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing || !showWhiteboard) return;
-    const canvas = whiteboardCanvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
-
-    if (isEraser) {
-      ctx.globalCompositeOperation = "destination-out";
-      ctx.lineWidth = penWidth * 5;
-    } else {
-      ctx.globalCompositeOperation = "source-over";
-      ctx.strokeStyle = penColor;
-      ctx.lineWidth = penWidth;
-      ctx.lineCap = "round";
-    }
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const handleMouseDown = (type: "wb" | "cam", e: React.MouseEvent) => {
-    e.stopPropagation();
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    if (type === "wb") setIsDraggingWb(true);
-    if (type === "cam") setIsDraggingCam(true);
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!frameContainerRef.current || (!isDraggingWb && !isDraggingCam)) return;
-    const rect = frameContainerRef.current.getBoundingClientRect();
-    const deltaX = (e.clientX - dragStartRef.current.x) * (1280 / rect.width);
-    const deltaY = (e.clientY - dragStartRef.current.y) * (720 / rect.height);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-
-    if (isDraggingWb) {
-      setWbPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - p.w, p.x + deltaX)), y: Math.max(0, Math.min(720 - p.h, p.y + deltaY)) }));
-    }
-    if (isDraggingCam) {
-      setCamPos((p) => ({ ...p, x: Math.max(0, Math.min(1280 - CAM_WIDTH, p.x + deltaX)), y: Math.max(0, Math.min(720 - CAM_HEIGHT, p.y + deltaY)) }));
-    }
-  };
-
-  const startRecording = async () => {
-    try {
-      chunksRef.current = [];
-      const mainCanvas = mainCanvasRef.current;
-      if (!mainCanvas) return;
-
-      const ctx = mainCanvas.getContext("2d");
-
-      const forceRenderInterval = setInterval(() => {
-        if (ctx && mainCanvas) {
-          ctx.fillStyle = "rgba(255, 255, 255, 0.001)";
-          ctx.fillRect(0, 0, 1, 1);
-        }
-      }, 33);
-
-      const canvasStream = mainCanvas.captureStream(30);
-      const outputStream = new MediaStream();
-
-      canvasStream.getVideoTracks().forEach((track) => outputStream.addTrack(track));
-
-      try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioStream.getAudioTracks().forEach((track) => outputStream.addTrack(track));
-      } catch (err) {
-        console.warn("Merekam tanpa suara audio mic.");
-      }
-
-      const supportedMimeTypes = [
-        "video/mp4;codecs=h264,aac",
-        "video/mp4;codecs=avc1,mp4a.40.2",
-        "video/mp4",
-        "video/webm;codecs=vp8,opus",
-        "video/webm"
-      ];
-
-      let selectedMimeType = "";
-      for (const mime of supportedMimeTypes) {
-        if (MediaRecorder.isTypeSupported(mime)) {
-          selectedMimeType = mime;
-          break;
-        }
-      }
-
-      const mediaRecorder = new MediaRecorder(outputStream, {
-        mimeType: selectedMimeType || undefined,
-        videoBitsPerSecond: 2500000
-      });
-
-      mediaRecorderRef.current = mediaRecorder;
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          chunksRef.current.push(e.data);
-        }
-      };
-
-      mediaRecorder.onstop = () => {
-        clearInterval(forceRenderInterval);
-
-        const isMp4 = selectedMimeType.includes("mp4");
-        const finalType = isMp4 ? "video/mp4" : "video/webm";
-        const blob = new Blob(chunksRef.current, { type: finalType });
-
-        if (blob.size < 1000) {
-          alert("Gagal menyimpan: Hasil rekaman kosong.");
-          return;
-        }
-
-        const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        const recordId = `rec-${Date.now()}`;
-
-        saveToIndexedDB(recordId, blob, ts);
-        setRecordingsList((prev) => [
-          {
-            id: recordId,
-            blob,
-            url: URL.createObjectURL(blob),
-            timestamp: ts,
-            uploadStatus: "idle",
-          },
-          ...prev,
-        ]);
-      };
-
-      mediaRecorder.start(1000);
-      setRecording(true);
-    } catch (err) {
-      console.error("Gagal memulai rekaman:", err);
-      alert("Gagal memulai rekaman. Pastikan izin kamera & mic aktif.");
-    }
-  };
+  if (loading) return <div className="h-screen flex items-center justify-center text-indigo-400 animate-pulse font-bold">MEJATIKA LOADING...</div>
 
   return (
-    <main onMouseMove={handleMouseMove} onMouseUp={() => { setIsDraggingWb(false); setIsDraggingCam(false); }} className="min-h-screen bg-slate-900 text-white p-6 flex flex-col items-center select-none overflow-x-hidden font-sans w-full">
-      <header className="w-full max-w-7xl flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-        <div>
-          <h1 className="text-2xl font-extrabold text-blue-400">Studio Presentasi Hybrid Pro</h1>
-          <p className="text-xs text-slate-400 mt-1">Sistem manajemen rekaman terintegrasi.</p>
+    <div className="flex min-h-screen bg-slate-50 text-slate-900">
+      
+      {/* SIDEBAR */}
+      <aside className={`w-64 bg-white border-r border-slate-200 fixed h-full flex flex-col z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="p-6 flex items-center gap-3 border-b border-slate-100">
+          <div className="h-10 w-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-100">M</div>
+          <h1 className="text-xl font-bold tracking-tight text-slate-800">Mejatika<span className="text-indigo-600">.</span></h1>
         </div>
-      </header>
-
-      <div className="w-full max-w-7xl flex flex-col gap-4">
-        <div ref={frameContainerRef} className="relative w-full aspect-video bg-slate-950 rounded-2xl overflow-hidden border-2 border-slate-700 shadow-2xl flex items-center justify-center">
+        <nav className="flex-1 px-4 py-8 space-y-2">
+          <button onClick={() => { setActiveMenu("dashboard"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "dashboard" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <LayoutDashboard size={20} /> Dashboard
+          </button>
           
-          <canvas ref={mainCanvasRef} width={1280} height={720} className="w-full h-full object-contain pointer-events-none" />
+          <button onClick={() => { setActiveMenu("courses"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "courses" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <BookOpen size={20} /> Katalog Kursus
+          </button>
 
-          {sourceMode === 'pdf' && pdfDoc && (
-            <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
-              <button onClick={() => setCurrentSlide((p) => Math.max(1, p - 1))} disabled={currentSlide === 1} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
-              <span className="text-[11px] font-mono font-semibold text-blue-400">{currentSlide} / {totalPages}</span>
-              <button onClick={() => setCurrentSlide((p) => Math.min(totalPages, p + 1))} disabled={currentSlide === totalPages} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">Next ▶</button>
+          <button onClick={() => { setActiveMenu("materials"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "materials" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <FileCheck size={20} /> Ruang Belajar
+          </button>
+
+          <button onClick={() => { setActiveMenu("assignments"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "assignments" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <Zap size={20} /> Tugas
+          </button>
+
+          <button onClick={() => { setActiveMenu("certificates"); setSidebarOpen(false); }} 
+            className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeMenu === "certificates" ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:bg-slate-50'}`}>
+            <Award size={20} /> Sertifikat
+          </button>
+        </nav>
+        <div className="p-6 border-t border-slate-100">
+          <button onClick={() => {localStorage.clear(); router.push("/login")}} className="w-full flex items-center gap-4 px-5 py-4 text-red-500 font-bold text-sm hover:bg-red-50 rounded-2xl transition-all">
+            <LogOut size={20} /> Logout
+          </button>
+        </div>
+      </aside>
+
+      <main className={`flex-1 lg:ml-64 p-6 lg:p-10 flex flex-col mt-16 lg:mt-0`}>
+        {/* MOBILE HEADER */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-slate-200 p-4 z-[60] flex justify-between items-center">
+          <div className="flex items-center gap-2 font-bold text-indigo-600">
+            <div className="h-8 w-8 bg-indigo-600 rounded flex items-center justify-center text-white text-xs">M</div>
+            <span>Mejatika</span>
+          </div>
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-600"><Menu /></button>
+        </div>
+
+        {/* --- MENU DASHBOARD --- */}
+        {activeMenu === "dashboard" && (
+          <div className="space-y-10 animate-in fade-in duration-700">
+            <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-[2.5rem] p-8 lg:p-16 text-white relative overflow-hidden shadow-2xl shadow-indigo-200">
+              <div className="absolute top-0 right-0 p-10 opacity-10 hidden lg:block"><Zap size={200} /></div>
+              <h2 className="text-4xl lg:text-5xl font-bold mb-4">Hello, {user?.name?.split(' ')[0]}!</h2>
+              <p className="text-indigo-100 font-medium">Lanjutkan progress belajarmu hari ini.</p>
             </div>
-          )}
-
-          {sourceMode === 'pdf-animation' && (
-            <div className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-30 bg-slate-900/90 border border-slate-700 backdrop-blur px-4 py-1.5 rounded-xl flex items-center gap-3 shadow-2xl">
-              <button onClick={() => setTextSlideIndex(p => Math.max(0, p - 1))} disabled={textSlideIndex === 0} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
-              <span className="text-[11px] font-mono font-semibold text-indigo-400">Slide {textSlideIndex + 1} / {animatedSlides.length}</span>
-              <button onClick={triggerTextAnimation} className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded-lg text-[10px] font-bold">🔄 Replay</button>
-              <button onClick={() => setTextSlideIndex(p => Math.min(animatedSlides.length - 1, p + 1))} disabled={textSlideIndex === animatedSlides.length - 1} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">Next ▶</button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Katalog</p><h3 className="text-4xl font-bold">{availableCourses.length}</h3></Card>
+              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Pendaftaran</p><h3 className="text-4xl font-bold text-indigo-600">{registrations.length}</h3></Card>
+              <Card className="p-8 rounded-3xl bg-white border-none shadow-sm border-b-4 border-emerald-500"><p className="text-[10px] font-bold text-slate-400 mb-2 uppercase">Aktif</p><h3 className="text-4xl font-bold text-emerald-600">{registrations.filter(r => r.status === 'success' || r.status === 'aktif').length}</h3></Card>
             </div>
-          )}
+          </div>
+        )}
 
-          <div className="absolute right-0 top-0 bottom-0 z-40 transition-transform duration-300 flex items-center h-full" style={{ transform: isToolbarVisible ? "translateX(0)" : "translateX(calc(100% - 14px))" }}>
-            <button onClick={() => setIsToolbarVisible(!isToolbarVisible)} className="bg-slate-800 border-2 border-r-0 border-slate-600 w-7 h-20 rounded-l-xl flex items-center justify-center text-xs text-blue-400 font-bold">{isToolbarVisible ? "▶" : "◀"}</button>
-
-            <div className="bg-slate-900/95 border-l border-slate-700 backdrop-blur rounded-l-2xl flex flex-col w-64 h-full shadow-2xl text-xs overflow-hidden">
-              <div className="p-3 bg-slate-950/60 border-b border-slate-800 text-[11px] font-bold text-slate-300 text-center uppercase tracking-wider">⚙️ Panel Kontrol</div>
-              
-              <div className="p-3 flex flex-col gap-4 flex-1 overflow-y-auto custom-scrollbar">
-                <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-800 flex flex-col gap-2">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase px-1">Pilih Sumber Materi:</span>
-                  <div className="grid grid-cols-3 gap-1">
-                    <button onClick={() => setSourceMode('pdf')} className={`py-1 text-[10px] text-center font-bold rounded transition-all ${sourceMode === 'pdf' ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>📄 PDF</button>
-                    <button onClick={() => setSourceMode('pdf-animation')} className={`py-1 text-[10px] text-center font-bold rounded transition-all ${sourceMode === 'pdf-animation' ? 'bg-indigo-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>✨ Teks</button>
-                    <button onClick={() => setSourceMode('screen')} className={`py-1 text-[10px] text-center font-bold rounded transition-all ${sourceMode === 'screen' ? 'bg-blue-600 text-white shadow' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>🖥️ PPT</button>
+        {/* --- MENU KATALOG --- */}
+        {activeMenu === "courses" && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            <h2 className="text-3xl font-bold text-slate-800">Katalog Kursus</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {availableCourses.map((course) => (
+                <Card key={course.id} className="rounded-[2.5rem] overflow-hidden bg-white border-none shadow-sm flex flex-col hover:shadow-xl transition-all relative">
+                  <div className="h-48 bg-slate-50 flex items-center justify-center border-b border-slate-100">
+                    <BookOpen className="text-slate-200" size={60} />
                   </div>
+                  <CardContent className="p-10 flex-1 flex flex-col">
+                    <h4 className="text-2xl font-bold text-slate-800 mb-6">{course.title}</h4>
+                    <Button onClick={() => { setExpandedCourse(course.id); setActiveMenu("materials"); }} className="w-full bg-indigo-600 text-white h-14 rounded-2xl font-bold">Buka Modul</Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
-                  <div className="p-2 bg-slate-900 rounded-lg border border-slate-800 mt-1">
-                    {sourceMode !== 'screen' ? (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-blue-400 font-semibold mb-1">Unggah Dokumen (PDF):</span>
-                        <input type="file" accept="application/pdf" onChange={handleFileUpload} className="text-[9px] text-slate-400 cursor-pointer w-full" />
+        {/* --- MENU RUANG BELAJAR --- */}
+        {activeMenu === "materials" && (
+          <div className="p-8 text-center text-slate-500">
+            Pilih kursus aktif untuk memulai belajar.
+          </div>
+        )}
+
+        {/* --- MENU TUGAS --- */}
+        {activeMenu === "assignments" && (
+          <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-800">Pengelolaan Tugas</h2>
+              <p className="text-slate-500 font-medium">Kirim tugas atau cek nilai & feedback dari pengajar.</p>
+            </div>
+
+            {/* TAB SUB-MENU TUGAS */}
+            <div className="flex gap-4 border-b border-slate-200 pb-4">
+              <button
+                onClick={() => setTaskSubMenu("upload")}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
+                  taskSubMenu === "upload"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <Upload size={18} /> Upload Tugas
+              </button>
+              <button
+                onClick={() => setTaskSubMenu("list")}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all ${
+                  taskSubMenu === "list"
+                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                    : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                <Eye size={18} /> Tugas Terkirim
+              </button>
+            </div>
+
+            {/* SUB-MENU 1: UPLOAD TUGAS */}
+            {taskSubMenu === "upload" && (
+              <form onSubmit={handleTaskSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Mata Pelajaran <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={taskMapel}
+                      onChange={(e) => setTaskMapel(e.target.value)}
+                      required
+                      className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
+                    >
+                      <option value="Matematika">Matematika</option>
+                      <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                      <option value="PKN">PKN</option>
+                      <option value="Bahasa Inggris">Bahasa Inggris</option>
+                      <option value="Informatika">Informatika</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
+                  </div>
+                </div>
+  <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Kelas <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={taskMapel}
+                      onChange={(e) => setTaskMapel(e.target.value)}
+                      required
+                      className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-bold text-slate-800 appearance-none cursor-pointer"
+                    >
+                      <option value="X A">X A</option>
+                      <option value="X B">X B</option>
+                      <option value="XI">XI</option>
+                      <option value="XII">XII</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
+                  </div>
+                </div>
+                {/* PILIHAN TUGAS 1 - 10 (GRID BUTTONS) */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Pilih Tugas <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-400 mb-3">Tugas yang sudah dikirim akan ditandai dan tidak bisa dipilih kembali.</p>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    {TASK_OPTIONS.map((item) => {
+                      const submitted = isTaskSubmitted(item)
+                      const isSelected = taskTitle === item
+
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          disabled={submitted}
+                          onClick={() => setTaskTitle(item)}
+                          className={`p-3 rounded-2xl border text-xs font-bold transition-all flex items-center justify-between gap-2 ${
+                            submitted
+                              ? "bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed"
+                              : isSelected
+                              ? "bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100"
+                              : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                          }`}
+                        >
+                          <span>{item}</span>
+                          {submitted ? (
+                            <CheckCircle2 size={14} className="text-slate-400 flex-shrink-0" />
+                          ) : isSelected ? (
+                            <Check size={14} className="text-white flex-shrink-0" />
+                          ) : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Deskripsi / Catatan Tugas
+                  </label>
+                  <textarea 
+                    value={taskDescription} 
+                    onChange={(e) => setTaskDescription(e.target.value)} 
+                    placeholder="Tuliskan deskripsi atau ringkasan tugas kamu di sini..." 
+                    className="w-full h-32 p-5 rounded-2xl bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-medium" 
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
+                    Unggah Berkas Tugas
+                  </label>
+                  <label className="flex flex-col items-center justify-center w-full min-h-[140px] p-6 border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors">
+                    {taskFile ? (
+                      <div className="flex items-center gap-3 text-indigo-600 font-bold text-sm">
+                        <Paperclip size={20} />
+                        <span className="truncate max-w-xs">{taskFile.name}</span>
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[9px] text-blue-400 font-semibold mb-1">Hubungkan Presentasi:</span>
-                        {!isSharing ? (
-                          <button onClick={startShareScreen} className="w-full py-1.5 bg-sky-600 hover:bg-sky-500 font-bold rounded text-[10px] text-white">Hubungkan Screen</button>
-                        ) : (
-                          <button onClick={stopShareScreen} className="w-full py-1.5 bg-red-950 text-red-400 border border-red-800 font-bold rounded text-[10px]">Putus Screen</button>
-                        )}
+                      <div className="flex flex-col items-center space-y-2 text-slate-400">
+                        <UploadCloud size={36} className="text-indigo-500" />
+                        <span className="text-xs font-bold text-slate-600">Pilih file untuk diunggah</span>
+                        <span className="text-[10px] text-slate-400">PNG, JPG, Bitmap</span>
                       </div>
                     )}
-                  </div>
+                    <input type="file" onChange={handleTaskFileChange} className="hidden" />
+                  </label>
                 </div>
 
-                {sourceMode === 'pdf-animation' && (
-                  <div className="bg-slate-950 p-2 rounded-xl border border-indigo-500/30 flex flex-col gap-2">
-                    <span className="text-[9px] text-indigo-400 font-bold uppercase px-0.5">🎨 Tema Latar:</span>
-                    <div className="grid grid-cols-2 gap-1">
-                      {STUDIO_THEMES.map((theme) => (
-                        <button
-                          key={theme.id}
-                          onClick={() => setActiveTheme(theme)}
-                          style={{ borderColor: activeTheme.id === theme.id ? theme.accentColor : "transparent" }}
-                          className={`p-1.5 rounded border text-[10px] font-semibold text-left transition-all bg-slate-900 hover:bg-slate-800 ${activeTheme.id === theme.id ? 'text-white border-2' : 'text-slate-400'}`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: `linear-gradient(135deg, ${theme.bgGradientStart}, ${theme.bgGradientEnd})` }} />
-                            <span className="truncate">{theme.name}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmittingTask || !taskTitle} 
+                  className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-base flex items-center justify-center gap-2 shadow-lg shadow-indigo-100 mt-4 transition-all disabled:opacity-50"
+                >
+                  {isSubmittingTask ? <Loader2 className="animate-spin" /> : "Kirim Tugas Sekarang"}
+                </Button>
+              </form>
+            )}
 
-                    <div className="border-t border-slate-800 pt-2 flex flex-col gap-1">
-                      <span className="text-[9px] text-slate-400 font-semibold">🖼️ Unggah Background:</span>
-                      <input type="file" accept="image/*" onChange={handleBgImageUpload} className="text-[9px] text-slate-400 cursor-pointer w-full" />
-                    </div>
+            {/* SUB-MENU 2: LIHAT TUGAS TERKIRIM */}
+            {taskSubMenu === "list" && (
+              <div className="space-y-4">
+                {loadingTasks ? (
+                  <div className="p-12 text-center text-indigo-500 font-bold flex items-center justify-center gap-2">
+                    <Loader2 className="animate-spin" /> Memuat data tugas...
                   </div>
-                )}
-
-                <div className="flex flex-col gap-2 border-b border-slate-800 pb-3">
-                  <label className="text-[9px] text-slate-400 font-bold uppercase">Kamera:</label>
-                  <select value={selectedCamera} onChange={(e) => handleCameraChange(e.target.value)} className="w-full py-1 px-2 bg-slate-950 text-slate-300 border border-slate-800 rounded text-[10px] font-medium focus:outline-none focus:border-blue-500 cursor-pointer">
-                    {videoDevices.map((device) => (
-                      <option key={device.deviceId} value={device.deviceId}>{device.label || `Kamera ${videoDevices.indexOf(device) + 1}`}</option>
-                    ))}
-                  </select>
-                  <button onClick={toggleCamera} className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all ${isCamOn ? "bg-emerald-600 text-white hover:bg-emerald-500" : "bg-red-950 border border-red-700 text-red-400 hover:bg-red-900"}`}>{isCamOn ? "📹 Kamera: LIVE" : "🚫 Kamera: OFF"}</button>
-                </div>
-
-                <button onClick={() => setShowWhiteboard(!showWhiteboard)} className={`py-2 px-2 rounded-lg font-semibold border text-[11px] flex items-center justify-center gap-1.5 ${showWhiteboard ? "bg-amber-600 border-amber-400 text-white" : "bg-slate-800 border-slate-700 text-slate-300"}`}>
-                  {showWhiteboard ? "Papan Tulis: AKTIF" : "✏️ Buka Papan Tulis"}
-                </button>
-
-                {showWhiteboard && (
-                  <div className="flex flex-col gap-1.5 bg-slate-950 p-2 rounded-lg border border-amber-500/30">
-                    <div className="flex gap-1 justify-center">
-                      <button onClick={() => setIsEraser(false)} className={`px-2 py-0.5 rounded text-[9px] font-bold ${!isEraser ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-400"}`}>Spidol</button>
-                      <button onClick={() => setIsEraser(true)} className={`px-2 py-0.5 rounded text-[9px] font-bold ${isEraser ? "bg-amber-500 text-slate-950" : "bg-slate-800 text-slate-400"}`}>Hapus</button>
-                    </div>
-                    <button onClick={() => whiteboardCanvasRef.current?.getContext("2d")?.clearRect(0, 0, 1280, 720)} className="w-full py-0.5 bg-red-950/40 text-red-400 text-[9px] rounded border border-red-900/30">Reset Halaman</button>
+                ) : submittedTasks.length === 0 ? (
+                  <div className="bg-white p-12 rounded-[2.5rem] text-center border border-slate-100 space-y-3">
+                    <AlertCircle className="mx-auto text-slate-300" size={48} />
+                    <p className="text-slate-500 font-medium">Belum ada tugas yang kamu kirimkan.</p>
                   </div>
-                )}
-
-                <div className="flex flex-col gap-2 flex-1">
-                  <div className="text-[10px] text-green-400 font-bold uppercase border-b border-slate-800 pb-1">🎬 Hasil Perekaman</div>
-                  {recordingsList.map((video) => {
-                    const isMp4 = video.blob.type.includes("mp4");
-                    const ext = isMp4 ? "mp4" : "webm";
-
-                    return (
-                      <div key={video.id} className="bg-slate-950 p-2 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[9px] text-slate-400 font-mono">Jam: {video.timestamp}</span>
-                          <button onClick={() => deleteRecording(video.id)} className="text-[10px] text-red-400 hover:text-red-500 font-bold px-1 rounded">🗑️ Hapus</button>
+                ) : (
+                  submittedTasks.map((item) => (
+                    <Card key={item.id} className="rounded-3xl bg-white border border-slate-100 shadow-sm p-6 lg:p-8">
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+                        <div>
+                          <span className="inline-block px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full mb-2">
+                            {item.mapel || "Umum"}
+                          </span>
+                          <h3 className="text-xl font-bold text-slate-800">{item.title}</h3>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Dikirim pada: {new Date(item.submitted_at || item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          </p>
                         </div>
-                        <video src={video.url} controls className="w-full aspect-video rounded bg-black" />
-                        <div className="grid grid-cols-3 gap-1 mt-0.5">
-                          <button onClick={() => uploadVideoToBackend(video)} className="py-1 bg-blue-600 hover:bg-blue-500 rounded font-bold text-[9px] text-white">☁️ Server</button>
-                          <button onClick={() => shareRecording(video)} className="py-1 bg-emerald-600 hover:bg-emerald-500 rounded font-bold text-[9px] text-white flex items-center justify-center gap-1">🔗 Bagikan</button>
-                          <a href={video.url} download={`Rekaman-${video.timestamp}.${ext}`} className="py-1 bg-purple-600 hover:bg-purple-500 rounded font-bold text-[9px] text-white text-center flex items-center justify-center">💾 Unduh</a>
+                        
+                        {/* Nilai */}
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase">Nilai</span>
+                            <span className="text-2xl font-black text-indigo-600">
+                              {item.score !== null && item.score !== undefined ? item.score : item.nilai ?? "-"}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {showWhiteboard && (
-            <div style={{ left: `${(wbPos.x / 1280) * 100}%`, top: `${(wbPos.y / 720) * 100}%`, width: `${(wbPos.w / 1280) * 100}%`, height: `${(wbPos.h / 720) * 100}%` }} className="absolute z-10 border-2 border-amber-500 bg-slate-900/90 rounded-xl overflow-hidden flex flex-col shadow-2xl">
-              <div onMouseDown={(e) => handleMouseDown("wb", e)} className="bg-amber-600/30 border-b border-amber-500/40 px-3 py-1 cursor-move text-[11px] text-amber-300 font-semibold">✋ Geser Papan Tulis</div>
-              <canvas ref={whiteboardCanvasRef} width={wbPos.w} height={wbPos.h} onMouseDown={startDrawing} onMouseUp={() => setIsDrawing(false)} onMouseMove={draw} onMouseLeave={() => setIsDrawing(false)} className="w-full h-full cursor-crosshair" />
-            </div>
-          )}
+                      {/* Deskripsi Tugas */}
+                      {item.description && (
+                        <div className="mb-4">
+                          <p className="text-xs font-bold text-slate-400 uppercase mb-1">Catatan Siswa:</p>
+                          <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-2xl">{item.description}</p>
+                        </div>
+                      )}
 
-          {/* Overlay Kamera Persegi Panjang Biasa (Lebih Besar) */}
-          <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: `${(CAM_WIDTH / 1280) * 100}%`, height: `${(CAM_HEIGHT / 720) * 100}%` }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
-            {isCamOn ? (
-              <div className="w-full h-full relative">
-                <video ref={webcamVideoRef} className="w-full h-full object-cover pointer-events-none rounded-2xl" autoPlay playsInline muted />
+                      {/* Feedback Pengajar */}
+                      <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+                        <div className="flex items-center gap-2 font-bold text-amber-800 text-xs uppercase mb-1">
+                          <CheckCircle2 size={16} className="text-amber-600" /> Feedback Pengajar
+                        </div>
+                        <p className="text-sm text-amber-900 font-medium">
+                          {item.feedback || item.comment || "Belum ada feedback dari pengajar."}
+                        </p>
+                      </div>
+                    </Card>
+                  ))
+                )}
               </div>
-            ) : (
-              <div className="text-center p-2 text-slate-500 text-[10px]">📷 Kamera Off</div>
             )}
           </div>
+        )}
 
-          <div className="absolute top-4 left-4 z-30">
-            {!recording ? (
-              <button onClick={startRecording} className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl text-xs flex items-center gap-2 transition hover:bg-red-500 shadow-md">🔴 Mulai Rekam MP4</button>
-            ) : (
-              <button onClick={() => { mediaRecorderRef.current?.stop(); setRecording(false); }} className="px-4 py-2 bg-slate-900 text-red-400 border border-red-500 font-bold rounded-xl text-xs transition hover:bg-slate-800">⏹ Selesai</button>
-            )}
+        {/* --- MENU SERTIFIKAT --- */}
+        {activeMenu === "certificates" && (
+          <div className="p-8 text-center text-slate-500">
+            Daftar sertifikat kamu.
           </div>
+        )}
 
-        </div>
-      </div>
-    </main>
-  );
+        <footer className="py-12 border-t mt-auto text-center">
+          <p className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.3em]">© 2026 MEJATIKA LMS — PLATFORM BELAJAR MODERN</p>
+        </footer>
+      </main>
+    </div>
+  )
 }
