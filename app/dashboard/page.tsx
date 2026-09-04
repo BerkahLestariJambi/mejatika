@@ -278,7 +278,7 @@ export default function StudentDashboard() {
     }
   }
 
-  // Submit Update Profil (Disesuaikan untuk POST /profile tanpa _method)
+  // Submit Update Profil (Mengarahkan ke /users/{id} dengan method _method: PUT)
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsUpdatingProfile(true)
@@ -286,6 +286,7 @@ export default function StudentDashboard() {
 
     try {
       const formData = new FormData()
+      formData.append("_method", "PUT")
       formData.append("name", profileName)
       formData.append("email", profileEmail)
       if (profilePassword) {
@@ -295,7 +296,7 @@ export default function StudentDashboard() {
         formData.append("photo", profilePhoto)
       }
 
-      const res = await fetch(`${API_URL}/profile`, {
+      const res = await fetch(`${API_URL}/users/${user.id}`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
