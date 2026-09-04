@@ -11,16 +11,14 @@ import { toast } from "sonner"
 
 // Daftar Pilihan Mata Pelajaran
 const MAPEL_OPTIONS = [
-  "Informatika / Pemrograman",
+  "Informatika",
   "Matematika",
   "Bahasa Indonesia",
   "Bahasa Inggris",
   "Fisika",
   "Kimia",
   "Biologi",
-  "Ekonomi / Akuntansi",
-  "Desain Grafis / DKV",
-  "Jaringan Komputer & Siber",
+  "Ekonomi",
 ]
 
 export default function MentorProfilePage() {
