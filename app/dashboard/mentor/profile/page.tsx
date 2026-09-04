@@ -64,7 +64,7 @@ export default function MentorProfilePage() {
         }
       } catch (error) {
         console.error("Gagal mengambil profil:", error)
-      } font-bold {
+      } finally {
         setFetching(false)
       }
     }
