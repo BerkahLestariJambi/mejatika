@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { 
   LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
   ChevronDown, Loader2, Zap, UploadCloud, Paperclip, Menu,
-  Upload, Eye, CheckCircle2, AlertCircle, Check, User as UserIcon, Camera
+  Upload, Eye, CheckCircle2, AlertCircle, Check, User as UserIcon, Camera,
+  Edit, X
 } from "lucide-react"
 import Swal from 'sweetalert2'
 
@@ -26,13 +27,22 @@ export default function StudentDashboard() {
   const [expandedCourse, setExpandedCourse] = useState<number | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // State Form Tugas
+  // State Form Tugas (Upload)
   const [taskTitle, setTaskTitle] = useState("Tugas 1")
   const [taskMapel, setTaskMapel] = useState("Matematika")
   const [taskDescription, setTaskDescription] = useState("")
   const [taskKelas, setTaskKelas] = useState("X A")
   const [taskFile, setTaskFile] = useState<File | null>(null)
   const [isSubmittingTask, setIsSubmittingTask] = useState(false)
+
+  // State Edit Tugas
+  const [editingTask, setEditingTask] = useState<any | null>(null)
+  const [editTaskTitle, setEditTaskTitle] = useState("")
+  const [editTaskMapel, setEditTaskMapel] = useState("")
+  const [editTaskKelas, setEditTaskKelas] = useState("")
+  const [editTaskDescription, setEditTaskDescription] = useState("")
+  const [editTaskFile, setEditTaskFile] = useState<File | null>(null)
+  const [isUpdatingTask, setIsUpdatingTask] = useState(false)
 
   // State Daftar Tugas Terkirim
   const [submittedTasks, setSubmittedTasks] = useState<any[]>([])
@@ -54,6 +64,11 @@ export default function StudentDashboard() {
   const handleTaskFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null
     setTaskFile(file)
+  }
+
+  const handleEditTaskFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null
+    setEditTaskFile(file)
   }
 
   // Handle Perubahan Input Foto Profil
@@ -91,7 +106,7 @@ export default function StudentDashboard() {
       setMyCertificates(Array.isArray(dataCert) ? dataCert : dataCert.data || [])
     } catch (err) { 
       console.error("Fetch Error:", err) 
-    } fontinally { 
+    } finally { 
       setLoading(false) 
     }
   }, [router])
@@ -155,7 +170,7 @@ export default function StudentDashboard() {
     }
   }, [taskMapel, submittedTasks])
 
-  // Submit Tugas
+  // Submit Tugas Baru
   const handleTaskSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -208,6 +223,61 @@ export default function StudentDashboard() {
     }
   }
 
+  // Buka Modal Edit Tugas
+  const handleOpenEditModal = (task: any) => {
+    setEditingTask(task)
+    setEditTaskTitle(task.title || "Tugas 1")
+    setEditTaskMapel(task.mapel || "Matematika")
+    setEditTaskKelas(task.kelas || "X A")
+    setEditTaskDescription(task.description || "")
+    setEditTaskFile(null)
+  }
+
+  // Simpan Perubahan Edit Tugas
+  const handleUpdateTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTask) return
+
+    setIsUpdatingTask(true)
+    const token = localStorage.getItem("token")
+
+    try {
+      const formData = new FormData()
+      formData.append("_method", "PUT")
+      formData.append("title", editTaskTitle)
+      formData.append("mapel", editTaskMapel)
+      formData.append("kelas", editTaskKelas)
+      formData.append("description", editTaskDescription)
+
+      if (editTaskFile) {
+        formData.append("file_path", editTaskFile)
+        formData.append("file", editTaskFile)
+      }
+
+      const res = await fetch(`${API_URL}/tasks/${editingTask.id}`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Accept": "application/json"
+        },
+        body: formData
+      })
+
+      if (res.ok) {
+        Swal.fire("Berhasil!", "Tugas berhasil diperbarui.", "success")
+        setEditingTask(null)
+        await fetchSubmittedTasks()
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        throw new Error(errData.message || "Gagal memperbarui tugas.")
+      }
+    } catch (err: any) {
+      Swal.fire("Gagal", err.message || "Terjadi kesalahan saat memperbarui tugas.", "error")
+    } finally {
+      setIsUpdatingTask(false)
+    }
+  }
+
   // Submit Update Profil
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -216,7 +286,7 @@ export default function StudentDashboard() {
 
     try {
       const formData = new FormData()
-      formData.append("_method", "PUT") // Laravel spoofing method untuk upload multipart/form-data
+      formData.append("_method", "PUT")
       formData.append("name", profileName)
       formData.append("email", profileEmail)
       if (profilePassword) {
@@ -227,7 +297,7 @@ export default function StudentDashboard() {
       }
 
       const res = await fetch(`${API_URL}/users/${user.id}`, {
-        method: "POST", // Menggunakan POST dengan _method: PUT agar mendukung berkas foto
+        method: "POST",
         headers: {
           "Authorization": `Bearer ${token}`,
           "Accept": "application/json"
@@ -358,7 +428,7 @@ export default function StudentDashboard() {
           <div className="space-y-8 animate-in fade-in duration-500 max-w-4xl">
             <div>
               <h2 className="text-3xl font-bold text-slate-800">Pengelolaan Tugas</h2>
-              <p className="text-slate-500 font-medium">Kirim tugas atau cek nilai & feedback dari pengajar.</p>
+              <p className="text-slate-500 font-medium">Kirim tugas, edit submission, atau cek nilai & feedback pengajar.</p>
             </div>
 
             {/* TAB SUB-MENU TUGAS */}
@@ -429,7 +499,6 @@ export default function StudentDashboard() {
                   </div>
                 </div>
 
-                {/* PILIHAN TUGAS 1 - 10 (GRID BUTTONS) */}
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                     Pilih Tugas <span className="text-red-500">*</span>
@@ -536,8 +605,14 @@ export default function StudentDashboard() {
                           </p>
                         </div>
                         
-                        {/* Nilai */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => handleOpenEditModal(item)}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-xl text-xs font-bold transition-all border border-amber-200"
+                          >
+                            <Edit size={14} /> Edit Tugas
+                          </button>
+
                           <div className="text-right">
                             <span className="block text-[10px] font-bold text-slate-400 uppercase">Nilai</span>
                             <span className="text-2xl font-black text-indigo-600">
@@ -547,7 +622,6 @@ export default function StudentDashboard() {
                         </div>
                       </div>
 
-                      {/* Deskripsi Tugas */}
                       {item.description && (
                         <div className="mb-4">
                           <p className="text-xs font-bold text-slate-400 uppercase mb-1">Catatan Siswa:</p>
@@ -555,7 +629,6 @@ export default function StudentDashboard() {
                         </div>
                       )}
 
-                      {/* Feedback Pengajar */}
                       <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
                         <div className="flex items-center gap-2 font-bold text-amber-800 text-xs uppercase mb-1">
                           <CheckCircle2 size={16} className="text-amber-600" /> Feedback Pengajar
@@ -569,6 +642,104 @@ export default function StudentDashboard() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* MODAL EDIT TUGAS */}
+        {editingTask && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-xl rounded-[2.5rem] p-8 lg:p-10 shadow-2xl relative animate-in fade-in zoom-in duration-200">
+              <button 
+                onClick={() => setEditingTask(null)}
+                className="absolute top-6 right-6 p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all"
+              >
+                <X size={20} />
+              </button>
+
+              <h3 className="text-2xl font-bold text-slate-800 mb-1">Edit Tugas</h3>
+              <p className="text-xs text-slate-400 mb-6">Perbarui informasi atau ganti berkas tugas yang telah diunggah.</p>
+
+              <form onSubmit={handleUpdateTask} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Mata Pelajaran</label>
+                  <select
+                    value={editTaskMapel}
+                    onChange={(e) => setEditTaskMapel(e.target.value)}
+                    required
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                  >
+                    <option value="Matematika">Matematika</option>
+                    <option value="Bahasa Indonesia">Bahasa Indonesia</option>
+                    <option value="PKN">PKN</option>
+                    <option value="Bahasa Inggris">Bahasa Inggris</option>
+                    <option value="Informatika">Informatika</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Kelas</label>
+                  <select
+                    value={editTaskKelas}
+                    onChange={(e) => setEditTaskKelas(e.target.value)}
+                    required
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                  >
+                    <option value="X A">X A</option>
+                    <option value="X B">X B</option>
+                    <option value="XI">XI</option>
+                    <option value="XII">XII</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Judul Tugas</label>
+                  <input
+                    type="text"
+                    value={editTaskTitle}
+                    onChange={(e) => setEditTaskTitle(e.target.value)}
+                    required
+                    className="w-full p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-bold text-slate-800"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Deskripsi / Catatan</label>
+                  <textarea
+                    value={editTaskDescription}
+                    onChange={(e) => setEditTaskDescription(e.target.value)}
+                    className="w-full h-28 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-sm font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-2 uppercase">Ganti Berkas (Opsional)</label>
+                  <label className="flex items-center gap-3 p-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors">
+                    <Paperclip size={18} className="text-indigo-600" />
+                    <span className="text-xs font-bold text-slate-600 truncate">
+                      {editTaskFile ? editTaskFile.name : "Pilih berkas baru jika ingin mengganti"}
+                    </span>
+                    <input type="file" onChange={handleEditTaskFileChange} className="hidden" />
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTask(null)}
+                    className="flex-1 h-14 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all text-sm"
+                  >
+                    Batal
+                  </button>
+                  <Button
+                    type="submit"
+                    disabled={isUpdatingTask}
+                    className="flex-1 h-14 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-indigo-100 transition-all text-sm"
+                  >
+                    {isUpdatingTask ? <Loader2 className="animate-spin" /> : "Simpan Perubahan"}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -588,8 +759,6 @@ export default function StudentDashboard() {
             </div>
 
             <form onSubmit={handleProfileSubmit} className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-6">
-              
-              {/* Unggah Foto Profil */}
               <div className="flex flex-col items-center gap-4">
                 <div className="relative">
                   <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-100 border-4 border-white shadow-lg flex items-center justify-center">
@@ -614,7 +783,6 @@ export default function StudentDashboard() {
                 <p className="text-xs text-slate-400">Format: JPG, PNG, WEBP (Maks. 2MB)</p>
               </div>
 
-              {/* Nama Lengkap */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                   Nama Lengkap <span className="text-red-500">*</span>
@@ -628,7 +796,6 @@ export default function StudentDashboard() {
                 />
               </div>
 
-              {/* Email */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                   Alamat Email <span className="text-red-500">*</span>
@@ -642,7 +809,6 @@ export default function StudentDashboard() {
                 />
               </div>
 
-              {/* Password Baru */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-2 uppercase tracking-wider">
                   Password Baru <span className="text-slate-400 font-normal">(Kosongkan jika tidak diubah)</span>
