@@ -167,7 +167,7 @@ export default function StudioHybridPresenter() {
 
   // Otomatis putar voice saat berpindah slide dalam mode 'pdf-animation'
   useEffect(() => {
-    if (sourceMode === 'pdf-animation') {
+    if (sourceMode === 'pdf') {
       triggerTextAnimation();
       playCurrentSlideVoice();
     } else {
