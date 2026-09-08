@@ -77,19 +77,13 @@ export default function StudioHybridPresenter() {
   const [textSlideIndex, setTextSlideIndex] = useState<number>(0);
   const textAnimProgress = useRef<number>(0);
 
-  // --- REVISI PERBAIKAN FITUR VOICE (TEXT-TO-SPEECH) ---
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
   const speakText = (text: string) => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-      alert("Browser Anda tidak mendukung fitur pembaca suara.");
-      return;
-    }
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
-    // Paksa hentikan suara sebelumnya
     window.speechSynthesis.cancel();
 
-    // Bersihkan teks dari simbol aneh hasil ekstraksi PDF
     const cleanText = text.replace(/[\r\n]+/g, ' ').replace(/[^\w\s.,?!áéíóúÁÉÍÓÚñÑ-]/gi, ' ').trim();
 
     if (!cleanText) return;
@@ -101,12 +95,8 @@ export default function StudioHybridPresenter() {
 
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = (e) => {
-      console.error("Speech error:", e);
-      setIsSpeaking(false);
-    };
+    utterance.onerror = () => setIsSpeaking(false);
 
-    // Trik pemicu agar tidak tertahan oleh Autoplay Policy browser
     setTimeout(() => {
       window.speechSynthesis.speak(utterance);
     }, 100);
@@ -165,9 +155,8 @@ export default function StudioHybridPresenter() {
     textAnimProgress.current = 0;
   };
 
-  // Otomatis putar voice saat berpindah slide dalam mode 'pdf-animation'
   useEffect(() => {
-    if (sourceMode === 'pdf') {
+    if (sourceMode === 'pdf-animation') {
       triggerTextAnimation();
       playCurrentSlideVoice();
     } else {
@@ -600,7 +589,6 @@ export default function StudioHybridPresenter() {
     } else {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
         navigator.clipboard.writeText(videoItem.url);
-        alert("Browser tidak mendukung Web Share. Tautan internal disalin!");
       }
     }
   };
@@ -620,7 +608,7 @@ export default function StudioHybridPresenter() {
     }
   };
 
-  // --- PEMBAHARUAN EKSTRAKSI DOKUMEN & OTOMATIS SUARA ---
+  // --- LOGIK BARU PENANGANAN UPLOAD PDF (TANPA PESAN ERROR UNTUK GAMBAR) ---
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -639,7 +627,6 @@ export default function StudioHybridPresenter() {
         const page = await pdf.getPage(i);
         const textContent = await page.getTextContent();
         
-        // Bersihkan teks per kata
         const lines: string[] = textContent.items
           .map((item: any) => item.str ? item.str.trim() : "")
           .filter((str: string) => str.length > 0);
@@ -658,23 +645,21 @@ export default function StudioHybridPresenter() {
         }
       }
 
+      // Jika ada teks digital, pindah ke Mode Animasi Teks.
+      // Jika TIDAK ADA teks (file berupa gambar/scan), pindah otomatis ke Mode Render PDF Visual standar tanpa pesan alert.
       if (extractedSlides.length > 0) {
         setAnimatedSlides(extractedSlides);
         setTextSlideIndex(0);
-        
-        // Pindah otomatis ke Mode Teks dan Putar Voice Suara
         setSourceMode('pdf-animation');
         setTimeout(() => {
           const firstSlide = extractedSlides[0];
           speakText(`${firstSlide.title}. ${firstSlide.subtitle}. ${firstSlide.bullets.join(". ")}`);
         }, 300);
       } else {
-        alert("Dokumen PDF ini berisi gambar/scanned dan tidak memiliki teks yang bisa dibaca.");
         setSourceMode('pdf');
       }
     } catch (err) {
       console.error("Gagal memproses dokumen PDF:", err);
-      alert("Gagal membaca file PDF.");
     }
   };
 
@@ -797,10 +782,7 @@ export default function StudioHybridPresenter() {
         const finalType = isMp4 ? "video/mp4" : "video/webm";
         const blob = new Blob(chunksRef.current, { type: finalType });
 
-        if (blob.size < 1000) {
-          alert("Gagal menyimpan: Hasil rekaman kosong.");
-          return;
-        }
+        if (blob.size < 1000) return;
 
         const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         const recordId = `rec-${Date.now()}`;
@@ -822,7 +804,6 @@ export default function StudioHybridPresenter() {
       setRecording(true);
     } catch (err) {
       console.error("Gagal memulai rekaman:", err);
-      alert("Gagal memulai rekaman. Pastikan izin kamera & mic aktif.");
     }
   };
 
@@ -854,7 +835,6 @@ export default function StudioHybridPresenter() {
               <span className="text-[11px] font-mono font-semibold text-indigo-400">Slide {textSlideIndex + 1} / {animatedSlides.length}</span>
               <button onClick={triggerTextAnimation} className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded-lg text-[10px] font-bold">🔄 Replay</button>
               
-              {/* Tombol Suara Voice Reader */}
               {!isSpeaking ? (
                 <button onClick={playCurrentSlideVoice} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-[10px] font-bold">🔊 Putar Voice</button>
               ) : (
