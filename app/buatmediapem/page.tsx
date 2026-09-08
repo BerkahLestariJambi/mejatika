@@ -79,6 +79,10 @@ export default function StudioHybridPresenter() {
 
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
 
+  // Audio Context Ref untuk mixing suara mic & sistem
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+
   const speakText = (text: string) => {
     if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
@@ -198,6 +202,9 @@ export default function StudioHybridPresenter() {
 
     return () => {
       stopVoice();
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+      }
     };
   }, []);
 
@@ -348,7 +355,7 @@ export default function StudioHybridPresenter() {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: { displaySurface: "window" },
-        audio: false
+        audio: true // Merekam audio sistem/tab jika ada
       });
       screenStreamRef.current = stream;
       if (screenVideoRef.current) screenVideoRef.current.srcObject = stream;
@@ -608,7 +615,6 @@ export default function StudioHybridPresenter() {
     }
   };
 
-  // --- LOGIK BARU PENANGANAN UPLOAD PDF (TANPA PESAN ERROR UNTUK GAMBAR) ---
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -645,8 +651,6 @@ export default function StudioHybridPresenter() {
         }
       }
 
-      // Jika ada teks digital, pindah ke Mode Animasi Teks.
-      // Jika TIDAK ADA teks (file berupa gambar/scan), pindah otomatis ke Mode Render PDF Visual standar tanpa pesan alert.
       if (extractedSlides.length > 0) {
         setAnimatedSlides(extractedSlides);
         setTextSlideIndex(0);
@@ -719,6 +723,7 @@ export default function StudioHybridPresenter() {
     }
   };
 
+  // --- FUNGSI PEREKAMAN AUDIO & VIDEO YANG DIPERBAIKI ---
   const startRecording = async () => {
     try {
       chunksRef.current = [];
@@ -737,14 +742,33 @@ export default function StudioHybridPresenter() {
       const canvasStream = mainCanvas.captureStream(30);
       const outputStream = new MediaStream();
 
+      // Masukkan video track
       canvasStream.getVideoTracks().forEach((track) => outputStream.addTrack(track));
 
+      // Setup Audio Mixer lewat Web Audio API
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      const dest = audioCtx.createMediaStreamDestination();
+      audioContextRef.current = audioCtx;
+      audioDestinationRef.current = dest;
+
+      // 1. Ambil Mic
       try {
-        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        audioStream.getAudioTracks().forEach((track) => outputStream.addTrack(track));
+        const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micSource = audioCtx.createMediaStreamSource(micStream);
+        micSource.connect(dest);
       } catch (err) {
-        console.warn("Merekam tanpa suara audio mic.");
+        console.warn("Mikrofon tidak terdeteksi/diizinkan.");
       }
+
+      // 2. Ambil Screen Share Audio (jika ada)
+      if (screenStreamRef.current && screenStreamRef.current.getAudioTracks().length > 0) {
+        const screenAudioSource = audioCtx.createMediaStreamSource(screenStreamRef.current);
+        screenAudioSource.connect(dest);
+      }
+
+      // Gabungkan audio yang sudah ter-mix ke output stream utama
+      dest.stream.getAudioTracks().forEach((track) => outputStream.addTrack(track));
 
       const supportedMimeTypes = [
         "video/mp4;codecs=h264,aac",
