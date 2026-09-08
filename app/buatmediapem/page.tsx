@@ -77,6 +77,41 @@ export default function StudioHybridPresenter() {
   const [textSlideIndex, setTextSlideIndex] = useState<number>(0);
   const textAnimProgress = useRef<number>(0);
 
+  // --- STATE & REF UNTUK VOICE (TEXT-TO-SPEECH) ---
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+
+  const speakText = (text: string) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+
+    window.speechSynthesis.cancel(); // Hentikan suara yang sedang berjalan
+
+    if (!text.trim()) return;
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "id-ID"; // Bahasa Indonesia
+    utterance.rate = 0.9;     // Kecepatan narasi
+
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopVoice = () => {
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const playCurrentSlideVoice = () => {
+    const slide = animatedSlides[textSlideIndex];
+    if (!slide) return;
+    const fullTextToRead = `${slide.title}. ${slide.subtitle}. ${slide.bullets.join(". ")}`;
+    speakText(fullTextToRead);
+  };
+
   const [isSharing, setIsSharing] = useState(false);
   const screenStreamRef = useRef<MediaStream | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -92,7 +127,6 @@ export default function StudioHybridPresenter() {
   const [wbPos, setWbPos] = useState({ x: 50, y: 120, w: 560, h: 360 });
   const [isDraggingWb, setIsDraggingWb] = useState(false);
 
-  // Ukuran kamera diperbesar menjadi 320x240
   const CAM_WIDTH = 320;
   const CAM_HEIGHT = 240;
   const [camPos, setCamPos] = useState({ x: 920, y: 430 });
@@ -116,9 +150,13 @@ export default function StudioHybridPresenter() {
     textAnimProgress.current = 0;
   };
 
+  // Otomatis putar voice saat ganti slide animasi
   useEffect(() => {
     if (sourceMode === 'pdf-animation') {
       triggerTextAnimation();
+      playCurrentSlideVoice();
+    } else {
+      stopVoice();
     }
   }, [textSlideIndex, animatedSlides, sourceMode]);
 
@@ -153,6 +191,10 @@ export default function StudioHybridPresenter() {
         };
       };
     }
+
+    return () => {
+      stopVoice();
+    };
   }, []);
 
   useEffect(() => {
@@ -343,7 +385,6 @@ export default function StudioHybridPresenter() {
     };
   };
 
-  // Main Render Loop Canvas
   useEffect(() => {
     const mainCanvas = mainCanvasRef.current;
     if (!mainCanvas) return;
@@ -354,7 +395,6 @@ export default function StudioHybridPresenter() {
       if (!ctx || !mainCanvas) return;
       ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
 
-      // --- 1. RENDER MATERI ---
       if (sourceMode === 'pdf' && pdfCanvasRef.current && pdfDoc) {
         ctx.fillStyle = "#1e293b";
         ctx.fillRect(0, 0, 1280, 720);
@@ -434,22 +474,18 @@ export default function StudioHybridPresenter() {
         ctx.fillText("Silakan unggah dokumen PDF atau hubungkan PPT Anda di panel kanan", 640, 360);
       }
 
-      // --- 2. RENDER PAPAN TULIS ---
       if (showWhiteboard && whiteboardCanvasRef.current) {
         ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
         ctx.fillRect(wbPosRef.current.x, wbPosRef.current.y, wbPosRef.current.w, wbPosRef.current.h);
         ctx.drawImage(whiteboardCanvasRef.current, wbPosRef.current.x, wbPosRef.current.y, wbPosRef.current.w, wbPosRef.current.h);
       }
 
-      // --- 3. RENDER KAMERA PERSEGI PANJANG BIASA (LEBIH BESAR) ---
       if (webcamVideoRef.current && isCamOn && webcamVideoRef.current.readyState >= 2) {
         const camX = camPosRef.current.x;
         const camY = camPosRef.current.y;
-        const radius = 16; // Sudut rounded
+        const radius = 16;
 
         ctx.save();
-        
-        // Buat path rounded rectangle untuk video
         ctx.beginPath();
         ctx.moveTo(camX + radius, camY);
         ctx.lineTo(camX + CAM_WIDTH - radius, camY);
@@ -466,7 +502,6 @@ export default function StudioHybridPresenter() {
         ctx.drawImage(webcamVideoRef.current, camX, camY, CAM_WIDTH, CAM_HEIGHT);
         ctx.restore();
 
-        // Border Biru Kamera Rounded
         ctx.save();
         ctx.beginPath();
         ctx.moveTo(camX + radius, camY);
@@ -486,7 +521,6 @@ export default function StudioHybridPresenter() {
         ctx.restore();
       }
 
-      // --- 4. RENDER FOOTER HAK CIPTA ---
       const footerH = 36;
       ctx.fillStyle = "#020617";
       ctx.fillRect(0, 720 - footerH, 1280, footerH);
@@ -792,6 +826,14 @@ export default function StudioHybridPresenter() {
               <button onClick={() => setTextSlideIndex(p => Math.max(0, p - 1))} disabled={textSlideIndex === 0} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">◀ Prev</button>
               <span className="text-[11px] font-mono font-semibold text-indigo-400">Slide {textSlideIndex + 1} / {animatedSlides.length}</span>
               <button onClick={triggerTextAnimation} className="px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded-lg text-[10px] font-bold">🔄 Replay</button>
+              
+              {/* Tombol Suara Voice Reader */}
+              {!isSpeaking ? (
+                <button onClick={playCurrentSlideVoice} className="px-2 py-1 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-[10px] font-bold">🔊 Putar Voice</button>
+              ) : (
+                <button onClick={stopVoice} className="px-2 py-1 bg-red-600 hover:bg-red-500 rounded-lg text-[10px] font-bold">⏹️ Stop Voice</button>
+              )}
+
               <button onClick={() => setTextSlideIndex(p => Math.min(animatedSlides.length - 1, p + 1))} disabled={textSlideIndex === animatedSlides.length - 1} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 rounded-lg text-[11px]">Next ▶</button>
             </div>
           )}
@@ -913,7 +955,6 @@ export default function StudioHybridPresenter() {
             </div>
           )}
 
-          {/* Overlay Kamera Persegi Panjang Biasa (Lebih Besar) */}
           <div onMouseDown={(e) => handleMouseDown("cam", e)} style={{ left: `${(camPos.x / 1280) * 100}%`, top: `${(camPos.y / 720) * 100}%`, width: `${(CAM_WIDTH / 1280) * 100}%`, height: `${(CAM_HEIGHT / 720) * 100}%` }} className="absolute z-20 cursor-move border-2 border-sky-400 rounded-2xl overflow-hidden shadow-2xl bg-slate-950 flex flex-col justify-center items-center">
             {isCamOn ? (
               <div className="w-full h-full relative">
