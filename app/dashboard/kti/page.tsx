@@ -228,6 +228,16 @@ export default function KtiDashboardPage() {
       const resData = await response.json();
       if (response.ok) {
         Swal.fire({ icon: 'success', title: `Bab ${num} Berhasil Diulas!`, text: 'Catatan & status telah diperbarui.' });
+        // Update data siswa lokal agar feedback langsung tampil seketika
+        if (selectedStudent && selectedStudent.chapters) {
+          const updatedChapters = selectedStudent.chapters.map((ch: any) => {
+            if (ch.chapter_number === num) {
+              return { ...ch, status: chapterForm.status, teacher_feedback: chapterForm.teacher_feedback };
+            }
+            return ch;
+          });
+          setSelectedStudent({ ...selectedStudent, chapters: updatedChapters });
+        }
         fetchDashboardData();
       } else {
         Swal.fire({ icon: 'error', title: 'Gagal Mengirim', text: resData.message || "Gagal mengirim ulasan." });
@@ -340,13 +350,22 @@ export default function KtiDashboardPage() {
                     {[1, 2, 3, 4, 5].map((num) => {
                       const ch = dataKti?.chapters?.find((c: any) => c.chapter_number === num);
                       return (
-                        <div key={num} className="p-4 rounded-xl border bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div>
-                            <h4 className="font-semibold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h4>
-                            {ch?.file_path && <a href={`https://backend.mejatika.com/storage/${ch.file_path}`} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 block mt-1">📂 Unduh Berkas</a>}
-                            {ch?.teacher_feedback && <div className="mt-2 text-xs bg-amber-50 text-amber-900 p-2 rounded"><strong>Catatan Mentor:</strong> {ch.teacher_feedback}</div>}
+                        <div key={num} className="p-4 rounded-xl border bg-white flex flex-col gap-3 shadow-sm">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                              <h4 className="font-semibold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h4>
+                              {ch?.file_path && <a href={`https://backend.mejatika.com/storage/${ch.file_path}`} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 block mt-1">📂 Unduh Berkas</a>}
+                            </div>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold self-start md:self-auto ${getStatusBadge(ch?.status)}`}>{ch ? translateStatus(ch.status) : 'Belum Diupload'}</span>
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(ch?.status)}`}>{ch ? translateStatus(ch.status) : 'Belum Diupload'}</span>
+
+                          {/* TAMPILAN FEEDBACK DISINI (SISI SISWA) */}
+                          {ch?.teacher_feedback && (
+                            <div className="mt-1 text-xs bg-amber-50 text-amber-900 p-3 rounded-xl border border-amber-200">
+                              <p className="font-bold text-amber-950 flex items-center gap-1 mb-1">💬 Catatan Koreksi Guru Pembimbing (Bab {num}):</p>
+                              <p className="leading-relaxed font-medium">{ch.teacher_feedback}</p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -404,19 +423,31 @@ export default function KtiDashboardPage() {
                           const fileUrl = ch?.file_path ? `https://backend.mejatika.com/storage/${ch.file_path}` : null;
                           const isPdf = fileUrl?.toLowerCase().endsWith('.pdf');
 
-                          const currentReview = chapterReviews[num] || { status: ch?.status || 'approved', teacher_feedback: ch?.teacher_feedback || '' };
+                          const currentReview = chapterReviews[num] || { 
+                            status: ch?.status || 'approved', 
+                            teacher_feedback: ch?.teacher_feedback || '' 
+                          };
 
                           return (
                             <div key={num} className="p-5 border rounded-xl bg-white flex flex-col gap-4 shadow-sm">
                               <div className="flex flex-col md:flex-row justify-between items-start gap-4 border-b pb-4">
-                                <div className="flex-1">
+                                <div className="flex-1 space-y-2">
                                   <h5 className="font-bold text-base text-slate-900">Bab {num}: {getChapterName(num)}</h5>
                                   <p className="text-xs text-slate-400">Versi: {ch?.current_version || 'Belum Diunggah'}</p>
-                                  {fileUrl && <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold block mt-1">📥 Unduh File Siswa</a>}
-                                  {ch?.student_note && <p className="text-xs text-slate-500 mt-1 italic">"Pesan siswa: {ch.student_note}"</p>}
-                                  <span className={`inline-block mt-2 px-2.5 py-1 rounded text-xs font-bold ${getStatusBadge(ch?.status)}`}>
+                                  {fileUrl && <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold block">📥 Unduh File Siswa</a>}
+                                  {ch?.student_note && <p className="text-xs text-slate-500 italic">"Pesan siswa: {ch.student_note}"</p>}
+                                  
+                                  <span className={`inline-block px-2.5 py-1 rounded text-xs font-bold ${getStatusBadge(ch?.status)}`}>
                                     Status Saat Ini: {ch ? translateStatus(ch.status) : 'Belum Ada Berkas'}
                                   </span>
+
+                                  {/* DISPLAY RIWAYAT FEEDBACK DI BAWAH DETAIL BAB (SISI GURU) */}
+                                  {ch?.teacher_feedback && (
+                                    <div className="mt-2 text-xs bg-amber-50 text-amber-900 p-3 rounded-xl border border-amber-200">
+                                      <p className="font-bold text-amber-950 flex items-center gap-1 mb-1">💬 Catatan Koreksi Aktif (Bab {num}):</p>
+                                      <p className="leading-relaxed font-medium">{ch.teacher_feedback}</p>
+                                    </div>
+                                  )}
                                 </div>
                                 
                                 {/* FORM PENILAIAN REVISI / ACC PER BAB */}
@@ -425,7 +456,7 @@ export default function KtiDashboardPage() {
                                     <form onSubmit={(e) => handleReviewKtiPerChapter(e, ch.id, num)} className="space-y-2">
                                       <p className="font-bold text-indigo-900">Form Koreksi Bab {num}</p>
                                       <div>
-                                        <label className="block font-semibold mb-1">Keputusan Evaluation</label>
+                                        <label className="block font-semibold mb-1">Keputusan Evaluasi</label>
                                         <select 
                                           className="w-full p-2 border rounded bg-white text-xs font-medium"
                                           value={currentReview.status} 
@@ -443,7 +474,7 @@ export default function KtiDashboardPage() {
                                         <textarea 
                                           className="w-full p-2 border rounded bg-white text-xs" 
                                           rows={3} 
-                                          placeholder={`Tulis masukan untuk Bab ${num}...`} 
+                                          placeholder={`Tulis masukan instruksi untuk Bab ${num}...`} 
                                           value={currentReview.teacher_feedback} 
                                           onChange={(e) => setChapterReviews({
                                             ...chapterReviews,
@@ -471,7 +502,6 @@ export default function KtiDashboardPage() {
                                   </div>
                                   <div className="w-full bg-slate-200">
                                     {isPdf ? (
-                                      /* PDF PREVIEW WITH INDEPENDENT INTERNAL SCROLL */
                                       <div className="w-full h-[550px] overflow-hidden">
                                         <iframe 
                                           src={`${fileUrl}#toolbar=1`} 
@@ -480,7 +510,6 @@ export default function KtiDashboardPage() {
                                         />
                                       </div>
                                     ) : (
-                                      /* DOCX PREVIEW WITH INDEPENDENT INTERNAL SCROLL */
                                       <div className="relative">
                                         {docxLoading && <div className="p-4 text-center text-xs font-bold">Memuat Preview Word...</div>}
                                         {docxError && <div className="p-4 text-center text-xs text-red-500">{docxError}</div>}
