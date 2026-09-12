@@ -248,10 +248,56 @@ export default function KtiDashboardPage() {
     }
   };
 
-  // Handler Cetak PDF Utuh
-  const handleExportFullPdf = (thesisId: number | string) => {
+  // Handler Cetak PDF Utuh (FIX: Unauthenticated Error)
+  const handleExportFullPdf = async (thesisId: number | string) => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
-    window.open(`${API_URL}/kti/${thesisId}/export-full?token=${token}`, '_blank');
+    
+    if (!token) {
+      Swal.fire({ icon: 'error', title: 'Sesi Berakhir', text: 'Silakan login kembali.' });
+      return;
+    }
+
+    Swal.fire({
+      title: 'Menyiapkan PDF...',
+      text: 'Mohon tunggu sebentar',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    try {
+      const response = await fetch(`${API_URL}/kti/${thesisId}/export-full`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/pdf'
+        }
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.message || `Gagal mengunduh PDF (Status ${response.status})`);
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `KTI_Full_Thesis_${thesisId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+      Swal.close();
+    } catch (error: any) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Gagal Ekspor PDF',
+        text: error?.message || 'Terjadi kesalahan saat mengunduh file PDF.'
+      });
+    }
   };
 
   const renderDocxPreview = async (fileUrl: string, chapterNumber: number) => {
