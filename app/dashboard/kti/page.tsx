@@ -228,7 +228,6 @@ export default function KtiDashboardPage() {
       const resData = await response.json();
       if (response.ok) {
         Swal.fire({ icon: 'success', title: `Bab ${num} Berhasil Diulas!`, text: 'Catatan & status telah diperbarui.' });
-        // Update data siswa lokal agar feedback langsung tampil seketika
         if (selectedStudent && selectedStudent.chapters) {
           const updatedChapters = selectedStudent.chapters.map((ch: any) => {
             if (ch.chapter_number === num) {
@@ -247,6 +246,12 @@ export default function KtiDashboardPage() {
     } finally {
       setReviewingId(null);
     }
+  };
+
+  // Handler Cetak PDF Utuh
+  const handleExportFullPdf = (thesisId: number | string) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
+    window.open(`${API_URL}/kti/${thesisId}/export-full?token=${token}`, '_blank');
   };
 
   const renderDocxPreview = async (fileUrl: string, chapterNumber: number) => {
@@ -341,9 +346,19 @@ export default function KtiDashboardPage() {
               {isRegistered && isStudentRole && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-white p-5 rounded-xl border shadow-sm">
-                      <h2 className="text-lg font-bold text-slate-900">{dataKti?.title}</h2>
-                      <p className="text-xs text-slate-400">Pembimbing: {dataKti?.teacher?.name}</p>
+                    <div className="bg-white p-5 rounded-xl border shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-lg font-bold text-slate-900">{dataKti?.title}</h2>
+                        <p className="text-xs text-slate-400">Pembimbing: {dataKti?.teacher?.name}</p>
+                      </div>
+                      {dataKti?.id && (
+                        <button
+                          onClick={() => handleExportFullPdf(dataKti.id)}
+                          className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2 self-start md:self-auto"
+                        >
+                          📄 Cetak KTI Full PDF
+                        </button>
+                      )}
                     </div>
 
                     <h3 className="font-bold text-slate-900">Progress Status 5 Bab KTI</h3>
@@ -402,18 +417,31 @@ export default function KtiDashboardPage() {
                             <h4 className="font-bold text-base">👨‍🎓 {item.student?.name}</h4>
                             <p className="text-sm text-slate-700 mt-2 bg-slate-50 p-2 rounded border">"{item.title}"</p>
                           </div>
-                          <button onClick={() => setSelectedStudent(item)} className="w-full bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl mt-4">
-                            Review Bab 1 - 5 Siswa Ini →
-                          </button>
+                          <div className="flex gap-2 mt-4">
+                            <button onClick={() => setSelectedStudent(item)} className="flex-1 bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl">
+                              Review Bab 1 - 5 Siswa Ini →
+                            </button>
+                            <button onClick={() => handleExportFullPdf(item.id)} className="bg-emerald-600 text-white text-xs font-bold px-3 py-2.5 rounded-xl hover:bg-emerald-700">
+                              📄 PDF Full
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="space-y-4">
                       <button onClick={() => setSelectedStudent(null)} className="text-sm text-indigo-600 font-bold mb-2">← Kembali ke Daftar Siswa</button>
-                      <div className="bg-white p-4 rounded-xl border">
-                        <h3 className="font-bold text-base">Siswa: {selectedStudent.student?.name}</h3>
-                        <p className="text-xs text-slate-500">Judul: {selectedStudent.title}</p>
+                      <div className="bg-white p-4 rounded-xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                        <div>
+                          <h3 className="font-bold text-base">Siswa: {selectedStudent.student?.name}</h3>
+                          <p className="text-xs text-slate-500">Judul: {selectedStudent.title}</p>
+                        </div>
+                        <button
+                          onClick={() => handleExportFullPdf(selectedStudent.id)}
+                          className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-emerald-700 transition flex items-center gap-2"
+                        >
+                          📄 Cetak KTI Full PDF
+                        </button>
                       </div>
 
                       <h4 className="font-bold text-slate-900 pt-2">Evaluasi Bab 1 Sampai Bab 5</h4>
