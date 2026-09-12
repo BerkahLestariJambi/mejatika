@@ -58,7 +58,7 @@ export default function KtiDashboardPage() {
   const [uploadData, setUploadData] = useState({ chapter_number: "1", file: null as File | null, student_note: "" });
   const [uploading, setUploading] = useState(false);
 
-  // MEMPERBAIKI STATE REVIEW: Menggunakan Map/Object agar setiap bab (1-5) memiliki state independen
+  // State Review Per-Bab Independen (Bab 1-5)
   const [chapterReviews, setChapterReviews] = useState<Record<number, { status: string; teacher_feedback: string }>>({});
   const [reviewingId, setReviewingId] = useState<number | null>(null);
 
@@ -206,7 +206,7 @@ export default function KtiDashboardPage() {
     } finally { setUploading(false); }
   };
 
-  // HANDLER REVIEW DIPERBAIKI (Mendukung Bab 1, 2, 3, 4, 5)
+  // Handler Review Bab 1 s/d 5
   const handleReviewKtiPerChapter = async (e: React.FormEvent, chapterId: number, num: number) => {
     e.preventDefault();
     setReviewingId(chapterId);
@@ -462,21 +462,38 @@ export default function KtiDashboardPage() {
                                 </div>
                               </div>
 
-                              {/* LIVE PREVIEW FILE */}
+                              {/* LIVE PREVIEW FILE DENGAN SCROLL INDEPENDEN */}
                               {fileUrl && (
-                                <div className="mt-2 border rounded-xl overflow-hidden bg-slate-50">
+                                <div className="mt-2 border rounded-xl overflow-hidden bg-slate-50 shadow-inner">
                                   <div className="bg-slate-100 px-4 py-2 border-b flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-600">Preview Berkas Bab {num}</span>
-                                    <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold">↗️ Tab Baru</a>
+                                    <span className="text-xs font-bold text-slate-600">🖥️ Live Preview Dokumen Bab {num}</span>
+                                    <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold">↗️ Buka di Tab Baru</a>
                                   </div>
                                   <div className="w-full bg-slate-200">
                                     {isPdf ? (
-                                      <iframe src={`${fileUrl}#toolbar=1`} className="w-full h-[500px] bg-white" title={`Preview PDF Bab ${num}`}/>
+                                      /* PDF PREVIEW WITH INDEPENDENT INTERNAL SCROLL */
+                                      <div className="w-full h-[550px] overflow-hidden">
+                                        <iframe 
+                                          src={`${fileUrl}#toolbar=1`} 
+                                          className="w-full h-full border-0" 
+                                          title={`Preview PDF Bab ${num}`}
+                                        />
+                                      </div>
                                     ) : (
+                                      /* DOCX PREVIEW WITH INDEPENDENT INTERNAL SCROLL */
                                       <div className="relative">
                                         {docxLoading && <div className="p-4 text-center text-xs font-bold">Memuat Preview Word...</div>}
                                         {docxError && <div className="p-4 text-center text-xs text-red-500">{docxError}</div>}
-                                        <div ref={(el) => { docxPreviewRefs.current[num] = el; if (el && !el.dataset.rendered) { el.dataset.rendered = "true"; renderDocxPreview(fileUrl, num); } }} className="bg-white min-h-[400px] p-4 overflow-auto" />
+                                        <div 
+                                          ref={(el) => { 
+                                            docxPreviewRefs.current[num] = el; 
+                                            if (el && !el.dataset.rendered) { 
+                                              el.dataset.rendered = "true"; 
+                                              renderDocxPreview(fileUrl, num); 
+                                            } 
+                                          }} 
+                                          className="bg-white max-h-[550px] overflow-y-auto p-6 shadow-inner" 
+                                        />
                                       </div>
                                     )}
                                   </div>
