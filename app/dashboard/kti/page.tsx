@@ -1,24 +1,13 @@
 "use client"
 
-//import { useState, useEffect } from "react"
-import { useEffect, useState, useCallback, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { 
-  LayoutDashboard, BookOpen, FileCheck, Award, LogOut, 
-  PlayCircle, CheckCircle2, ChevronDown, Clock, 
-  FileText, Loader2, Flame, MessageSquare, 
-  Video, MonitorPlay, Zap, Lock, CreditCard, UploadCloud,
-  Send, UserCircle2, Menu, X, Star, RefreshCw
-} from "lucide-react"
+import { useEffect, useState, useRef } from "react"
+import { Loader2 } from "lucide-react"
 import Swal from "sweetalert2"
 import { renderAsync } from "docx-preview"
 
-// Menggunakan konstanta API sesuai instruksi Anda
 const API_URL = "https://backend.mejatika.com/api"
 
-// --- HELPER FUNCTIONS ---
+// Helper Nama Bab
 function getChapterName(num: number) {
   const names: Record<number, string> = {
     1: "Pendahuluan",
@@ -51,73 +40,54 @@ function getStatusBadge(status?: string) {
 
 export default function KtiDashboardPage() {
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<string | null>(null); // 'siswa', 'siswakti', 'mentor', atau 'pembimbing'
+  const [role, setRole] = useState<string | null>(null);
   const [dataKti, setDataKti] = useState<any>(null);
   const [selectedStudent, setSelectedStudent] = useState<any>(null); 
   const [userName, setUserName] = useState<string | null>(null);
-  // State Deteksi Pendaftaran
   const [isRegistered, setIsRegistered] = useState(true);
   const [listTeachers, setListTeachers] = useState<any[]>([]);
 
-  // State Sidebar Mobile & Menu Aktif
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeMenu, setActiveMenu] = useState("dashboard"); // 'dashboard' atau 'bimbingan'
+  const [activeMenu, setActiveMenu] = useState("dashboard");
 
-  // State Form Pendaftaran Baru (Jika Belum Terdaftar)
   const [registerData, setRegisterData] = useState({
-    title: "",
-    abstract: "",
-    teacher_id: "",
-    academic_year: new Date().getFullYear().toString()
+    title: "", abstract: "", teacher_id: "", academic_year: new Date().getFullYear().toString()
   });
   const [registering, setRegistering] = useState(false);
 
-  // State Form Upload Siswa
   const [uploadData, setUploadData] = useState({ chapter_number: "1", file: null as File | null, student_note: "" });
   const [uploading, setUploading] = useState(false);
 
-  // State Form Review Mentor
-  const [reviewData, setReviewData] = useState({ status: "approved", teacher_feedback: "", feedback_file: null });
-  const [reviewing, setReviewing] = useState(false);
+  // MEMPERBAIKI STATE REVIEW: Menggunakan Map/Object agar setiap bab (1-5) memiliki state independen
+  const [chapterReviews, setChapterReviews] = useState<Record<number, { status: string; teacher_feedback: string }>>({});
+  const [reviewingId, setReviewingId] = useState<number | null>(null);
 
-  // State dan ref untuk preview DOCX langsung di halaman
   const [docxLoading, setDocxLoading] = useState(false);
   const [docxError, setDocxError] = useState<string | null>(null);
   const docxPreviewRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
   useEffect(() => {
     fetchDashboardData();
-    fetchCurrentUser(); // <-- Memanggil fungsi pengambil data dari tabel users
+    fetchCurrentUser();
   }, []);
 
-  // 3. Ambil token dari localStorage
   const getAuthHeader = () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     return { 
       'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json' // Ditambahkan agar format request konsisten
+      'Content-Type': 'application/json'
     };
   };
 
   const fetchCurrentUser = async () => {
     try {
-      // 1. Ambil nama langsung dari objek user lokal sebagai respon pertama (Anti-delay)
       const localUserStr = typeof window !== 'undefined' ? localStorage.getItem("user") : null;
       if (localUserStr) {
         const localUser = JSON.parse(localUserStr);
-        if (localUser && localUser.name) {
-          setUserName(localUser.name);
-        }
+        if (localUser && localUser.name) setUserName(localUser.name);
       }
-
-      // 2. Tetap jalankan sinkronisasi data terbaru dari database
-      const response = await fetch(`${API_URL}/user`, { 
-        method: 'GET',
-        headers: getAuthHeader()
-      });
-      
+      const response = await fetch(`${API_URL}/user`, { method: 'GET', headers: getAuthHeader() });
       const resData = await response.json();
-      
       if (response.ok) {
         const apiName = resData.name || resData.data?.name || resData.user?.name;
         if (apiName) setUserName(apiName);
@@ -131,32 +101,19 @@ export default function KtiDashboardPage() {
     setLoading(true);
     const headers = getAuthHeader();
     try {
-      let response = await fetch(`${API_URL}/student/kti/dashboard`, {
-        method: 'GET',
-        headers: headers
-      });
-
+      let response = await fetch(`${API_URL}/student/kti/dashboard`, { method: 'GET', headers: headers });
       let resData = await response.json();
       
       if (!response.ok) {
         const isNotStudent = response.status === 403 || (resData.message && !resData.message.includes("belum terdaftar"));
-        
         if (isNotStudent || response.status === 404) {
-          const mentorResponse = await fetch(`${API_URL}/mentor/kti/dashboard`, {
-            method: 'GET',
-            headers: headers
-          });
-          
+          const mentorResponse = await fetch(`${API_URL}/mentor/kti/dashboard`, { method: 'GET', headers: headers });
           if (mentorResponse.ok) {
             const mentorData = await mentorResponse.json();
-            const roleDetected = mentorData.role_detected?.toLowerCase() || 'mentor';
-            setRole(roleDetected);
+            setRole(mentorData.role_detected?.toLowerCase() || 'mentor');
             setDataKti(mentorData.data);
-            
-            // Integrasi parsing nama mentor
             const namaMentor = mentorData.user?.name || mentorData.data?.user?.name || mentorData.mentor_name;
             if (namaMentor) setUserName(namaMentor);
-            
             setIsRegistered(true);
             return;
           }
@@ -165,816 +122,361 @@ export default function KtiDashboardPage() {
         if (resData.message && resData.message.includes("belum terdaftar")) {
           setIsRegistered(false);
           setRole("siswakti"); 
-          
-          const namaSiswaBaru = resData.user?.name || resData.data?.user?.name;
-          if (namaSiswaBaru) setUserName(namaSiswaBaru);
-          
           fetchTeachersList();
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Gagal Memuat Data',
-            text: resData.message || "Gagal memuat data dashboard KTI.",
-            confirmButtonColor: '#4f46e5'
-          });
+          Swal.fire({ icon: 'error', title: 'Gagal Memuat Data', text: resData.message || "Gagal memuat data." });
         }
       } else {
-        const roleDetected = resData.role_detected?.toLowerCase() || 'siswa';
-        setRole(roleDetected);
+        setRole(resData.role_detected?.toLowerCase() || 'siswa');
         setDataKti(resData.data);
-        
-        // Integrasi parsing nama siswa aktif
-        const namaSiswaAktif = resData.data?.student?.name || resData.data?.user?.name || resData.user?.name;
-        if (namaSiswaAktif) setUserName(namaSiswaAktif);
-        
+        const namaSiswa = resData.data?.student?.name || resData.data?.user?.name || resData.user?.name;
+        if (namaSiswa) setUserName(namaSiswa);
         setIsRegistered(true);
       }
     } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Kesalahan Jaringan',
-        text: 'Terjadi kesalahan jaringan saat memuat data.',
-        confirmButtonColor: '#4f46e5'
-      });
+      Swal.fire({ icon: 'error', title: 'Kesalahan Jaringan', text: 'Terjadi kesalahan jaringan.' });
     } finally {
       setLoading(false);
     }
   };
 
-const fetchTeachersList = async () => {
+  const fetchTeachersList = async () => {
     try {
-      const response = await fetch(`${API_URL}/teachers-list`, { 
-        method: 'GET',
-        headers: getAuthHeader()
-      });
+      const response = await fetch(`${API_URL}/teachers-list`, { method: 'GET', headers: getAuthHeader() });
       const resData = await response.json();
-      if (response.ok) {
-        const data = resData.data || resData;
-        if (Array.isArray(data)) setListTeachers(data);
-      }
+      if (response.ok) setListTeachers(Array.isArray(resData.data || resData) ? (resData.data || resData) : []);
     } catch (error) {
-      console.error("Terjadi kesalahan jaringan pembimbing:", error);
-      // Mengosongkan list pembimbing alih-alih menampilkan data tiruan id 2 dan 4
       setListTeachers([]);
     }
   };
 
-  // --- HANDLER OUT: Keluar dari Aplikasi ---
   const handleLogout = () => {
     Swal.fire({
-      title: 'Apakah Anda yakin?',
-      text: "Anda akan keluar dari akun bimbingan ini!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc2626',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Ya, Keluar!',
-      cancelButtonText: 'Batal'
+      title: 'Apakah Anda yakin?', text: "Anda akan keluar dari akun bimbingan ini!", icon: 'warning',
+      showCancelButton: true, confirmButtonColor: '#dc2626', cancelButtonColor: '#64748b', confirmButtonText: 'Ya, Keluar!'
     }).then((result) => {
       if (result.isConfirmed) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil Logout',
-          text: 'Anda telah berhasil keluar.',
-          showConfirmButton: false,
-          timer: 1500
-        }).then(() => {
-          window.location.href = "/login";
-        });
+        window.location.href = "/login";
       }
     });
   };
 
-  // --- HANDLER SISWA: Kirim Pendaftaran KTI Baru ---
   const handleRegisterKti = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!registerData.title || !registerData.teacher_id) {
-      return Swal.fire({
-        icon: 'warning',
-        title: 'Data Belum Lengkap',
-        text: 'Judul KTI dan Guru Pembimbing wajib diisi!',
-        confirmButtonColor: '#4f46e5'
-      });
+      return Swal.fire({ icon: 'warning', title: 'Data Belum Lengkap', text: 'Judul KTI dan Guru Pembimbing wajib diisi!' });
     }
-
     setRegistering(true);
     try {
       const response = await fetch(`${API_URL}/student/kti/register`, { 
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
-        body: JSON.stringify(registerData)
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...getAuthHeader() }, body: JSON.stringify(registerData)
       });
-      const resData = await response.json();
       if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Registrasi Berhasil!',
-          text: 'Pendaftaran Judul KTI Berhasil dikirim!',
-          confirmButtonColor: '#4f46e5'
-        });
+        Swal.fire({ icon: 'success', title: 'Registrasi Berhasil!' });
         setIsRegistered(true);
         fetchDashboardData(); 
-      } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Registrasi Gagal',
-          text: resData.message || "Gagal melakukan pendaftaran.",
-          confirmButtonColor: '#4f46e5'
-        });
       }
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Kesalahan Sistem',
-        text: 'Terjadi kesalahan jaringan saat mendaftar.',
-        confirmButtonColor: '#4f46e5'
-      });
-    } finally {
-      setRegistering(false);
-    }
+    } finally { setRegistering(false); }
   };
 
-// --- HANDLER SISWA: Unggah Berkas KTI ---
   const handleUploadKti = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!uploadData.file) {
-      return Swal.fire({
-        icon: 'warning',
-        title: 'Berkas Kosong',
-        text: 'Silakan pilih file PDF/Docx terlebih dahulu.',
-        confirmButtonColor: '#4f46e5'
-      });
-    }
-
+    if (!uploadData.file) return Swal.fire({ icon: 'warning', title: 'Berkas Kosong', text: 'Pilih file PDF/Docx.' });
     setUploading(true);
     
-    // 1. Buat objek FormData baru
     const formData = new FormData();
     formData.append('chapter_number', uploadData.chapter_number);
     formData.append('file', uploadData.file);
     formData.append('student_note', uploadData.student_note);
 
     try {
-      // 2. Ambil token saja, JANGAN paksa 'Content-Type': 'application/json'
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
       const response = await fetch(`${API_URL}/student/kti/chapter/upload`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-          // Catatan: Biarkan browser menentukan Content-Type secara otomatis untuk FormData!
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
-      
-      const resData = await response.json();
       if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Berhasil Diunggah',
-          text: 'Bab KTI berhasil diunggah!',
-          confirmButtonColor: '#4f46e5'
-        });
+        Swal.fire({ icon: 'success', title: 'Berhasil Diunggah' });
         setUploadData({ chapter_number: "1", file: null, student_note: "" });
         fetchDashboardData();
-      } else {
-        // Menampilkan pesan error spesifik dari backend jika ada (seperti detail validasi)
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal Mengunggah',
-          text: resData.message || "Gagal mengunggah file KTI.",
-          confirmButtonColor: '#4f46e5'
-        });
       }
-    } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Kesalahan Jaringan',
-        text: 'Terjadi kesalahan jaringan saat mengunggah file.',
-        confirmButtonColor: '#4f46e5'
-      });
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   };
 
- const handleReviewKti = async (e: React.FormEvent, chapterId: number) => {
+  // HANDLER REVIEW DIPERBAIKI (Mendukung Bab 1, 2, 3, 4, 5)
+  const handleReviewKtiPerChapter = async (e: React.FormEvent, chapterId: number, num: number) => {
     e.preventDefault();
-    setReviewing(true);
-    
-    // MEMPERBAIKI KESALAHAN INPUT: Mengambil data langsung dari state reviewData
-    const formData = new FormData();
-    formData.append('status', reviewData.status || 'approved'); // Jika kosong, default ke approved
-    formData.append('teacher_feedback', reviewData.teacher_feedback);
+    setReviewingId(chapterId);
 
-    // Jika backend Anda juga meminta '_method: POST/PUT' atau data pendukung, pastikan terkirim
+    const chapterForm = chapterReviews[num] || { status: 'approved', teacher_feedback: '' };
+    
+    const formData = new FormData();
+    formData.append('status', chapterForm.status || 'approved');
+    formData.append('teacher_feedback', chapterForm.teacher_feedback || '');
+
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
       const response = await fetch(`${API_URL}/mentor/kti/chapter/${chapterId}/review`, {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`
-          // JANGAN gunakan 'Content-Type': 'application/json' di sini karena kita mengirim FormData
-        },
+        headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
       
       const resData = await response.json();
-      
       if (response.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Ulasan Dikirim',
-          text: 'Ulasan bimbingan berhasil dikirim ke siswa!',
-          confirmButtonColor: '#4f46e5'
-        });
-        // Reset form setelah sukses
-        setReviewData({ status: "approved", teacher_feedback: "", feedback_file: null });
-        setSelectedStudent(null);
+        Swal.fire({ icon: 'success', title: `Bab ${num} Berhasil Diulas!`, text: 'Catatan & status telah diperbarui.' });
         fetchDashboardData();
       } else {
-        // Menampilkan pesan error asli dari backend jika gagal validation
-        Swal.fire({
-          icon: 'error',
-          title: 'Gagal Mengirim',
-          text: resData.message || JSON.stringify(resData.errors) || "Gagal mengirim ulasan bimbingan.",
-          confirmButtonColor: '#4f46e5'
-        });
+        Swal.fire({ icon: 'error', title: 'Gagal Mengirim', text: resData.message || "Gagal mengirim ulasan." });
       }
     } catch (error) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Kesalahan Sistem',
-        text: 'Terjadi kesalahan jaringan saat mengirim ulasan.',
-        confirmButtonColor: '#4f46e5'
-      });
+      Swal.fire({ icon: 'error', title: 'Kesalahan Sistem', text: 'Gagal terhubung ke server API.' });
     } finally {
-      setReviewing(false);
+      setReviewingId(null);
     }
   };
 
- const renderDocxPreview = async (
-  fileUrl: string,
-  chapterNumber: number
-) => {
-  const container = docxPreviewRefs.current[chapterNumber];
-
-  if (!container) return;
-
-  setDocxLoading(true);
-  setDocxError(null);
-
-  try {
-    // Bersihkan preview sebelumnya
-    container.innerHTML = "";
-
-    // ============================================================
-    // PENTING:
-    // Jangan fetch langsung ke backend dari browser.
-    // Gunakan API proxy Next.js agar tidak terkena CORS.
-    // ============================================================
-    const proxyUrl =
-      `/api/docx-preview?url=${encodeURIComponent(fileUrl)}`;
-
-    const response = await fetch(proxyUrl, {
-      method: "GET",
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      let errorMessage =
-        `Gagal mengambil dokumen. HTTP ${response.status}`;
-
-      try {
-        const errorData = await response.json();
-
-        if (errorData?.error) {
-          errorMessage = errorData.error;
-        }
-      } catch {
-        // Response bukan JSON
-      }
-
-      throw new Error(errorMessage);
+  const renderDocxPreview = async (fileUrl: string, chapterNumber: number) => {
+    const container = docxPreviewRefs.current[chapterNumber];
+    if (!container) return;
+    setDocxLoading(true); setDocxError(null);
+    try {
+      container.innerHTML = "";
+      const proxyUrl = `/api/docx-preview?url=${encodeURIComponent(fileUrl)}`;
+      const response = await fetch(proxyUrl, { method: "GET", cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP Error ${response.status}`);
+      const blob = await response.blob();
+      await renderAsync(blob, container, undefined, { inWrapper: true, ignoreWidth: false, breakPages: true });
+    } catch (error: any) {
+      setDocxError(error?.message || "Gagal menampilkan preview Word.");
+    } finally {
+      setDocxLoading(false);
     }
-
-    const blob = await response.blob();
-
-    if (!blob.size) {
-      throw new Error(
-        "File DOCX kosong atau tidak dapat dibaca."
-      );
-    }
-
-    // ============================================================
-    // RENDER DOCX
-    // ============================================================
-    await renderAsync(
-      blob,
-      container,
-      undefined,
-      {
-        className: "docx-preview",
-        inWrapper: true,
-
-        ignoreWidth: false,
-        ignoreHeight: false,
-        ignoreFonts: false,
-
-        breakPages: true,
-
-        useBase64URL: true,
-
-        renderHeaders: true,
-        renderFooters: true,
-        renderFootnotes: true,
-        renderEndnotes: true,
-
-        debug: false,
-      }
-    );
-
-  } catch (error) {
-    console.error(
-      "Gagal melakukan preview DOCX:",
-      error
-    );
-
-    setDocxError(
-      error instanceof Error
-        ? error.message
-        : "Dokumen DOCX tidak dapat ditampilkan."
-    );
-  } finally {
-    setDocxLoading(false);
-  }
-};
+  };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-slate-50">
-        <p className="text-slate-600 animate-pulse font-medium">Memuat Fitur Bimbingan KARYA TULIS ILMIAH...</p>
+        <p className="text-slate-600 animate-pulse font-medium">Memuat Fitur Bimbingan KTI...</p>
       </div>
     );
   }
 
-  const isStudentRole = role === 'siswa' || role === 'siswakti' || role === 'pelajar' || role === 'peserta';
-  const isMentorRole = role === 'mentor' || role === 'pembimbing' || role === 'kontributor';
+  const isStudentRole = role === 'siswa' || role === 'siswakti' || role === 'pelajar';
+  const isMentorRole = role === 'mentor' || role === 'pembimbing';
 
   return (
     <div className="flex min-h-screen bg-slate-100 text-slate-800 font-sans">
-      
-      {/* ======================================================= */}
-      {/* SIDEBAR NAVIGATION (RESPONSIVE) */}
-      {/* ======================================================= */}
       <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:flex lg:flex-col shadow-xl`}>
-        {/* Header Sidebar */}
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black tracking-wider text-indigo-400">MEJATIKA</h2>
-            <p className="text-xs text-slate-400 font-medium">Karya Tulis Ilmiah SMAS Seminari Pius XII Kisol</p>
+            <p className="text-xs text-slate-400 font-medium">KTI SMAS Seminari Pius XII Kisol</p>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-white lg:hidden text-xl font-bold">
-            ✕
-          </button>
+          <button onClick={() => setIsSidebarOpen(false)} className="text-slate-400 hover:text-white lg:hidden">✕</button>
         </div>
 
-        {/* Profil Akun Ringkas */}
         <div className="px-6 py-4 border-b border-slate-800 bg-slate-950/40">
-          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">
-            Pengguna Aktif
-          </p>
-          <p className="text-sm font-bold text-white truncate" title={userName || "Pengguna"}>
-            👤 {userName || "Pengguna Mejatika"}
-          </p>
-          <p className="text-[11px] font-medium text-indigo-400 capitalize mt-0.5 flex items-center gap-1">
-            <span>✨</span> 
-            {role === "siswakti" || role === "peserta" ? "Siswa KTI" : role || "Pengguna"}
-          </p>
+          <p className="text-xs text-slate-500 font-bold uppercase tracking-wider mb-1">Pengguna Aktif</p>
+          <p className="text-sm font-bold text-white truncate">👤 {userName || "Pengguna"}</p>
+          <p className="text-[11px] font-medium text-indigo-400 capitalize mt-0.5">✨ {role || "Pengguna"}</p>
         </div>
 
-        {/* Menu Navigasi */}
         <nav className="flex-1 p-4 space-y-1">
-          <button 
-            onClick={() => { setActiveMenu("dashboard"); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeMenu === 'dashboard' ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"}`}
-          >
+          <button onClick={() => { setActiveMenu("dashboard"); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeMenu === 'dashboard' ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800"}`}>
             <span>🏠</span> Dashboard KTI
           </button>
-          
-          <button 
-            onClick={() => { setActiveMenu("bimbingan"); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeMenu === 'bimbingan' ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"}`}
-          >
-            <span>📚</span> Pusat Bimbingan
+          <button onClick={() => { setActiveMenu("bimbingan"); setIsSidebarOpen(false); }} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition ${activeMenu === 'bimbingan' ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-800"}`}>
+            <span>📚</span> Pedoman Daftar Pustaka
           </button>
         </nav>
 
-        {/* Bagian Tombol Logout Bawah */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/20">
-          <button 
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-red-900/40 text-red-400 border border-red-900/60 hover:bg-red-600 hover:text-white transition"
-          >
-            <span>🚪</span> Keluar Akun (Logout)
+        <div className="p-4 border-t border-slate-800">
+          <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold bg-red-900/40 text-red-400 hover:bg-red-600 hover:text-white transition">
+            🚪 Keluar Akun
           </button>
         </div>
       </aside>
 
-      {/* ======================================================= */}
-      {/* MAIN CONTENT AREA */}
-      {/* ======================================================= */}
       <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-        
-        {/* TOP NAVBAR (MOBILE & GLOBAL ACTIONS) */}
         <header className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
-            >
-              ☰ Menu
-            </button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900">Pusat Bimbingan KTI Per Bab</h1>
-              <p className="text-xs text-slate-500 hidden sm:block">Akses Sistem Informasi Karya Tulis Ilmiah Eksklusif Mejatika Sanpio</p>
-            </div>
+            <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 rounded-lg bg-slate-100 text-slate-700 font-bold">☰ Menu</button>
+            <h1 className="text-xl font-bold text-slate-900">Pusat Bimbingan KTI Per Bab (Bab 1-5)</h1>
           </div>
-          
-          <button 
-            onClick={handleLogout} 
-            className="text-xs font-bold text-red-600 hover:text-red-800 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-xl transition"
-          >
-            Logout
-          </button>
+          <button onClick={handleLogout} className="text-xs font-bold text-red-600 bg-red-50 px-3 py-2 rounded-xl">Logout</button>
         </header>
 
-        {/* BODY PANEL CONTENT */}
         <main className="flex-1 p-6 max-w-6xl w-full mx-auto">
-          
           {activeMenu === "dashboard" ? (
             <div className="space-y-6">
-              
-              {/* KONDISI BELUM REGISTRASI JUDUL (KHUSUS SISWA BARU) */}
               {!isRegistered && isStudentRole && (
                 <div className="max-w-xl mx-auto border border-amber-200 bg-amber-50/40 p-8 rounded-3xl shadow-sm">
-                  <h2 className="text-xl font-black text-slate-900 mb-1 uppercase italic">Registrasi Judul KARYA TULIS ILMIAH Baru</h2>
-                  <p className="text-xs text-slate-500 mb-6">Anda belum terdaftar dalam sistem bimbingan. Selesaikan form di bawah ini untuk memulai akses bimbingan.</p>
-                  
+                  <h2 className="text-xl font-black text-slate-900 mb-1">Registrasi Judul KTI Baru</h2>
                   <form onSubmit={handleRegisterKti} className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Judul Lengkap KARYA TULIS ILMIAH</label>
-                      <input 
-                        type="text" required
-                        className="w-full text-sm p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                        placeholder="Contoh: Analisis Metode Enkripsi Data Pada Jaringan Sistem..."
-                        value={registerData.title}
-                        onChange={(e) => setRegisterData({...registerData, title: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Abstrak Singkat</label>
-                      <textarea 
-                        rows={3}
-                        className="w-full text-sm p-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none"
-                        placeholder="Tulis ringkasan gambaran umum karya tulis penelitian Anda..."
-                        value={registerData.abstract}
-                        onChange={(e) => setRegisterData({...registerData, abstract: e.target.value})}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Guru Pembimbing</label>
-                        <select 
-                          required className="w-full text-sm p-3 border rounded-xl bg-white focus:ring-2 focus:ring-indigo-500"
-                          value={registerData.teacher_id}
-                          onChange={(e) => setRegisterData({...registerData, teacher_id: e.target.value})}
-                        >
-                          <option value="">-- Pilih Pembimbing --</option>
-                          {listTeachers.map((teacher: any) => (
-                            <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold uppercase text-slate-600 mb-1">Tahun Akademik</label>
-                        <input type="text" disabled className="w-full text-sm p-3 border rounded-xl bg-slate-100 text-slate-400" value={registerData.academic_year}/>
-                      </div>
-                    </div>
-                    <button type="submit" disabled={registering} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs uppercase py-3.5 rounded-xl transition disabled:bg-slate-300">
-                      {registering ? 'Memproses Pendaftaran...' : 'Kirim Pengajuan Judul'}
-                    </button>
+                    <input type="text" required className="w-full text-sm p-3 border rounded-xl" placeholder="Judul Lengkap KTI" value={registerData.title} onChange={(e) => setRegisterData({...registerData, title: e.target.value})}/>
+                    <textarea rows={3} className="w-full text-sm p-3 border rounded-xl" placeholder="Abstrak Singkat" value={registerData.abstract} onChange={(e) => setRegisterData({...registerData, abstract: e.target.value})}/>
+                    <select required className="w-full text-sm p-3 border rounded-xl" value={registerData.teacher_id} onChange={(e) => setRegisterData({...registerData, teacher_id: e.target.value})}>
+                      <option value="">-- Pilih Pembimbing --</option>
+                      {listTeachers.map((t: any) => (<option key={t.id} value={t.id}>{t.name}</option>))}
+                    </select>
+                    <button type="submit" disabled={registering} className="w-full bg-slate-900 text-white font-bold text-xs py-3.5 rounded-xl">Kirim Pengajuan</button>
                   </form>
                 </div>
               )}
 
-              {/* INTERFACE TAMPILAN SISWA (SUDAH REGISTER) */}
               {isRegistered && isStudentRole && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-2 space-y-4">
                     <div className="bg-white p-5 rounded-xl border shadow-sm">
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-700 px-2 py-1 rounded">Informasi Penelitian</span>
-                      <h2 className="text-lg font-bold text-slate-900 mt-2 mb-1">{dataKti?.title}</h2>
-                      <p className="text-xs text-slate-400 mb-3">Tahun Akademik: {dataKti?.academic_year} | Pembimbing: {dataKti?.teacher?.name}</p>
-                      <div className="p-3 bg-slate-50 border rounded text-xs text-slate-600 italic">
-                        "{dataKti?.abstract || 'Belum ada abstrak data.'}"
-                      </div>
+                      <h2 className="text-lg font-bold text-slate-900">{dataKti?.title}</h2>
+                      <p className="text-xs text-slate-400">Pembimbing: {dataKti?.teacher?.name}</p>
                     </div>
 
-                    <h3 className="font-bold text-slate-900 pt-2">Progress Status 5 Bab KARYA TULIS ILMIAH</h3>
+                    <h3 className="font-bold text-slate-900">Progress Status 5 Bab KTI</h3>
                     {[1, 2, 3, 4, 5].map((num) => {
                       const ch = dataKti?.chapters?.find((c: any) => c.chapter_number === num);
                       return (
-                        <div key={num} className="p-4 rounded-xl border bg-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                        <div key={num} className="p-4 rounded-xl border bg-white flex flex-col md:flex-row md:items-center justify-between gap-4">
                           <div>
                             <h4 className="font-semibold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h4>
-                            <p className="text-xs text-slate-400">Versi: {ch?.current_version || 'Belum ada'}</p>
-                            {ch?.file_path && (
-                              <a href={`https://backend.mejatika.com/storage/${ch.file_path}`} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 hover:underline block mt-1">
-                                📂 Unduh Lembar Berkas Kerja
-                              </a>
-                            )}
-                            {ch?.teacher_feedback && (
-                              <div className="mt-2 text-xs bg-amber-50 text-amber-900 p-2 rounded border border-amber-200">
-                                <strong>Catatan Koreksi Mentor:</strong> {ch.teacher_feedback}
-                              </div>
-                            )}
+                            {ch?.file_path && <a href={`https://backend.mejatika.com/storage/${ch.file_path}`} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 block mt-1">📂 Unduh Berkas</a>}
+                            {ch?.teacher_feedback && <div className="mt-2 text-xs bg-amber-50 text-amber-900 p-2 rounded"><strong>Catatan Mentor:</strong> {ch.teacher_feedback}</div>}
                           </div>
-                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(ch?.status)}`}>
-                            {ch ? translateStatus(ch.status) : 'Belum Diupload'}
-                          </span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(ch?.status)}`}>{ch ? translateStatus(ch.status) : 'Belum Diupload'}</span>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="bg-white p-6 rounded-xl border shadow-sm h-fit space-y-4">
-                    <h3 className="font-bold text-slate-900 border-b pb-2">Unggah Dokumen Kerja KARYA TULIS ILMIAH</h3>
+                  <div className="bg-white p-6 rounded-xl border shadow-sm space-y-4 h-fit">
+                    <h3 className="font-bold text-slate-900">Unggah Dokumen Bab KTI</h3>
                     <form onSubmit={handleUploadKti} className="space-y-4">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1">Target Pengumpulan Bab</label>
-                        <select className="w-full text-sm p-2 border rounded-xl bg-white" value={uploadData.chapter_number} onChange={(e) => setUploadData({...uploadData, chapter_number: e.target.value})}>
-                          <option value="1">Bab 1: Pendahuluan</option>
-                          <option value="2">Bab 2: Tinjauan Pustaka</option>
-                          <option value="3">Bab 3: Metode Penelitian</option>
-                          <option value="4">Bab 4: Pembahasan & Analisis</option>
-                          <option value="5">Bab 5: Kesimpulan & Saran</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1">Berkas Kerja (PDF/Docx)</label>
-                        <input type="file" accept=".pdf,.docx" className="w-full text-xs bg-slate-50 border p-2 rounded-xl" onChange={(e) => setUploadData({...uploadData, file: e.target.files?.[0] || null})}/>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1">Pesan Tambahan ke Mentor</label>
-                        <textarea rows={3} className="w-full text-sm p-2 border rounded-xl" placeholder="Catatan perbaikan tambahan..." value={uploadData.student_note} onChange={(e) => setUploadData({...uploadData, student_note: e.target.value})}></textarea>
-                      </div>
-                      <button type="submit" disabled={uploading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs uppercase py-2.5 rounded-xl transition disabled:bg-slate-400">
-                        {uploading ? 'Mengirim data...' : 'Kirim Pengajuan Bab'}
-                      </button>
+                      <select className="w-full text-sm p-2 border rounded-xl" value={uploadData.chapter_number} onChange={(e) => setUploadData({...uploadData, chapter_number: e.target.value})}>
+                        {[1,2,3,4,5].map(n => <option key={n} value={n}>Bab {n}: {getChapterName(n)}</option>)}
+                      </select>
+                      <input type="file" accept=".pdf,.docx" className="w-full text-xs bg-slate-50 border p-2 rounded-xl" onChange={(e) => setUploadData({...uploadData, file: e.target.files?.[0] || null})}/>
+                      <textarea rows={2} className="w-full text-sm p-2 border rounded-xl" placeholder="Catatan ke mentor..." value={uploadData.student_note} onChange={(e) => setUploadData({...uploadData, student_note: e.target.value})}/>
+                      <button type="submit" disabled={uploading} className="w-full bg-indigo-600 text-white font-bold text-xs py-2.5 rounded-xl">Kirim Pengajuan Bab</button>
                     </form>
                   </div>
                 </div>
               )}
 
-              {/* INTERFACE TAMPILAN GURU/MENTOR */}
               {isRegistered && isMentorRole && (
                 <div className="space-y-6">
-                  <div className="bg-indigo-900 text-white p-6 rounded-2xl shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div className="bg-indigo-900 text-white p-6 rounded-2xl shadow-sm flex justify-between items-center">
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-800 text-indigo-200 px-2.5 py-1 rounded-md">
-                        Status Akun: Pembimbing
-                      </span>
-                      <h2 className="text-xl font-black mt-2">Daftar Karya Tulis Ilmiah (KTI) Siswa</h2>
-                      <p className="text-xs text-indigo-200 mt-1">
-                        Manajemen evaluasi berkas, ulasan, serta persetujuan (ACC) lembar kerja siswa bimbingan Anda.
-                      </p>
-                    </div>
-                    <div className="bg-white/10 px-5 py-3 rounded-xl border border-white/10 text-center min-w-[140px]">
-                      <p className="text-xs text-indigo-200 font-semibold uppercase tracking-wider">Total Bimbingan</p>
-                      <p className="text-3xl font-black mt-0.5">{Array.isArray(dataKti) ? dataKti.length : 0} Siswa</p>
+                      <h2 className="text-xl font-black">Daftar Karya Tulis Ilmiah (KTI) Siswa</h2>
+                      <p className="text-xs text-indigo-200 mt-1">Evaluasi dan berikan nilai/revisi untuk Bab 1 sampai Bab 5.</p>
                     </div>
                   </div>
 
                   {!selectedStudent ? (
-                    <div className="space-y-4">
-                      <div className="bg-white p-4 rounded-xl border shadow-sm">
-                        <p className="text-xs font-bold uppercase text-slate-400 tracking-wider">Siswa yang Sedang Dibimbing:</p>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {Array.isArray(dataKti) && dataKti.length > 0 ? (
-                            dataKti.map((item: any) => (
-                              <span key={item.id} className="text-xs font-bold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg border flex items-center gap-1.5">
-                                👤 {item.student?.name || "Siswa tanpa nama"}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-slate-400 italic">Belum ada siswa bimbingan yang terdaftar.</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <h3 className="font-bold text-slate-900 text-sm uppercase tracking-wide text-slate-500 pt-2">
-                        Silakan Pilih Dokumen Berkas Kerja Siswa:
-                      </h3>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {Array.isArray(dataKti) && dataKti.map((item: any) => (
-                          <div key={item.id} className="p-5 border rounded-xl bg-white shadow-sm hover:border-indigo-300 transition flex flex-col justify-between">
-                            <div>
-                              <div className="flex justify-between items-start gap-2">
-                                <h4 className="font-bold text-base text-slate-900 flex items-center gap-1.5">
-                                  <span>👨‍🎓</span> {item.student?.name}
-                                </h4>
-                                <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded border border-emerald-200">
-                                  Aktif Terdaftar
-                                </span>
-                              </div>
-                              
-                              <div className="mt-3 pt-3 border-t border-dashed border-slate-100">
-                                <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Judul KARYA TULIS ILMIAH yang Dibimbing:</p>
-                                <p className="text-sm font-semibold text-slate-700 mt-1 leading-relaxed line-clamp-3 bg-slate-50 p-2 rounded-lg border">
-                                  "{item.title}"
-                                </p>
-                              </div>
-                              {item.academic_year && (
-                                <p className="text-[10px] text-slate-400 mt-2">Tahun Ajaran KTI: {item.academic_year}</p>
-                              )}
-                            </div>
-                            
-                            <button onClick={() => setSelectedStudent(item)} className="w-full text-center bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 rounded-xl mt-4 transition shadow-sm">
-                              Buka Lembar Bimbingan Per Bab →
-                            </button>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {Array.isArray(dataKti) && dataKti.map((item: any) => (
+                        <div key={item.id} className="p-5 border rounded-xl bg-white shadow-sm flex flex-col justify-between">
+                          <div>
+                            <h4 className="font-bold text-base">👨‍🎓 {item.student?.name}</h4>
+                            <p className="text-sm text-slate-700 mt-2 bg-slate-50 p-2 rounded border">"{item.title}"</p>
                           </div>
-                        ))}
-                        {(!dataKti || dataKti.length === 0) && (
-                          <p className="text-sm text-slate-400 italic bg-white p-6 rounded-xl border text-center col-span-2">
-                            Belum ada siswa terdaftar dalam bimbingan Anda saat ini.
-                          </p>
-                        )}
-                      </div>
+                          <button onClick={() => setSelectedStudent(item)} className="w-full bg-slate-900 text-white text-xs font-bold py-2.5 rounded-xl mt-4">
+                            Review Bab 1 - 5 Siswa Ini →
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <button onClick={() => setSelectedStudent(null)} className="text-sm text-indigo-600 font-bold hover:underline mb-2 flex items-center gap-1">
-                        ← Kembali ke Daftar Siswa
-                      </button>
-                      <div className="bg-white p-4 rounded-xl border shadow-sm">
-                        <h3 className="font-bold text-base text-slate-900">Siswa: {selectedStudent.student?.name}</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Judul KTI: {selectedStudent.title}</p>
+                      <button onClick={() => setSelectedStudent(null)} className="text-sm text-indigo-600 font-bold mb-2">← Kembali ke Daftar Siswa</button>
+                      <div className="bg-white p-4 rounded-xl border">
+                        <h3 className="font-bold text-base">Siswa: {selectedStudent.student?.name}</h3>
+                        <p className="text-xs text-slate-500">Judul: {selectedStudent.title}</p>
                       </div>
 
-                      <h4 className="font-bold text-slate-900 pt-2">Daftar Bab & Form Penilaian Koreksi</h4>
+                      <h4 className="font-bold text-slate-900 pt-2">Evaluasi Bab 1 Sampai Bab 5</h4>
                       <div className="space-y-4">
                         {[1, 2, 3, 4, 5].map((num) => {
                           const ch = selectedStudent.chapters?.find((c: any) => c.chapter_number === num);
                           const fileUrl = ch?.file_path ? `https://backend.mejatika.com/storage/${ch.file_path}` : null;
                           const isPdf = fileUrl?.toLowerCase().endsWith('.pdf');
 
+                          const currentReview = chapterReviews[num] || { status: ch?.status || 'approved', teacher_feedback: ch?.teacher_feedback || '' };
+
                           return (
                             <div key={num} className="p-5 border rounded-xl bg-white flex flex-col gap-4 shadow-sm">
-                              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div>
-                                  <h5 className="font-bold text-sm text-slate-900">Bab {num}: {getChapterName(num)}</h5>
-                                  <p className="text-xs text-slate-400">Versi: {ch?.current_version || 'Belum Anda'}</p>
-                                  {fileUrl && (
-                                    <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold hover:underline block mt-1">
-                                      📥 Unduh Lampiran Berkas Siswa
-                                    </a>
-                                  )}
+                              <div className="flex flex-col md:flex-row justify-between items-start gap-4 border-b pb-4">
+                                <div className="flex-1">
+                                  <h5 className="font-bold text-base text-slate-900">Bab {num}: {getChapterName(num)}</h5>
+                                  <p className="text-xs text-slate-400">Versi: {ch?.current_version || 'Belum Diunggah'}</p>
+                                  {fileUrl && <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold block mt-1">📥 Unduh File Siswa</a>}
                                   {ch?.student_note && <p className="text-xs text-slate-500 mt-1 italic">"Pesan siswa: {ch.student_note}"</p>}
+                                  <span className={`inline-block mt-2 px-2.5 py-1 rounded text-xs font-bold ${getStatusBadge(ch?.status)}`}>
+                                    Status Saat Ini: {ch ? translateStatus(ch.status) : 'Belum Ada Berkas'}
+                                  </span>
                                 </div>
                                 
-                                <div className="flex items-center gap-3">
-                                  <span className={`px-2 py-1 rounded text-xs font-bold ${getStatusBadge(ch?.status)}`}>
-                                    {ch ? translateStatus(ch.status) : 'Kosong'}
-                                  </span>
-                                  
-                                  {ch && ch.status === 'pending' && (
-                                    <div className="bg-slate-50 p-4 rounded-xl border w-full md:w-80 text-xs">
-                                      <form onSubmit={(e) => handleReviewKti(e, ch.id)} className="space-y-2">
-                                        <div>
-                                          <label className="block font-semibold mb-0.5">Status Persetujuan</label>
-                                          <select className="w-full p-1.5 border rounded bg-white text-xs" value={reviewData.status} onChange={(e) => setReviewData({...reviewData, status: e.target.value})}>
-                                            <option value="approved">ACC (Setujui Bab)</option>
-                                            <option value="need_revision">Minta Revisi Berkas</option>
-                                          </select>
-                                        </div>
-                                        <div>
-                                          <label className="block font-semibold mb-0.5">Catatan Masukan Koreksi</label>
-                                          <textarea className="w-full p-1.5 border rounded bg-white text-xs" rows={2} placeholder="Tulis instruksi koreksi..." value={reviewData.teacher_feedback} onChange={(e) => setReviewData({...reviewData, teacher_feedback: e.target.value})} required></textarea>
-                                        </div>
-                                        <button type="submit" disabled={reviewing} className="w-full bg-indigo-600 text-white p-2 rounded-xl font-bold hover:bg-indigo-700 transition">
-                                          {reviewing ? 'Memproses...' : 'Kirim Ulasan Penilaian'}
-                                        </button>
-                                      </form>
-                                    </div>
+                                {/* FORM PENILAIAN REVISI / ACC PER BAB */}
+                                <div className="bg-slate-50 p-4 rounded-xl border w-full md:w-96 text-xs">
+                                  {ch ? (
+                                    <form onSubmit={(e) => handleReviewKtiPerChapter(e, ch.id, num)} className="space-y-2">
+                                      <p className="font-bold text-indigo-900">Form Koreksi Bab {num}</p>
+                                      <div>
+                                        <label className="block font-semibold mb-1">Keputusan Evaluation</label>
+                                        <select 
+                                          className="w-full p-2 border rounded bg-white text-xs font-medium"
+                                          value={currentReview.status} 
+                                          onChange={(e) => setChapterReviews({
+                                            ...chapterReviews,
+                                            [num]: { ...currentReview, status: e.target.value }
+                                          })}
+                                        >
+                                          <option value="approved">✔️ ACC / Disetujui (Bab {num})</option>
+                                          <option value="need_revision">❌ Minta Revisi Berkas</option>
+                                        </select>
+                                      </div>
+                                      <div>
+                                        <label className="block font-semibold mb-1">Catatan Koreksi Bab {num}</label>
+                                        <textarea 
+                                          className="w-full p-2 border rounded bg-white text-xs" 
+                                          rows={3} 
+                                          placeholder={`Tulis masukan untuk Bab ${num}...`} 
+                                          value={currentReview.teacher_feedback} 
+                                          onChange={(e) => setChapterReviews({
+                                            ...chapterReviews,
+                                            [num]: { ...currentReview, teacher_feedback: e.target.value }
+                                          })}
+                                          required
+                                        ></textarea>
+                                      </div>
+                                      <button type="submit" disabled={reviewingId === ch.id} className="w-full bg-indigo-600 text-white p-2 rounded-xl font-bold hover:bg-indigo-700 transition">
+                                        {reviewingId === ch.id ? 'Memproses Ulasan...' : `Kirim Penilaian Bab ${num}`}
+                                      </button>
+                                    </form>
+                                  ) : (
+                                    <p className="text-xs text-slate-400 italic">Siswa belum mengunggah berkas untuk Bab {num}.</p>
                                   )}
                                 </div>
                               </div>
 
+                              {/* LIVE PREVIEW FILE */}
                               {fileUrl && (
-                                <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden shadow-inner bg-slate-50">
-                                  <div className="bg-slate-100 px-4 py-2 border-b flex items-center justify-between gap-3">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                      <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide">
-                                        🖥️ Live Preview Dokumen Bab {num}
-                                      </span>
-                                      <span className={`text-[9px] px-2 py-0.5 rounded font-bold border ${isPdf ? "bg-red-50 text-red-600 border-red-200" : "bg-blue-50 text-blue-600 border-blue-200"}`}>
-                                        {isPdf ? "PDF" : "DOCX"}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 shrink-0">
-                                      <a 
-                                        href={fileUrl} 
-                                        target="_blank" 
-                                        rel="noreferrer" 
-                                        className="text-[10px] bg-white text-indigo-600 hover:bg-indigo-50 font-bold px-2 py-1 rounded border shadow-sm transition"
-                                      >
-                                        ↗️ Buka di Tab Baru
-                                      </a>
-                                      {!isPdf && (
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setDocxError(null);
-                                            renderDocxPreview(fileUrl, num);
-                                          }}
-                                          className="text-[10px] bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-2 py-1 rounded border shadow-sm transition"
-                                        >
-                                          🔄 Muat Ulang
-                                        </button>
-                                      )}
-                                    </div>
+                                <div className="mt-2 border rounded-xl overflow-hidden bg-slate-50">
+                                  <div className="bg-slate-100 px-4 py-2 border-b flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-600">Preview Berkas Bab {num}</span>
+                                    <a href={fileUrl} target="_blank" rel="noreferrer" className="text-xs text-indigo-600 font-bold">↗️ Tab Baru</a>
                                   </div>
-
                                   <div className="w-full bg-slate-200">
                                     {isPdf ? (
-                                      <div className="w-full h-[700px] bg-white">
-                                        <iframe 
-                                          src={`${fileUrl}#toolbar=1&navpanes=0&scrollbar=1`} 
-                                          className="w-full h-full border-0" 
-                                          title={`Preview PDF Bab ${num}`}
-                                          loading="lazy"
-                                        />
-                                      </div>
+                                      <iframe src={`${fileUrl}#toolbar=1`} className="w-full h-[500px] bg-white" title={`Preview PDF Bab ${num}`}/>
                                     ) : (
                                       <div className="relative">
-                                        {docxLoading && (
-                                          <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/90 min-h-[500px]">
-                                            <div className="text-center">
-                                              <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto mb-3" />
-                                              <p className="text-sm font-bold text-slate-700">Memuat dokumen Word...</p>
-                                              <p className="text-xs text-slate-400 mt-1">Sedang menyiapkan halaman dokumen untuk preview.</p>
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {docxError && (
-                                          <div className="min-h-[450px] flex items-center justify-center bg-slate-50 p-6">
-                                            <div className="max-w-md text-center">
-                                              <div className="text-5xl mb-3">⚠️</div>
-                                              <h4 className="font-bold text-slate-800 text-sm">Preview DOCX gagal dimuat</h4>
-                                              <p className="text-xs text-slate-500 mt-2 leading-relaxed">{docxError}</p>
-                                              <div className="flex justify-center gap-2 mt-4">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    setDocxError(null);
-                                                    renderDocxPreview(fileUrl, num);
-                                                  }}
-                                                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition"
-                                                >
-                                                  🔄 Coba Lagi
-                                                </button>
-                                                <a
-                                                  href={fileUrl}
-                                                  target="_blank"
-                                                  rel="noreferrer"
-                                                  className="bg-white hover:bg-slate-100 text-slate-700 border text-xs font-bold px-4 py-2 rounded-xl transition"
-                                                >
-                                                  📄 Buka File
-                                                </a>
-                                              </div>
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        <div
-                                          ref={(element) => {
-                                            docxPreviewRefs.current[num] = element;
-                                            if (element && !element.dataset.rendered) {
-                                              element.dataset.rendered = "loading";
-                                              renderDocxPreview(fileUrl, num).then(() => {
-                                                element.dataset.rendered = "true";
-                                              }).catch(() => {
-                                                element.dataset.rendered = "error";
-                                              });
-                                            }
-                                          }}
-                                          className={`docx-preview-container bg-slate-200 min-h-[500px] p-4 overflow-auto ${docxError ? "hidden" : ""}`}
-                                        />
+                                        {docxLoading && <div className="p-4 text-center text-xs font-bold">Memuat Preview Word...</div>}
+                                        {docxError && <div className="p-4 text-center text-xs text-red-500">{docxError}</div>}
+                                        <div ref={(el) => { docxPreviewRefs.current[num] = el; if (el && !el.dataset.rendered) { el.dataset.rendered = "true"; renderDocxPreview(fileUrl, num); } }} className="bg-white min-h-[400px] p-4 overflow-auto" />
                                       </div>
                                     )}
                                   </div>
@@ -988,16 +490,39 @@ const fetchTeachersList = async () => {
                   )}
                 </div>
               )}
-              
             </div>
           ) : (
-            <div className="bg-white p-6 rounded-2xl border shadow-sm text-center">
-              <span className="text-3xl">📚</span>
-              <h2 className="text-lg font-bold text-slate-900 mt-2">Pusat Arsip Bimbingan KARYA TULIS ILMIAH</h2>
-              <p className="text-xs text-slate-500 mt-1">Gunakan tab menu utama navigasi di sebelah kiri untuk mengelola aktivitas bimbingan penuh.</p>
+            /* MODUL PEDOMAN BAKU DAFTAR PUSTAKA */
+            <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-6">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">📚 Pedoman Baku Penulisan Daftar Pustaka (APA Style 7th)</h2>
+                <p className="text-xs text-slate-500 mt-1">Acuan penulisan referensi karya tulis ilmiah SMAS Seminari Pius XII Kisol.</p>
+              </div>
+
+              <div className="space-y-4 text-xs text-slate-700">
+                <div className="p-4 bg-slate-50 rounded-xl border">
+                  <h4 className="font-bold text-indigo-700 mb-1">1. Format Sumber dari Buku</h4>
+                  <p className="font-mono bg-white p-2 rounded border">Nama Belakang, Inisial. (Tahun). <i>Judul Buku Miring</i>. Penerbit.</p>
+                  <p className="mt-2 text-slate-500"><strong>Contoh:</strong> Sugiyono. (2019). <i>Metode Penelitian Kuantitatif, Kualitatif, dan R&D</i>. Alfabeta.</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl border">
+                  <h4 className="font-bold text-indigo-700 mb-1">2. Format Sumber dari Jurnal Ilmiah / Artikel Online</h4>
+                  <p className="font-mono bg-white p-2 rounded border">Nama Belakang, Inisial. (Tahun). Judul artikel. <i>Nama Jurnal Miring</i>, Vol(No), Halaman. https://doi.org/xxx</p>
+                  <p className="mt-2 text-slate-500"><strong>Contoh:</strong> Pratama, A., & Wijaya, B. (2021). Analisis Implementasi AI Pada Pendidikan. <i>Jurnal Teknologi Sains</i>, 5(2), 45-58.</p>
+                </div>
+
+                <div className="p-4 bg-slate-50 rounded-xl border">
+                  <h4 className="font-bold text-indigo-700 mb-1">3. Aturan Umum Urutan Penulisan</h4>
+                  <ul className="list-disc pl-4 space-y-1">
+                    <li>Urutkan daftar pustaka berdasarkan alfabet nama belakang penulis (A-Z).</li>
+                    <li>Gunakan format <i>Hanging Indent</i> (baris kedua dan seterusnya masuk ke dalam 0.5 inci / 1.27 cm).</li>
+                    <li>Gunakan spasi ganda atau 1.5 spasi sesuai dengan standar format KTI sekolah.</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
-
         </main>
       </div>
     </div>
